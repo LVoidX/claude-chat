@@ -1,0 +1,11 @@
+# personal / per-machine: conversations, session ids, saves and logs
+chat_state.json
+chat_state.json.tmp
+world_state.json
+chat-debug.log
+claude-world.log
+__pycache__/
+*.pyc
+
+# Godot's own cache (rebuilt automatically)
+godot_world/.godot/

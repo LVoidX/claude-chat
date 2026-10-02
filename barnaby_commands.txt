@@ -1,0 +1,19 @@
+[spawn box blue]  puts an object in front of the user. Shapes: box, sphere, pillar. Any color name.
+[remove]  removes the placed object nearest to the user.
+[sky night]  changes the sky: night, day, sunset, dawn, or any color.
+[follow]  Barnaby follows the user around, staying a few steps behind, until told to wander or stay.  | when: follow me, come with me, come along, keep up, stay with me, walk with me
+[wander]  Barnaby wanders around on his own again.  | when: wander, walk around, go wander, off you go, go explore, do your own thing
+[climb purple single]  Barnaby walks to a placed object or built block (optionally named by color or shape; add "single" for a lone block of that colour, else the highest ones win) and climbs on top of it; wander/follow/stay brings him down.  | when: get on the box, climb the box, climb on the box, get on top, climb on top, get on the blue box
+[hammer]  gives the user a builder's hammer (also key H): left click builds a 1 m block where aimed, right click removes one, C or mouse wheel changes colour.  | when: give me a hammer, i want to build, let me build, can i build, hammer, build mode, i need a hammer
+[unhammer]  takes the hammer away again.  | when: put the hammer away, stop building, no more hammer, take the hammer back
+[look]  Barnaby stops and slowly turns all the way round, really looking at his surroundings. Use it BEFORE your words, then say what you actually see around you (sky, moon, field, sea, objects, the wanderer).  | when: look around, take a look, have a look, look at your surroundings, what do you see, look around you, look about, what's around you, look at the view
+[helicopter]  Barnaby holds his arms out, spins like a helicopter and hovers about 2 m up for 5 seconds, then goes back to what he was doing.  | when: do a helicopter, helicopter, be a helicopter, spin like a helicopter, helicopter mode, fly like a helicopter
+[sea]  makes the sea rise over the whole field (takes about 13 seconds). [sea away] sends it away again.  | when: spawn the sea, bring the sea, bring back the sea, make the sea rise, call the sea, summon the sea, raise the sea, bring in the sea
+[goblins]  calls up a harmless army of green goblins that march in and surround the user ([goblins 20] for a number, [goblins away] sends them off).  | when: spawn the goblin army, spawn goblins, goblin army, summon the goblins, call the goblins, bring the goblins, spawn that goblin army, release the goblins
+[sword]  gives the user a hotbar (bottom of the screen, keys 1-2: hammer, sword) and puts the sword in their hand; left click swings it, goblins take 3 hits.  | when: give me a sword, i need a sword, give me a hotbar, i want to fight, let me fight, give me a weapon, sword please, i want a sword
+[gun]  gives the user a pistol on slot 3 of the hotbar (key 3): left click shoots along the crosshair, a goblin dies in 2 shots.  | when: give me a gun, i need a gun, i want a gun, gun please, give me a pistol, give me a weapon with bullets, can i have a gun, let me shoot
+[stay]  Barnaby stops and stays where he is.  | when: stay here, stay there, wait here, stop following, stand still, don't move
+[teleport]  sends the user back to the middle of the world.
+[quest tea | Find a tin of tea]  use this FIRST, before your words, whenever you give the user a task or quest. Format: [quest short_id | short title]
+[throwmari]  Barnaby walks to Marigold, lifts her overhead and flings her in an arc to land in front of the user (she lies dazed a moment, then gets up).  | when: throw marigold, throw marigold to me, toss marigold, toss marigold to me, chuck marigold, hurl marigold, launch marigold, throw her to me
+[conch]  gives the user the glowing conch shell to carry (E blows it and calls the sea, G polishes it).  | when: give me the conch, give me the conch shell, can i have the conch, i want the conch, hand me the conch, give me the shell, let me have the conch

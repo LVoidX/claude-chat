@@ -1,0 +1,591 @@
+extends Node3D
+## The 3D world's engine side: the window, the player, the on-screen text, the link to the chat window,
+## and the loader that runs the world's parts (the files in scene/).
+##
+## Started by chat.pyw through godot_bridge.py, which connects us to the chat over a local TCP socket:
+## commands come in as JSON lines, and we report back as JSON lines.
+##
+## What is IN the world lives in scene/*.gd, one file per thing (base.gd = ground and sky, barnaby.gd =
+## Barnaby, ...). When any of them, or a model in models/, is saved, all parts are rebuilt inside the same
+## window without restarting. If a file has an error, nothing is swapped: the old world keeps running and
+## the error goes to the log (claude-world.log). Editing THIS file restarts the whole world.
+##
+## Controls: WASD move, Shift run, Space jump, mouse look, Esc frees the mouse (click to grab it again),
+## Tab back to the chat, R back to the middle, F11 fullscreen, M / N = talk / stop (like the mouse buttons).
+
+const PARTS_DIR := "res://scene"
+const MODELS_DIR := "res://models"
+const GRAVITY := 18.0
+const EYE_HEIGHT := 1.8
+const STAND_HEIGHT := 1.9  # capsule height standing / crouching (Ctrl)
+const CROUCH_HEIGHT := 1.1
+const CROUCH_EYE := 1.0
+var player_shape: CollisionShape3D
+var crouch_amount := 0.0  # 0 = standing .. 1 = fully crouched (eases)
+const COMPASS := ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
+
+var tcp := StreamPeerTCP.new()
+var connected := false
+var inbox := ""  # bytes received but not yet a whole line
+var outbox: Array = []  # messages waiting for the connection
+
+var player: CharacterBody3D
+var head: Node3D  # turns up and down; the player body turns left and right
+var camera: Camera3D
+var hud: CanvasLayer  # parts can add their own UI here
+var status_label: Label  # top center: listening / thinking / speaking
+var notice_label: Label  # top right: short messages that fade after a few seconds
+var quest_label: Label  # top left: the active quests
+var notice_until := 0.0
+
+## Shared with the parts and kept across reloads (a part's own variables are reset by a reload).
+## ctx.state is also saved to world_state.json, so it survives closing the world too.
+var ctx := {}
+var parts: Array = []  # the part nodes built from scene/*.gd, in file name order
+var parts_sig := ""
+var next_parts_check := 0.0
+var was_fullscreen := false
+var near_who := ""  # the character the player is standing next to ("" = nobody)
+var sights := {}  # character -> what they could see last time we told the chat
+var next_sight := 0.0
+var next_save := 0.0
+var saved_json := ""
+var state_path := ""
+var _meshes := {}
+var _materials := {}
+var _textures := {}
+
+
+func _ready() -> void:
+	var port := 0
+	var start_hidden := false
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--port="):
+			port = int(arg.substr(7))
+		elif arg == "--hidden":
+			start_hidden = true
+		elif arg.begins_with("--shot="):  # for testing: save a screenshot after 3 s, then quit
+			var path := arg.substr(7)
+			get_tree().create_timer(3.0).timeout.connect(func():
+				get_viewport().get_texture().get_image().save_png(path)
+				get_tree().quit())
+	if port:
+		tcp.connect_to_host("127.0.0.1", port)
+	if start_hidden:  # minimized from the start; the chat window shows us when asked
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
+	build_player()
+	build_hud()
+	state_path = project_file("world_state.json")
+	var saved = JSON.parse_string(FileAccess.get_file_as_string(state_path)) if FileAccess.file_exists(state_path) else null
+	ctx = {"world": self, "player": player, "camera": camera, "hud": hud,
+		"state": saved if saved is Dictionary else {}, "parts": {}, "quest_ids": [], "quest_lines": []}
+	if ctx.state.has("player"):
+		var p: Array = ctx.state["player"]
+		player.position = Vector3(p[0], p[1], p[2])
+		player.rotation.y = p[3]
+	parts_sig = parts_signature()
+	load_parts(true)
+	if start_hidden:
+		hide_world.call_deferred()
+	else:
+		show_world.call_deferred()
+	send({"t": "ready"})
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
+		save_state()
+
+
+# --- the link to the chat window --------------------------------------------------------------------
+
+func send(message: Dictionary) -> void:
+	if connected:
+		tcp.put_data((JSON.stringify(message) + "\n").to_utf8_buffer())
+	else:
+		outbox.append(message)
+
+
+func poll_link() -> void:
+	if tcp.get_status() == StreamPeerTCP.STATUS_NONE and not connected:
+		return  # started on its own (no chat window): just a world to walk around in
+	tcp.poll()
+	var status := tcp.get_status()
+	if status == StreamPeerTCP.STATUS_CONNECTED:
+		if not connected:
+			connected = true
+			for message in outbox:
+				send(message)
+			outbox.clear()
+		var available := tcp.get_available_bytes()
+		if available > 0:
+			var got := tcp.get_data(available)
+			if got[0] == OK:
+				inbox += (got[1] as PackedByteArray).get_string_from_utf8()
+		while inbox.contains("\n"):
+			var end := inbox.find("\n")
+			var line := inbox.substr(0, end)
+			inbox = inbox.substr(end + 1)
+			var command = JSON.parse_string(line)
+			if command is Dictionary:
+				handle(command)
+	elif status == StreamPeerTCP.STATUS_ERROR or (connected and status == StreamPeerTCP.STATUS_NONE):
+		save_state()
+		get_tree().quit()  # the chat window closed
+
+
+func handle(c: Dictionary) -> void:
+	var kind: String = c.get("cmd", "")
+	match kind:
+		"status":
+			status_label.text = c.get("text", "")
+			return
+		"show":
+			show_world()
+			return
+		"hide":
+			hide_world()
+			return
+		"quit":
+			save_state()
+			get_tree().quit()
+			return
+		"notice":
+			show_notice(c.get("text", ""))
+			return
+		"quests":  # the quest list from the chat window
+			ctx["quest_ids"] = c.get("ids", [])
+			ctx["quest_lines"] = c.get("lines", [])
+			draw_quests()
+		"jobs":  # the assistant's work queue from the chat window
+			ctx["job_lines"] = c.get("lines", [])
+			draw_quests()
+			return
+		"teleport", "center":
+			recenter()
+			return
+	print("[world] command received: ", c)  # shows up in the world log
+	for part in parts:  # the first part that knows the command handles it
+		if part.has_method("handle") and part.handle(c):
+			return
+
+
+# --- the world's parts (scene/*.gd), reloaded live ---------------------------------------------------
+
+func part_files() -> Array:
+	var files := []
+	for f in DirAccess.get_files_at(PARTS_DIR):
+		if f.ends_with(".gd"):
+			files.append(f)
+	files.sort()
+	return files
+
+
+func parts_signature() -> String:
+	var sig := ""
+	for f in part_files():
+		sig += "%s:%d;" % [f, FileAccess.get_modified_time(PARTS_DIR.path_join(f))]
+	for f in DirAccess.get_files_at(MODELS_DIR):
+		sig += "%s:%d;" % [f, FileAccess.get_modified_time(MODELS_DIR.path_join(f))]
+	return sig
+
+
+## (Re)build every part. All files are checked first: if one has an error, the old world keeps running.
+func load_parts(first := false) -> void:
+	var scripts := []
+	for f in part_files():
+		var script := GDScript.new()
+		script.source_code = FileAccess.get_file_as_string(PARTS_DIR.path_join(f))
+		var err := script.reload()
+		if err != OK:
+			printerr("scene/", f, " has an error (", error_string(err), "), so nothing was reloaded. Details are above.")
+			return
+		scripts.append([f.get_basename(), script])
+	for part in parts:
+		part.queue_free()
+	parts.clear()
+	_meshes.clear()
+	_materials.clear()
+	_textures.clear()
+	ctx["parts"] = {}
+	for entry in scripts:
+		var part := Node3D.new()
+		part.name = entry[0]
+		part.set_script(entry[1])
+		add_child(part)
+		parts.append(part)
+		ctx["parts"][entry[0]] = part
+	for part in parts:
+		if part.has_method("build"):
+			part.build(ctx)
+	sights.clear()
+	if not first:
+		print("[world] parts reloaded")
+	send({"t": "need_quests"})  # the chat window resends the quest list
+
+
+func _process(_delta: float) -> void:
+	poll_link()
+	var now := Time.get_ticks_msec() / 1000.0
+	if now > next_parts_check:  # a part or model saved? rebuild in place
+		next_parts_check = now + 0.5
+		var sig := parts_signature()
+		if sig != parts_sig:
+			parts_sig = sig
+			load_parts()
+	if notice_label.text != "" and now > notice_until:
+		notice_label.text = ""
+	# whom is the player standing next to? (the chat window listens hands-free while you are)
+	var who := ""
+	for part in parts:
+		if "npc_id" in part and part.has_method("is_near") and part.is_near():
+			who = part.npc_id
+			break
+	if who != near_who:
+		near_who = who
+		send({"t": "near", "v": who != "", "who": who})
+	if now > next_sight:  # what each character can see, for their next answer
+		next_sight = now + 1.0
+		for part in parts:
+			if "npc_id" in part and part.has_method("describe"):
+				var text: String = part.describe()
+				if sights.get(part.npc_id, "") != text:
+					sights[part.npc_id] = text
+					send({"t": "sight", "who": part.npc_id, "text": text})
+	if now > next_save:
+		next_save = now + 5.0
+		save_state()
+
+
+func save_state() -> void:
+	if not player or state_path == "":
+		return
+	ctx.state["player"] = [player.position.x, player.position.y, player.position.z, player.rotation.y]
+	var text := JSON.stringify(ctx.state)
+	if text != saved_json:
+		saved_json = text
+		var f := FileAccess.open(state_path, FileAccess.WRITE)
+		if f:
+			f.store_string(text)
+
+
+# --- helpers for the parts ---------------------------------------------------------------------------
+
+## A file in the folder next to chat.pyw (one level above this project).
+func project_file(file: String) -> String:
+	return ProjectSettings.globalize_path("res://").path_join("..").path_join(file).simplify_path()
+
+
+## A PNG from the folder next to chat.pyw, loaded directly (no Godot import step needed).
+func tex(file: String) -> Texture2D:
+	if not file.ends_with(".png"):
+		file += ".png"
+	if not file in _textures:
+		var image := Image.load_from_file(project_file(file))
+		if image:
+			image.generate_mipmaps()
+		_textures[file] = ImageTexture.create_from_image(image) if image else null
+	return _textures[file]
+
+
+## A shared material for a colour (and optional texture, repeated `tiles` times per face).
+func mat(color: Color, texture := "", tiles := Vector2.ONE, double_sided := false) -> StandardMaterial3D:
+	var key := "%s|%s|%s|%s" % [color.to_html(), texture, tiles, double_sided]
+	if not key in _materials:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = color
+		m.roughness = 0.9
+		if texture != "":
+			m.albedo_texture = tex(texture)
+			m.uv1_triplanar = true  # one picture per box face, like before
+			m.uv1_scale = Vector3(tiles.x, tiles.y, tiles.x)
+		if color.a < 1.0:
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		if double_sided:
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_materials[key] = m
+	return _materials[key]
+
+
+func mesh(kind: String) -> Mesh:
+	if not kind in _meshes:
+		match kind:
+			"sphere":
+				var s := SphereMesh.new()
+				s.radius = 0.5
+				s.height = 1.0
+				_meshes[kind] = s
+			"quad":
+				_meshes[kind] = QuadMesh.new()
+			"plane":
+				var p := PlaneMesh.new()
+				p.size = Vector2.ONE
+				_meshes[kind] = p
+			_:
+				_meshes[kind] = BoxMesh.new()
+	return _meshes[kind]
+
+
+## A plain box (or "sphere") of `size` at `pos` under `parent`; collide = you can't walk through it.
+func box(parent: Node, pos: Vector3, size: Vector3, color: Color, kind := "cube", collide := false) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	m.mesh = mesh(kind)
+	m.material_override = mat(color)
+	m.position = pos
+	m.scale = size
+	parent.add_child(m)
+	if collide:
+		add_collider(parent, Transform3D(Basis(), pos), size, kind)
+	return m
+
+
+func add_collider(parent: Node, xform: Transform3D, size: Vector3, kind := "cube") -> void:
+	var body := StaticBody3D.new()
+	body.transform = xform
+	var shape := CollisionShape3D.new()
+	if kind == "sphere":
+		var s := SphereShape3D.new()
+		s.radius = max(size.x, max(size.y, size.z)) / 2
+		shape.shape = s
+	else:
+		var b := BoxShape3D.new()
+		b.size = size
+		shape.shape = b
+	body.add_child(shape)
+	parent.add_child(body)
+
+
+## Build a model from models/<name>.json under `parent`. Returns its named parts (e.g. "arm_l") and "root".
+func build_model(name: String, parent: Node3D) -> Dictionary:
+	var data = JSON.parse_string(FileAccess.get_file_as_string(MODELS_DIR.path_join(name + ".json")))
+	var named := {}
+	var root := Node3D.new()
+	root.name = name
+	parent.add_child(root)
+	named["root"] = root
+	if data is Dictionary:
+		for child in data.get("ch", []):
+			_model_node(child, root, named)
+	return named
+
+
+func _model_node(d: Dictionary, parent: Node3D, named: Dictionary) -> void:
+	var node: Node3D
+	if d.has("m"):
+		var m := MeshInstance3D.new()
+		m.mesh = mesh(d["m"])
+		var tl: Array = d.get("tl", [1, 1])
+		m.material_override = mat(Color.html(d.get("c", "#ffffff")), d.get("t", ""), Vector2(tl[0], tl[1]), d.get("ds", false))
+		node = m
+	else:
+		node = Node3D.new()
+	var b: Array = d.get("b", [1, 0, 0, 0, 1, 0, 0, 0, 1])
+	var o: Array = d.get("o", [0, 0, 0])
+	node.transform = Transform3D(Basis(Vector3(b[0], b[1], b[2]), Vector3(b[3], b[4], b[5]), Vector3(b[6], b[7], b[8])),
+		Vector3(o[0], o[1], o[2]))
+	if d.get("e", true) == false:
+		node.visible = false
+	if d.has("n"):
+		node.name = d["n"]
+		named[d["n"]] = node
+	parent.add_child(node)
+	if d.get("col", false):  # a solid part: a collider with the same place and size (physics dislikes scaling)
+		add_collider(parent, Transform3D(node.basis.orthonormalized(), node.position), node.basis.get_scale(), d.get("m", "cube"))
+	for child in d.get("ch", []):
+		_model_node(child, node, named)
+
+
+## Where `to` is, seen from `from`, in words ("about 12 m to the north-west"). North is -z.
+func where(from: Vector3, to: Vector3) -> String:
+	var d := Vector2(to.x - from.x, to.z - from.z)
+	if d.length() < 1.5:
+		return "right next to you"
+	var angle := rad_to_deg(atan2(d.x, -d.y))  # 0 = north, 90 = east
+	return "about %d m to the %s" % [roundi(d.length()), COMPASS[posmod(roundi(angle / 45.0), 8)]]
+
+
+## Turn `node` (left/right only) so its front (-z) faces `target`.
+func face(node: Node3D, target: Vector3) -> void:
+	var d := target - node.global_position
+	if absf(d.x) + absf(d.z) > 0.01:
+		node.rotation = Vector3(0, atan2(-d.x, -d.z), 0)
+
+
+# --- the player --------------------------------------------------------------------------------------
+
+func build_player() -> void:
+	player = CharacterBody3D.new()
+	player.name = "Player"
+	var shape := CollisionShape3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.4
+	capsule.height = 1.9
+	shape.shape = capsule
+	shape.position.y = 0.95
+	player.add_child(shape)
+	player_shape = shape
+	head = Node3D.new()
+	head.position.y = EYE_HEIGHT
+	player.add_child(head)
+	camera = Camera3D.new()
+	camera.fov = 80
+	camera.far = 1000
+	head.add_child(camera)
+	add_child(player)
+	recenter()
+
+
+func recenter() -> void:
+	player.position = Vector3(0, 0.5, 0)
+	player.velocity = Vector3.ZERO
+	player.rotation.y = 0
+	head.rotation.x = 0
+
+
+## Movement settings live in scene/base.gd (so they can be changed live), with these defaults.
+func setting(name: String, default):
+	var base = ctx.get("parts", {}).get("base")
+	if base and name in base:
+		return base.get(name)
+	return default
+
+
+## True when there is room above the player to stand up.
+func head_room() -> bool:
+	var from := player.global_position + Vector3(0, CROUCH_HEIGHT - 0.1, 0)
+	var query := PhysicsRayQueryParameters3D.create(from, player.global_position + Vector3(0, STAND_HEIGHT + 0.05, 0))
+	query.exclude = [player.get_rid()]
+	return player.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
+
+func _physics_process(delta: float) -> void:
+	var playing := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	var dir := Vector3.ZERO
+	if playing:
+		var x := float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
+		var z := float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))
+		dir = (player.transform.basis * Vector3(x, 0, z)).normalized()
+	var want_crouch := playing and Input.is_physical_key_pressed(KEY_CTRL)
+	if not want_crouch and crouch_amount > 0.0 and not head_room():
+		want_crouch = true  # something is overhead: stay down
+	crouch_amount = move_toward(crouch_amount, 1.0 if want_crouch else 0.0, delta * 8.0)
+	var capsule_shape: CapsuleShape3D = player_shape.shape
+	capsule_shape.height = lerpf(STAND_HEIGHT, CROUCH_HEIGHT, crouch_amount)
+	player_shape.position.y = capsule_shape.height / 2.0
+	head.position.y = lerpf(EYE_HEIGHT, CROUCH_EYE, crouch_amount)
+	var speed: float = setting("RUN_SPEED", 10.0) if Input.is_physical_key_pressed(KEY_SHIFT) else setting("WALK_SPEED", 5.0)
+	speed *= lerpf(1.0, 0.4, crouch_amount) if crouch_amount > 0.0 else 1.0
+	player.velocity.x = dir.x * speed
+	player.velocity.z = dir.z * speed
+	if player.is_on_floor():
+		if playing and Input.is_physical_key_pressed(KEY_SPACE):
+			player.velocity.y = setting("JUMP_SPEED", 6.6)
+	else:
+		player.velocity.y -= GRAVITY * delta
+	player.move_and_slide()
+	if player.position.y < -50:  # fell off the world
+		recenter()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		var sens: float = deg_to_rad(setting("LOOK_SENSITIVITY", 0.08))  # degrees per pixel
+		player.rotate_y(-event.relative.x * sens)
+		head.rotation.x = clamp(head.rotation.x - event.relative.y * sens, deg_to_rad(-89), deg_to_rad(89))
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not ctx.get("ui_open", false):
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED  # click to grab the mouse again
+	elif event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:  # by key name (WASD movement uses the physical key position instead)
+			KEY_TAB:
+				go_to_chat()
+			KEY_ESCAPE:
+				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			KEY_R:
+				recenter()
+			KEY_F11:
+				set_fullscreen(DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN)
+			KEY_M:
+				send({"t": "key", "k": "m"})
+			KEY_N:
+				send({"t": "key", "k": "n"})
+		for part in parts:
+			if part.has_method("key"):
+				part.key(event)  # keys the parts add (inventory, ...)
+
+
+# --- showing and hiding (only one of the chat and the world is on screen at a time) -------------------
+
+func set_fullscreen(on: bool) -> void:
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if on else DisplayServer.WINDOW_MODE_WINDOWED)
+
+
+func show_world() -> void:
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if was_fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_move_to_foreground()
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func hide_world() -> void:
+	was_fullscreen = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
+
+
+func go_to_chat() -> void:
+	send({"t": "switch"})
+	hide_world()
+
+
+# --- on-screen text ----------------------------------------------------------------------------------
+
+func make_label(anchor_preset: int, align: int, color: Color, size: int) -> Label:
+	var label := Label.new()
+	label.set_anchors_and_offsets_preset(anchor_preset, Control.PRESET_MODE_KEEP_SIZE, 16)
+	label.horizontal_alignment = align
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 6)
+	label.add_theme_font_size_override("font_size", size)
+	if align == HORIZONTAL_ALIGNMENT_CENTER:
+		label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	elif align == HORIZONTAL_ALIGNMENT_RIGHT:
+		label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	return label
+
+
+func build_hud() -> void:
+	hud = CanvasLayer.new()
+	hud.name = "HUD"
+	add_child(hud)
+	status_label = make_label(Control.PRESET_CENTER_TOP, HORIZONTAL_ALIGNMENT_CENTER, Color("#ff4d4d"), 28)
+	notice_label = make_label(Control.PRESET_TOP_RIGHT, HORIZONTAL_ALIGNMENT_RIGHT, Color("#8ef0a4"), 22)
+	quest_label = make_label(Control.PRESET_TOP_LEFT, HORIZONTAL_ALIGNMENT_LEFT, Color("#ffd24d"), 20)
+	for label in [status_label, notice_label, quest_label]:
+		hud.add_child(label)
+
+
+func show_notice(text: String, seconds := 3.5) -> void:
+	notice_label.text = text
+	notice_until = Time.get_ticks_msec() / 1000.0 + seconds
+
+
+## The quest list, top left. A part can add progress to a quest with quest_progress(id) -> " (2/3)".
+func draw_quests() -> void:
+	var ids: Array = ctx.get("quest_ids", [])
+	var lines: Array = ctx.get("quest_lines", [])
+	var out := []
+	for i in lines.size():
+		var line: String = lines[i]
+		for part in parts:
+			if i < ids.size() and part.has_method("quest_progress"):
+				line += part.quest_progress(ids[i])
+		out.append("- " + line)
+	var text := ("QUESTS\n" + "\n".join(out)) if out else ""
+	var jobs: Array = ctx.get("job_lines", [])  # the assistant's work queue (first = being worked on)
+	if not jobs.is_empty():
+		var rows := []
+		for i in jobs.size():
+			rows.append(("> " if i == 0 else "%d. " % i) + jobs[i])
+		text += ("\n\n" if text != "" else "") + "WORKING ON\n" + "\n".join(rows)
+	quest_label.text = text
