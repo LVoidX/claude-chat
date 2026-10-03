@@ -8,7 +8,12 @@ function Step($text) { Write-Host ""; Write-Host "== $text" -ForegroundColor Cya
 
 Step "Python"
 $python = Get-Command python -ErrorAction SilentlyContinue
-if (-not $python) {
+# Windows has a stand-in "python" that only points to the Microsoft Store: check that Python really runs
+$works = $false
+if ($python) {
+    try { python -c "import sys" 2>$null; $works = ($LASTEXITCODE -eq 0) } catch { $works = $false }
+}
+if (-not $works) {
     Write-Host "Python is not installed. Install it from https://www.python.org/downloads/" -ForegroundColor Yellow
     Write-Host "(tick 'Add python.exe to PATH' in the installer), then run setup.bat again."
     exit 1
