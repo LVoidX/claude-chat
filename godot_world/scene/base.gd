@@ -17,7 +17,6 @@ const RUN_SPEED := 10.0
 const JUMP_SPEED := 6.6  # about 1.2 m high
 const LOOK_SENSITIVITY := 0.08  # degrees per pixel of mouse movement
 
-const GROUND_COLOR := Color("#163c1e")
 const SKY_PRESETS := {"sunset": "#ff7a50", "dawn": "#f2b8a2", "day": "#87b5e8"}
 
 var ctx: Dictionary
@@ -30,8 +29,7 @@ var placed_nodes := {}  # index in state.placed -> node
 func build(c: Dictionary) -> void:
 	ctx = c
 	W = ctx["world"]
-	build_environment()
-	build_ground()
+	build_environment()  # (the ground itself is scene/terrain.gd)
 	set_sky(ctx.state.get("sky", "night"))
 	for spec in ctx.state.get("placed", []):  # things placed on request survive reloads
 		make_placed(spec)
@@ -43,51 +41,32 @@ func build_environment() -> void:
 	env.sky = Sky.new()
 	sky_material = PanoramaSkyMaterial.new()
 	env.sky.sky_material = sky_material
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR  # even fill light, so colours read true
-	env.ambient_light_color = Color("#8a8aa0")
-	env.ambient_light_energy = 1.0
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR  # a cool moonlit fill, so colours still read
+	env.ambient_light_color = Color("#6f78a0")
+	env.ambient_light_energy = 0.5
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.fog_enabled = true  # a faint red haze toward the horizon
-	env.fog_light_color = Color("#2a0a10")
-	env.fog_density = 0.006
-	env.fog_sky_affect = 0.0
+	env.tonemap_exposure = 1.0
+	env.glow_enabled = true  # lanterns, windows and fireflies bloom softly
+	env.glow_intensity = 0.7
+	env.glow_bloom = 0.05
+	env.glow_hdr_threshold = 0.9
+	env.ssao_enabled = true  # soft shadows in corners: walls on the ground, roofs on walls
+	env.ssao_intensity = 1.6
+	env.fog_enabled = true  # a night haze that swallows the far hills
+	env.fog_light_color = Color("#1e1a2c")
+	env.fog_density = 0.005
+	env.fog_sky_affect = 0.1
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
 
 	var moon := DirectionalLight3D.new()  # red-tinted moonlight, with shadows
-	moon.light_color = Color("#ffc2b0")
-	moon.light_energy = 0.8
+	moon.light_color = Color("#ffc7b8")
+	moon.light_energy = 1.0
 	moon.shadow_enabled = true
+	moon.directional_shadow_max_distance = 140.0
 	moon.rotation_degrees = Vector3(-40, -30, 0)
 	add_child(moon)
-
-
-## A grid texture drawn in code: dark green with faint lines, repeated over the ground.
-func grid_texture() -> Texture2D:
-	var size := 64
-	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	image.fill(GROUND_COLOR)
-	var line := GROUND_COLOR.lightened(0.18)
-	for i in size:
-		image.set_pixel(i, 0, line)
-		image.set_pixel(0, i, line)
-	image.generate_mipmaps()
-	return ImageTexture.create_from_image(image)
-
-
-func build_ground() -> void:
-	var mesh := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(400, 400)
-	mesh.mesh = plane
-	var material := StandardMaterial3D.new()
-	material.albedo_texture = grid_texture()
-	material.uv1_scale = Vector3(200, 200, 1)  # one grid square every 2 m
-	material.roughness = 1.0
-	mesh.material_override = material
-	add_child(mesh)
-	W.add_collider(self, Transform3D(Basis(), Vector3(0, -0.5, 0)), Vector3(400, 1, 400))
 
 
 func set_sky(name: String) -> void:
@@ -105,7 +84,7 @@ func make_placed(spec: Dictionary) -> void:
 	var color := Color.from_string(spec.get("color", "white"), Color.WHITE)
 	var shape: String = spec.get("shape", "box")
 	var node := Node3D.new()
-	node.position = Vector3(spec.x, 0, spec.z)
+	node.position = Vector3(spec.x, W.ground_y(spec.x, spec.z), spec.z)
 	add_child(node)
 	if shape in ["sphere", "ball"]:
 		W.box(node, Vector3(0, 0.6, 0), Vector3.ONE * 1.2, color, "sphere", true)

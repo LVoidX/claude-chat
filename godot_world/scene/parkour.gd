@@ -1,5 +1,5 @@
 extends Node3D
-## A glowing spiral of floating platforms to the east, for when you are idle: jump up it to the gold platform at the
+## A spiral of floating stone slabs to the east, each with a glowing rune, for when you are idle: jump up it to the gold platform at the
 ## top. The timer starts when you leave the start pad, there are green checkpoints on the way, and falling to the
 ## ground sends you back to the last checkpoint. P brings you back to the last checkpoint (or the start) any time.
 ## The best time is kept in state["parkour_best"].
@@ -79,13 +79,23 @@ func add_pad(pos: Vector3, top: float, size: float, kind: String) -> void:
 	var root := Node3D.new()
 	root.position = Vector3(pos.x, 0, pos.z)
 	add_child(root)
-	var node: MeshInstance3D = W.box(root, Vector3(0, top - thick / 2.0, 0), Vector3(size, thick, size), color, "cube", true)
+	# a floating slab of stone (from kit.gd), with a glowing rune inlaid on top in the pad's colour (green =
+	# checkpoint, purple = slides, red = crumbles, gold = the goal); its own material, so a pad can flicker
+	var slab: MeshInstance3D = ctx.parts["kit"].block(W, root, Vector3(0, top - thick / 2.0, 0), Vector3(size, thick, size), "dark_stone")
+	slab.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	W.box(root, Vector3(0, top - thick - 0.25, 0), Vector3(size * 0.55, 0.5, size * 0.55), Color("#4a4640"), "sphere")  # rough underside
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color.darkened(0.35)
 	m.emission_enabled = true
 	m.emission = color
 	m.emission_energy_multiplier = 0.9 if kind == "plat" else 1.6
-	node.material_override = m
+	var rune := MeshInstance3D.new()
+	rune.mesh = W.mesh("cube")
+	rune.material_override = m
+	rune.position = Vector3(0, top + 0.006, 0)
+	rune.scale = Vector3(size * 0.62, 0.012, size * 0.62)
+	rune.rotation.y = PI / 4.0
+	root.add_child(rune)
 	if kind in ["start", "check", "goal"]:
 		var lamp := OmniLight3D.new()
 		lamp.light_color = color

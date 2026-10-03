@@ -454,6 +454,12 @@ func quest_done(id: String) -> void:
 	send({"t": "quest_done", "id": id})
 
 
+## The height of the ground at x, z (0 in the flat meadow; the hills come from scene/terrain.gd).
+func ground_y(x: float, z: float) -> float:
+	var terrain = ctx.get("parts", {}).get("terrain")
+	return terrain.height_at(x, z) if terrain and terrain.has_method("height_at") else 0.0
+
+
 ## Where `to` is, seen from `from`, in words ("about 12 m to the north-west"). North is -z.
 func where(from: Vector3, to: Vector3) -> String:
 	var d := Vector2(to.x - from.x, to.z - from.z)

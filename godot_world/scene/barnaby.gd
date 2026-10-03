@@ -60,7 +60,7 @@ func is_near() -> bool:
 
 func describe() -> String:
 	var here := body.position
-	var seen := ["an endless dark field with a faint green grid, under a dark sky with a red moon"]
+	var seen := ["a wide grassy meadow in a valley, under a dark night sky with a red moon"]
 	seen.append_array(W.seen_around(here, self))  # everything the other parts report (see world.gd)
 	if st().get("mode") == "atop":
 		seen.append("you are standing on top of the placed object")
@@ -200,7 +200,7 @@ func _process(delta: float) -> void:
 		body.position.y = thrown_y
 	elif body.rotation.x != 0.0:  # a throw cut short by another command: back on his feet
 		body.rotation.x = 0.0
-	body.position.y += 0.021  # boot soles reach 2 cm below his feet; keep them out of the ground
+	body.position.y += 0.021 + W.ground_y(body.position.x, body.position.z)  # (boot soles reach 2 cm below his feet)
 	phase += delta * 8 if moving else 0.0
 	var swing := sin(phase) * deg_to_rad(30) if moving else 0.0
 	for pair in limbs:

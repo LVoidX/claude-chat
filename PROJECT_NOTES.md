@@ -57,8 +57,17 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   What the characters "see": every part reports itself with seen_from(from, viewer) -> Array of phrases, and
   both characters' describe() use W.seen_around(). A new thing only needs a seen_from() to be noticed.
   Talking (bubble, mouth, "?"/"..." symbol) is the shared Talker in scene/talk.gd, used by both characters.
-  - base.gd: ground (dark green grid), night sky panorama (sky_night.png), moonlight with shadows, red fog,
+  - base.gd: night sky panorama (sky_night.png), lighting (moon with shadows, glow, SSAO, distance fog),
     movement settings, placed objects (spawn/remove), sky command.
+  - The look is medieval (2026-10-03): terrain.gd = flat grassy meadow (radius 58, ground y = 0 there, which
+    everything in the middle relies on) ringed by wooded hills and snowy mountains, dirt roads with lanterns,
+    swaying grass, trees/boulders (MultiMesh), fireflies. height_at(x, z) / W.ground_y() give the ground height
+    (characters, goblins and placed objects use it). Heavy parts are cached in ctx (bump VERSION to rebuild).
+    castle.gd = castle on the levelled hill to the north (walls, towers, gatehouse, keep, banners, torches).
+    village.gd = cottages, well, fences, cart to the west, plus the windmill on the eastern hills.
+    kit.gd = shared building materials drawn in code (stone, dark_stone, plaster, timber, planks, thatch,
+    slate), mapped in world space: kit.mat("stone") or kit.block(W, parent, pos, size, "stone").
+    The parkour pads are floating stone slabs with a glowing rune in their colour.
   - barnaby.gd: Barnaby Finch (model: models/barnaby.json, 275 textured boxes, textures barnaby_*.png);
     wanders, stops and faces you when near (hands-free listening), commands follow / wander / stay.
 - ctx.state is saved to world_state.json (next to chat.pyw) every few seconds and on exit: keep plain values.

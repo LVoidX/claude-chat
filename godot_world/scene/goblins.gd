@@ -209,7 +209,7 @@ func _process(delta: float) -> void:
 			pair[0].rotation.x = swing * pair[1]
 		for pair in g.arms:
 			pair[0].rotation.x = swing * pair[1]
-		node.position.y = absf(sin(g.phase)) * 0.05 if moving else 0.0
+		node.position.y = (absf(sin(g.phase)) * 0.05 if moving else 0.0) + W.ground_y(node.position.x, node.position.z)
 
 
 func seen_from(from: Vector3, _viewer: Node) -> Array:

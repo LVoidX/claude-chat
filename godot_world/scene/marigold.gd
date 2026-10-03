@@ -535,7 +535,7 @@ func is_near() -> bool:
 func describe() -> String:
 	var here := body.position
 	var seen := ["your own market stall right behind you, with your oven, your herbs and your moonbread loaves on the counter (%d baked so far)" % int(ctx.state.get("moonbread", 0)),
-		"a dark field with a faint green grid under a red moon, where glowing blue moonblooms grow here and there (you need five to bake moonbread, your grandmother's recipe)"]
+		"a grassy meadow in a valley under a red moon, where glowing blue moonblooms grow here and there (you need five to bake moonbread, your grandmother's recipe)"]
 	seen.append_array(W.seen_around(here, self))  # everything the other parts report (see world.gd)
 	if blooms() > 0:
 		seen.append("the wanderer is carrying %d moonbloom%s" % [blooms(), "" if blooms() == 1 else "s"])
@@ -596,7 +596,7 @@ func _process(delta: float) -> void:
 		limbs[3][0].rotation.x = -deg_to_rad(160)
 	if braid:
 		braid.rotation.x = deg_to_rad(8) * sin(phase * 0.5 + 1.0) if moving else sin(spin * 1.3) * deg_to_rad(2.5)
-	body.position.y = (absf(sin(phase)) * 0.025 if moving else sin(spin * 1.6) * 0.004) + 0.0
+	body.position.y = (absf(sin(phase)) * 0.025 if moving else sin(spin * 1.6) * 0.004) + W.ground_y(body.position.x, body.position.z)
 	if oven_light:
 		oven_light.light_energy = 1.4 + sin(spin * 9.0) * 0.25 + sin(spin * 4.1) * 0.2
 	collect_flowers(delta)
