@@ -3,9 +3,11 @@ extends Node3D
 ##
 ## Every file in scene/ is one part of the world. world.gd rebuilds all parts live when any of them is saved.
 ## A part can have: build(ctx) (called once per (re)build), handle(c) -> bool (a chat command; return true
-## if this part dealt with it), key(event), describe() + is_near() + npc_id (for characters), and the usual
-## _process(delta). ctx["world"] is world.gd with helpers: box(), build_model(), mat(), tex(), where(),
-## face(), send(), show_notice(). ctx["state"] survives reloads and restarts (saved to world_state.json):
+## if this part dealt with it), key(event), seen_from(from, viewer) -> Array (what the characters notice of
+## this part: short phrases with W.where()), quest_progress(id) -> " (2/3)", describe() + is_near() + npc_id
+## (for characters), and the usual _process(delta). ctx["world"] is world.gd with helpers: box(), glow(),
+## light(), build_model(), mat(), tex(), where(), face(), seen_around(), send(), quest_done(), show_notice().
+## ctx["state"] survives reloads and restarts (saved to world_state.json):
 ## keep only plain values in it (numbers, strings, arrays, dictionaries). ctx["parts"]["<file name>"] is
 ## another part. North is -z.
 
@@ -114,7 +116,7 @@ func make_placed(spec: Dictionary) -> void:
 	placed_nodes[spec] = node
 
 
-func describe_placed(from: Vector3) -> Array:
+func seen_from(from: Vector3, _viewer: Node) -> Array:
 	var seen := []
 	for spec in ctx.state.get("placed", []):
 		seen.append("a %s %s the wanderer made, %s" % [spec.get("color", ""), spec.get("shape", "box"),

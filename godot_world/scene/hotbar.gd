@@ -1,5 +1,5 @@
 extends Node3D
-## The hotbar (bottom of the screen, keys 1-9) and the sword. Slot 1 = the builder's hammer (builder.gd),
+## The hotbar (bottom of the screen, keys 1-3) and the sword. Slot 1 = the builder's hammer (builder.gd),
 ## slot 2 = the sword. Pressing a slot's key takes that item in hand; pressing it again puts it away.
 ## Sword: left click swings it and hurts goblins (goblins.gd) in front of you. Given with [sword] or [hotbar].
 ## state["hotbar"] = the bar has been given, state["sword_held"] = the sword is in hand.
@@ -138,13 +138,18 @@ func make_bar() -> void:
 		slot_panels.append(panel)
 
 
+var _styles := {}  # selected? -> StyleBoxFlat, made once
+
+
 func style(selected: bool) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = Color(0.1, 0.1, 0.12, 0.75)
-	s.border_color = Color("#ffd24d") if selected else Color(1, 1, 1, 0.35)
-	s.set_border_width_all(3 if selected else 1)
-	s.set_corner_radius_all(4)
-	return s
+	if not selected in _styles:
+		var s := StyleBoxFlat.new()
+		s.bg_color = Color(0.1, 0.1, 0.12, 0.75)
+		s.border_color = Color("#ffd24d") if selected else Color(1, 1, 1, 0.35)
+		s.set_border_width_all(3 if selected else 1)
+		s.set_corner_radius_all(4)
+		_styles[selected] = s
+	return _styles[selected]
 
 
 func select(slot: int) -> void:  # 0 = hammer, 1 = sword, 2 = gun
@@ -280,7 +285,7 @@ func _process(delta: float) -> void:
 				slot_panels[i].add_theme_stylebox_override("panel", style(on))
 
 
-func describe_hotbar() -> Array:
+func seen_from(_from: Vector3, _viewer: Node) -> Array:
 	var seen := []
 	if has_bar():
 		seen.append("the wanderer has a hotbar (1 hammer, 2 sword, 3 gun)%s" % (

@@ -14,7 +14,6 @@ var last_quarter := 0
 var gleam: MeshInstance3D
 var spin := 0.0
 var hinted := false
-var done_timer := 0.0
 var warned := false  # the "too far" hint was shown for this key press
 
 
@@ -82,10 +81,7 @@ func _process(delta: float) -> void:
 		hinted = true
 		W.show_notice("Hold G to polish the conch.", 5.0)
 	if polished() and QUEST_ID in ctx.get("quest_ids", []):  # polished before the quest was (re)given: finish it now
-		done_timer -= delta
-		if done_timer <= 0.0:
-			done_timer = 3.0
-			W.send({"t": "quest_done", "id": QUEST_ID})
+		W.quest_done(QUEST_ID)
 	if not polished():
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and Input.is_key_pressed(KEY_G) and can_polish():
 			progress += delta
@@ -96,7 +92,7 @@ func _process(delta: float) -> void:
 			if progress >= NEED:
 				ctx.state["conch_polished"] = true
 				W.show_notice("The conch gleams like new.", 4.0)
-				W.send({"t": "quest_done", "id": QUEST_ID})
+				W.quest_done(QUEST_ID)
 		else:
 			if Input.is_key_pressed(KEY_G) and QUEST_ID in ctx.get("quest_ids", []) and not can_polish() and not warned:
 				warned = true
@@ -115,7 +111,9 @@ func _process(delta: float) -> void:
 		sea.light.light_energy += 1.5  # brighter than the ordinary hum
 
 
-func describe() -> String:
+func seen_from(_from: Vector3, _viewer: Node) -> Array:
 	if polished():
-		return "the conch shell is polished and gleams brightly now"
-	return "the conch can be polished: the wanderer holds G next to it for a few seconds (%d%% done)" % int(progress / NEED * 100.0)
+		return ["the conch shell is polished and gleams brightly now"]
+	if QUEST_ID in ctx.get("quest_ids", []):
+		return ["the conch can be polished: the wanderer holds G next to it for a few seconds (%d%% done)" % int(progress / NEED * 100.0)]
+	return []

@@ -23,8 +23,9 @@ func build(c: Dictionary) -> void:
 	hammer.visible = ctx.state.get("hammer", false)
 
 
-## What Barnaby sees of the built blocks: touching blocks form one structure, described by size, colours and place.
-func describe_blocks(from: Vector3) -> Array:
+## What the characters see of the built blocks: touching blocks form one structure, described by size, colours
+## and place. Also whether the wanderer holds the hammer.
+func seen_from(from: Vector3, _viewer: Node) -> Array:
 	var cells := {}  # "x,y,z" -> [x, y, z, colour]
 	for s in ctx.state.get("blocks", []):
 		cells["%d,%d,%d" % [int(s[0]), int(s[1]), int(s[2])]] = [int(s[0]), int(s[1]), int(s[2]), int(s[3])]
@@ -59,8 +60,8 @@ func describe_blocks(from: Vector3) -> Array:
 		var mid := (lo + hi) / 2.0 + Vector3(0.5, 0, 0.5)
 		var size := hi - lo + Vector3.ONE
 		found.append([Vector2(mid.x - from.x, mid.z - from.z).length(),
-			"a %s structure of %d blocks the wanderer built (%d wide, %d deep, %d high), %s" % [
-				" and ".join(names), group.size(), int(size.x), int(size.z), int(size.y),
+			"a %s structure of %d block%s the wanderer built (%d wide, %d deep, %d high), %s" % [
+				" and ".join(names), group.size(), "" if group.size() == 1 else "s", int(size.x), int(size.z), int(size.y),
 				W.where(from, Vector3(mid.x, 0, mid.z))]])
 	found.sort_custom(func(a, b): return a[0] < b[0])
 	var out := []
@@ -68,6 +69,8 @@ func describe_blocks(from: Vector3) -> Array:
 		out.append(found[i][1])
 	if found.size() > 6:
 		out.append("and %d more built structures farther away" % (found.size() - 6))
+	if held():
+		out.append("the wanderer is holding a builder's hammer")
 	return out
 
 

@@ -178,7 +178,7 @@ func fmt(t: float) -> String:
 	return "%d:%04.1f" % [int(t) / 60, fmod(t, 60.0)]
 
 
-func describe_course(from: Vector3) -> Array:
+func seen_from(from: Vector3, _viewer: Node) -> Array:
 	return ["a spiral tower of glowing floating platforms %s, with a golden platform at the top, which the wanderer jumps up for fun" % W.where(from, CENTER)]
 
 

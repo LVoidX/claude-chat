@@ -1,7 +1,8 @@
 extends Node3D
-## Shared talking for characters (Marigold uses it; Barnaby has his own copy of this code in barnaby.gd).
-## A character part makes one Talker on its body: `talker = ctx.parts["talk"].make(W, body, bubble_y, mouth_pos, mouth_size)`
-## (make(W, body, bubble_y, mouth_pos, mouth_size)) and forwards the chat's commands to it: say_start(text), say_end(), say(text), set_mind("listening"/"thinking"/"").
+## Shared talking for the characters (Barnaby and Marigold both use it). A character part makes one Talker on
+## its body: `talker = ctx.parts["talk"].make(W, body, bubble_y, mouth_pos, mouth_size)` and forwards the chat's
+## commands to it: say_start(text) / say_end() (timed by the real voice), say(text) (a whole answer, timed by
+## an estimate; "" = the voice was stopped) and set_mind("listening" / "thinking" / "").
 ## The Talker draws the pixel-art speech bubble over the head, opens and closes a mouth oval while the voice
 ## reads, and shows a "..." (listening) or "?" (thinking) symbol when the character is not talking.
 
@@ -33,7 +34,8 @@ class Talker extends Node3D:
 	var shown := -1
 	var bubble_size := Vector2(100, 100)
 	var lines := []  # [start, end, text, (timed by the voice)]
-	var cps := 14.0
+	var cps := 14.0  # letters per second the voice actually reads (learned from finished sentences)
+	var talk_end := 0.0  # when the last estimated sentence (from say()) ends
 	var mind_state := ""
 	var mind: Label3D
 	var base_y := 2.0
@@ -139,6 +141,7 @@ class Talker extends Node3D:
 		var now := Time.get_ticks_msec() / 1000.0
 		lines.clear()
 		lines.append([now, now + 60.0, t, true])  # the end is set by say_end (60 s = safety net)
+		talk_end = 0.0
 
 	func say_end() -> void:
 		var now := Time.get_ticks_msec() / 1000.0
@@ -150,9 +153,28 @@ class Talker extends Node3D:
 			cps = lerpf(cps, clampf(n / elapsed, 6.0, 40.0), 0.5)
 		lines[0][1] = now
 
-	func say(t: String) -> void:  # an empty text means the voice was stopped
+	## A whole answer at once (when the voice can't report its sentences): one bubble per sentence, each shown
+	## for about as long as it takes to read. An empty text means the voice was stopped.
+	func say(t: String) -> void:
 		if t.strip_edges() == "":
 			lines.clear()
+			talk_end = 0.0
+			return
+		var now := Time.get_ticks_msec() / 1000.0
+		var sentence := ""
+		var pieces := []
+		for i in t.length():
+			sentence += t[i]
+			if t[i] in ".!?" and (i + 1 >= t.length() or t[i + 1] == " "):
+				pieces.append(sentence.strip_edges())
+				sentence = ""
+		if sentence.strip_edges() != "":
+			pieces.append(sentence.strip_edges())
+		for piece in pieces:
+			var start := maxf(now + 0.3, talk_end)
+			var end := start + clampf(piece.length() / cps, 0.8, 25.0)
+			lines.append([start, end, piece])
+			talk_end = end + 0.15
 
 	func set_mind(state: String) -> void:
 		mind_state = state
@@ -171,6 +193,7 @@ class Talker extends Node3D:
 			var line: Array = lines[0]
 			if text != line[2]:
 				set_text(line[2])
+			# letters appear a bit faster than the voice reads them; all are shown once the sentence is over
 			var progress := 1.0 if now >= line[1] else clampf((now - line[0]) * cps * 1.7 / maxf(text.length(), 1), 0.0, 1.0)
 			var count := ceili(text.length() * progress)
 			if count != shown:

@@ -194,16 +194,20 @@ func handle(c: Dictionary) -> bool:
 	return true
 
 
-func describe_sea(from: Vector3) -> Array:
+func seen_from(from: Vector3, viewer: Node) -> Array:
 	var seen := []
+	var to_barnaby: bool = "npc_id" in viewer and viewer.npc_id == "barnaby"  # the conch and the sea are his story
 	match conch_where():
 		"carried":
-			seen.append("the wanderer is carrying the glowing conch shell (the \"Kong\" you asked for); they just need to bring it to you")
+			seen.append("the wanderer is carrying the glowing conch shell (the \"Kong\" you asked for); they just need to bring it to you"
+				if to_barnaby else "the wanderer is carrying a glowing conch shell for Barnaby")
 		"given":
-			seen.append("you are holding the glowing conch the wanderer fetched for you")
+			seen.append("you are holding the glowing conch the wanderer fetched for you" if to_barnaby
+				else "Barnaby is holding a glowing conch shell the wanderer brought him")
 	if risen():
 		seen.append("THE SEA HAS COME: the wanderer blew the glowing conch and dark water now covers the whole field, knee-deep, "
-			+ "with waves under the red moon (this is what you have been looking for all your life)")
+			+ "with waves under the red moon" + (" (this is what you have been looking for all your life)" if to_barnaby
+			else " (the sea Barnaby has been looking for)"))
 	elif conch_where() == "rock":
 		seen.append("a glowing conch shell on a rock %s hums softly; blowing it (E) is said to call the sea, and F picks it up" % W.where(from, CONCH_AT))
 	return seen
@@ -218,10 +222,10 @@ func _process(delta: float) -> void:
 		held.rotation.y = sin(spin * 1.2) * 0.15
 		held.position.y = -0.3 + sin(spin * 1.6) * 0.008
 	if conch_where() == "given" and "kong" in ctx.get("quest_ids", []):  # Barnaby already holds the conch
-		W.send({"t": "quest_done", "id": "kong"})
+		W.quest_done("kong")
 	if conch_where() == "given" and "conch_polish" in ctx.get("quest_ids", []):  # he has the conch: polishing is done
 		ctx.state["conch_polished"] = true
-		W.send({"t": "quest_done", "id": "conch_polish"})
+		W.quest_done("conch_polish")
 	if conch_where() == "carried":  # hand it over once the wanderer stands next to Barnaby
 		var barnaby = ctx.parts.get("barnaby")
 		if barnaby and barnaby.body:
@@ -232,11 +236,11 @@ func _process(delta: float) -> void:
 			elif dist < 3.5 and armed:
 				ctx.state["conch"] = "given"
 				armed = false
-				W.send({"t": "quest_done", "id": "conch"})
-				W.send({"t": "quest_done", "id": "kong"})  # "the Kong" is how the conch got heard
+				W.quest_done("conch")
+				W.quest_done("kong")  # "the Kong" is how the conch got heard
 				if "conch_polish" in ctx.get("quest_ids", []):  # handing it back counts as polishing it
 					ctx.state["conch_polished"] = true
-					W.send({"t": "quest_done", "id": "conch_polish"})
+					W.quest_done("conch_polish")
 				W.show_notice("You hand Barnaby the glowing conch.", 4.0)
 	var goal := HIGH if risen() else LOW
 	if absf(level - goal) > 0.001:

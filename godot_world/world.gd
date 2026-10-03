@@ -22,11 +22,12 @@ const CROUCH_HEIGHT := 1.1
 const CROUCH_EYE := 1.0
 var player_shape: CollisionShape3D
 var crouch_amount := 0.0  # 0 = standing .. 1 = fully crouched (eases)
+const QUIET_COMMANDS := ["quests", "say", "say_start", "say_end", "npc_state"]  # too frequent to log
 const COMPASS := ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
 
 var tcp := StreamPeerTCP.new()
 var connected := false
-var inbox := ""  # bytes received but not yet a whole line
+var inbox := PackedByteArray()  # bytes received but not yet a whole line
 var outbox: Array = []  # messages waiting for the connection
 
 var player: CharacterBody3D
@@ -121,14 +122,15 @@ func poll_link() -> void:
 		if available > 0:
 			var got := tcp.get_data(available)
 			if got[0] == OK:
-				inbox += (got[1] as PackedByteArray).get_string_from_utf8()
-		while inbox.contains("\n"):
-			var end := inbox.find("\n")
-			var line := inbox.substr(0, end)
-			inbox = inbox.substr(end + 1)
-			var command = JSON.parse_string(line)
+				inbox.append_array(got[1])
+		# split on newline bytes, then decode: a letter like "é" cut in two between reads stays whole
+		var end := inbox.find(10)
+		while end >= 0:
+			var command = JSON.parse_string(inbox.slice(0, end).get_string_from_utf8())
+			inbox = inbox.slice(end + 1)
 			if command is Dictionary:
 				handle(command)
+			end = inbox.find(10)
 	elif status == StreamPeerTCP.STATUS_ERROR or (connected and status == StreamPeerTCP.STATUS_NONE):
 		save_state()
 		get_tree().quit()  # the chat window closed
@@ -164,7 +166,8 @@ func handle(c: Dictionary) -> void:
 		"teleport", "center":
 			recenter()
 			return
-	print("[world] command received: ", c)  # shows up in the world log
+	if not kind in QUIET_COMMANDS:
+		print("[world] command received: ", c)  # shows up in the world log
 	for part in parts:  # the first part that knows the command handles it
 		if part.has_method("handle") and part.handle(c):
 			return
@@ -196,6 +199,7 @@ func load_parts(first := false) -> void:
 	for f in part_files():
 		var script := GDScript.new()
 		script.source_code = FileAccess.get_file_as_string(PARTS_DIR.path_join(f))
+		script.take_over_path(PARTS_DIR.path_join(f))  # so errors name the file (a plain resource_path breaks reloads)
 		var err := script.reload()
 		if err != OK:
 			printerr("scene/", f, " has an error (", error_string(err), "), so nothing was reloaded. Details are above.")
@@ -233,8 +237,10 @@ func _process(_delta: float) -> void:
 		if sig != parts_sig:
 			parts_sig = sig
 			load_parts()
-	if notice_label.text != "" and now > notice_until:
-		notice_label.text = ""
+	if notice_label.text != "":  # fades out over its last half second
+		notice_label.modulate.a = clampf((notice_until - now) / 0.5, 0.0, 1.0)
+		if now > notice_until:
+			notice_label.text = ""
 	# whom is the player standing next to? (the chat window listens hands-free while you are)
 	var who := ""
 	for part in parts:
@@ -393,6 +399,59 @@ func _model_node(d: Dictionary, parent: Node3D, named: Dictionary) -> void:
 		add_collider(parent, Transform3D(node.basis.orthonormalized(), node.position), node.basis.get_scale(), d.get("m", "cube"))
 	for child in d.get("ch", []):
 		_model_node(child, node, named)
+
+
+## A box that glows in `color` (emissive), e.g. lamps, magic flowers, embers. Same arguments as box().
+func glow(parent: Node, pos: Vector3, size: Vector3, color: Color, energy := 1.5, kind := "cube") -> MeshInstance3D:
+	var key := "glow|%s|%s" % [color.to_html(), energy]
+	if not key in _materials:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = color.darkened(0.3)
+		m.emission_enabled = true
+		m.emission = color
+		m.emission_energy_multiplier = energy
+		_materials[key] = m
+	var node := box(parent, pos, size, color, kind)
+	node.material_override = _materials[key]
+	return node
+
+
+## A point light (lamps, ovens, glowing things).
+func light(parent: Node, pos: Vector3, color: Color, energy: float, reach: float) -> OmniLight3D:
+	var l := OmniLight3D.new()
+	l.light_color = color
+	l.light_energy = energy
+	l.omni_range = reach
+	l.position = pos
+	parent.add_child(l)
+	return l
+
+
+## Everything the parts say can be seen from `from`, for a character's describe(). Each part may have
+## seen_from(from, viewer) -> Array of short phrases ("a red box the wanderer made, about 3 m to the west");
+## `viewer` is the character part asking, so a part can leave itself out or word things for them.
+## New things in the world only need a seen_from() to be noticed by every character.
+func seen_around(from: Vector3, viewer: Node) -> Array:
+	var seen := []
+	for part in parts:
+		if part.has_method("seen_from"):
+			for phrase in part.seen_from(from, viewer):
+				if str(phrase) != "":
+					seen.append(phrase)
+	return seen
+
+
+var _quest_sent := {}  # quest id -> when quest_done was last sent
+
+
+## Tell the chat window a quest is complete. Safe to call every frame: sent at most once every 3 seconds per
+## quest (the chat drops the quest from its list a moment later, which stops the calls).
+func quest_done(id: String) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - float(_quest_sent.get(id, -10.0)) < 3.0:
+		return
+	_quest_sent[id] = now
+	send({"t": "quest_done", "id": id})
 
 
 ## Where `to` is, seen from `from`, in words ("about 12 m to the north-west"). North is -z.
@@ -567,6 +626,7 @@ func build_hud() -> void:
 
 func show_notice(text: String, seconds := 3.5) -> void:
 	notice_label.text = text
+	notice_label.modulate.a = 1.0
 	notice_until = Time.get_ticks_msec() / 1000.0 + seconds
 
 

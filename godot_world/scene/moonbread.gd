@@ -70,8 +70,8 @@ func _process(delta: float) -> void:
 	aura.light_energy = (1.2 + sin(spin * 3.0) * 0.25) * minf(glow_left, 2.0) / 2.0
 
 
-func describe() -> String:
-	return "the wanderer is holding a loaf of moonbread" if ctx.state.get("bread_held", false) else ""
+func seen_from(_from: Vector3, _viewer: Node) -> Array:
+	return ["the wanderer is holding a loaf of Marigold's moonbread"] if ctx.state.get("bread_held", false) else []
 
 
 func handle(c: Dictionary) -> bool:

@@ -212,7 +212,7 @@ func _process(delta: float) -> void:
 		node.position.y = absf(sin(g.phase)) * 0.05 if moving else 0.0
 
 
-func describe_goblins(from: Vector3) -> Array:
+func seen_from(from: Vector3, _viewer: Node) -> Array:
 	if army.is_empty():
 		return []
 	return ["an army of %d little green goblins the wanderer called up, harmless but glaring, standing in a ring %s" % [

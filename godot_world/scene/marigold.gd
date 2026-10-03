@@ -69,30 +69,17 @@ func solid(parent: Node3D, pos: Vector3, size: Vector3, color: String) -> MeshIn
 	return W.box(parent, pos, size, Color(color), "cube", true)
 
 
-func glow(parent: Node3D, pos: Vector3, size: Vector3, color: String, energy := 1.5, kind := "cube") -> MeshInstance3D:
-	var m: MeshInstance3D = W.box(parent, pos, size, Color(color), kind)
-	var gm := StandardMaterial3D.new()
-	gm.albedo_color = Color(color).darkened(0.3)
-	gm.emission_enabled = true
-	gm.emission = Color(color)
-	gm.emission_energy_multiplier = energy
-	m.material_override = gm
-	return m
-
-
 func tilt(node: Node3D, x := 0.0, y := 0.0, z := 0.0) -> Node3D:
 	node.rotation_degrees = Vector3(x, y, z)
 	return node
 
 
-func light(parent: Node3D, pos: Vector3, color: String, energy: float, rng: float) -> OmniLight3D:
-	var l := OmniLight3D.new()
-	l.light_color = Color(color)
-	l.light_energy = energy
-	l.omni_range = rng
-	l.position = pos
-	parent.add_child(l)
-	return l
+func glow(parent: Node3D, pos: Vector3, size: Vector3, color: String, energy := 1.5, kind := "cube") -> MeshInstance3D:
+	return W.glow(parent, pos, size, Color(color), energy, kind)
+
+
+func light(parent: Node3D, pos: Vector3, color: String, energy: float, reach: float) -> OmniLight3D:
+	return W.light(parent, pos, Color(color), energy, reach)
 
 
 # --- the stall (local: front is -z, the counter is toward the front) -------------------------------------------
@@ -549,29 +536,19 @@ func describe() -> String:
 	var here := body.position
 	var seen := ["your own market stall right behind you, with your oven, your herbs and your moonbread loaves on the counter (%d baked so far)" % int(ctx.state.get("moonbread", 0)),
 		"a dark field with a faint green grid under a red moon, where glowing blue moonblooms grow here and there (you need five to bake moonbread, your grandmother's recipe)"]
-	var barn = ctx.parts.get("barnaby")
-	if barn and barn.body:
-		seen.append("Barnaby, the old lighthouse keeper, %s" % W.where(here, barn.body.position))
-	var base = ctx.parts.get("base")
-	if base:
-		seen.append_array(base.describe_placed(here))
-	var sea = ctx.parts.get("sea")
-	if sea:
-		seen.append_array(sea.describe_sea(here))
-	var builder = ctx.parts.get("builder")
-	if builder:
-		seen.append_array(builder.describe_blocks(here))
-	var course = ctx.parts.get("parkour")
-	if course:
-		seen.append_array(course.describe_course(here))
+	seen.append_array(W.seen_around(here, self))  # everything the other parts report (see world.gd)
 	if blooms() > 0:
 		seen.append("the wanderer is carrying %d moonbloom%s" % [blooms(), "" if blooms() == 1 else "s"])
 	seen.append("the wanderer is %s" % W.where(here, ctx.player.position))
 	return "; ".join(seen)
 
 
-func describe_stall(from: Vector3) -> Array:
-	return ["Marigold's market stall with a striped awning and a glowing oven, %s" % W.where(from, STALL)]
+## What the other characters see of her (her own describe() covers the stall from her side).
+func seen_from(from: Vector3, viewer: Node) -> Array:
+	if viewer == self or not body:
+		return []
+	return ["Marigold, the herbalist and baker, %s" % W.where(from, body.position),
+		"Marigold's market stall with a striped awning and a glowing oven, %s" % W.where(from, STALL)]
 
 
 func walk_to(goal: Vector3, speed: float, delta: float) -> bool:
