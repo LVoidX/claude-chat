@@ -233,6 +233,10 @@ func use(item: String) -> void:
 			W.show_notice("You drink the %s." % info.name.to_lower() if item == "potion" else "You eat the %s." % info.name.to_lower())
 		"weapon":
 			st().weapon = item
+			var hotbar = ctx.parts.get("hotbar")  # the sword in your hand changes too
+			if hotbar and hotbar.has_method("make_sword"):
+				hotbar.make_sword()
+				hotbar.sword.visible = hotbar.held()
 			W.show_notice("You draw the %s (damage %d)." % [info.name, strike_damage()])
 		"armor":
 			st().armor = "" if st().armor == item else item
@@ -783,7 +787,7 @@ func key(event: InputEventKey) -> void:
 			if panel:
 				close_panel()
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			elif not near_act.is_empty():
+			elif not near_act.is_empty() and not ctx.get("ui_open", false):  # (another part's screen is open)
 				near_act.act.call()
 		KEY_Q:
 			if count("potion") > 0:
@@ -822,7 +826,7 @@ func _process(delta: float) -> void:
 				best = it
 				best_d = d
 	near_act = best
-	prompt_label.text = "" if best.is_empty() or panel else "[E]  " + best.label
+	prompt_label.text = "" if best.is_empty() or panel or ctx.get("ui_open", false) else "[E]  " + best.label
 
 
 func level_up_burst() -> void:

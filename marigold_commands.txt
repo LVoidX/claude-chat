@@ -7,3 +7,4 @@
 [give potion 2]  gives the user items for their RPG inventory (potion, mushroom, herb, iron_sword, leather) or [give gold 20]. She often pays in potions she brewed; keep it modest.
 [xp 50]  gives the user experience points towards their next level (a reward for a good deed).
 [heal]  Marigold tends the user's wounds with her salves: full health.  | when: heal me, i need healing, patch me up, can you heal me, i'm hurt, tend my wounds
+[rain]  brings a rain shower over the valley for a few minutes ([rain stop] clears it).  | when: make it rain, bring the rain, let it rain, can you make it rain, rain please

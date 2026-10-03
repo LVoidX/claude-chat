@@ -89,10 +89,17 @@ func make_sword() -> void:
 	sword.name = "Sword"
 	sword.position = Vector3(0.36, -0.38, -0.62)
 	sword.rotation_degrees = Vector3(-10, 0, -18)
-	var steel := Color("#c9d1d9")
+	# the blade shows the weapon equipped in the RPG (rpg.gd): rusty, plain iron, or the blue Troll-Bane
+	var weapon: String = ctx.state.get("rpg", {}).get("weapon", "iron_sword")
+	var steel: Color = {"rusty_sword": Color("#9a6a48"), "steel_sword": Color("#9cc4ff")}.get(weapon, Color("#c9d1d9"))
 	W.box(sword, Vector3(0, 0.34, 0), Vector3(0.055, 0.62, 0.014), steel)  # blade
 	W.box(sword, Vector3(0, 0.34, 0), Vector3(0.02, 0.6, 0.02), steel.darkened(0.25))  # blade ridge
 	W.box(sword, Vector3(0, 0.68, 0), Vector3(0.04, 0.05, 0.012), steel)  # tip
+	if weapon == "rusty_sword":  # patches of rust and a notch
+		for p in [Vector3(0.012, 0.2, 0), Vector3(-0.014, 0.45, 0), Vector3(0.01, 0.58, 0)]:
+			W.box(sword, p, Vector3(0.03, 0.06, 0.016), Color("#6a3a20"))
+	elif weapon == "steel_sword":  # Troll-Bane's edge glows faintly
+		W.glow(sword, Vector3(0, 0.34, 0), Vector3(0.062, 0.6, 0.008), Color("#6aa8ff"), 1.4)
 	W.box(sword, Vector3(0, 0.02, 0), Vector3(0.24, 0.035, 0.05), Color("#d4a72c"))  # cross guard
 	W.box(sword, Vector3(0, -0.07, 0), Vector3(0.034, 0.16, 0.034), Color("#4a3322"))  # grip
 	W.box(sword, Vector3(0, -0.16, 0), Vector3(0.06, 0.05, 0.06), Color("#d4a72c"), "sphere")  # pommel

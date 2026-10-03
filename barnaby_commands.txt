@@ -26,3 +26,4 @@
 [give potion 2]  gives the user items for their RPG inventory (potion, mushroom, herb, pelt, bone, ore, iron_sword, leather, chainmail) or [give gold 20]. Use it as a reward when they help you; keep it modest.
 [xp 50]  gives the user experience points towards their next level (a reward for a good deed).
 [heal]  heals the user back to full health.  | when: heal me, i need healing, patch me up, can you heal me, i'm hurt, fix my wounds
+[rain]  brings a rain shower over the valley for a few minutes ([rain stop] clears it).  | when: make it rain, bring the rain, let it rain, can you make it rain, rain please

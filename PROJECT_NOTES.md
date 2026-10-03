@@ -184,3 +184,6 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - gathering.gd: 8 treasure chests (E, refill after 30 min). creatures.gd: enemies topple and sink, sparks on hits.
 - music.gd sounds: play_sfx("swing" | "hit" | "hurt" | "pickup" | "coin" | "levelup" | "quest" | "chapter").
 - villagers.gd: hip pivot (body), two-handed hoe/axe strokes, guards in tabards and mail.
+- travel.gd: waystones (touch to attune, E to travel; at the crossroads, Thornvale, Highmoor, the Old Mill, the Barrow) and
+  a campfire at the crossroads (E: rest, full heal, night skips to morning). weather.gd: random rain showers (state
+  "rain" 0..1), [rain] / [rain stop]. The sword in hand shows the equipped weapon (rusty / iron / blue Troll-Bane).
