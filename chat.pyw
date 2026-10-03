@@ -859,7 +859,7 @@ class ChatApp:
             self.listening = False
             self.indicate(False)
             self.write("[cancelled]\n\n", "you")
-        elif not self.lanes["main"].busy and self.claude:  # Barnaby may still be answering: that's fine
+        elif self.claude:  # also while I'm busy: what you say then is queued for afterwards (see submit)
             self.start_listening()
 
     def start_listening(self, auto=False):
