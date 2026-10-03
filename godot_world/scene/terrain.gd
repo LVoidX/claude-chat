@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 8  # bump to rebuild the cached ground after changing the shape below
+const VERSION := 9  # bump to rebuild the cached ground after changing the shape below
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -38,7 +38,25 @@ void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	// the painted colour (grass, road, rock, snow) with small-scale mottling, so it never looks flat
 	float n = vnoise(wpos.xz * 0.35) * 0.55 + vnoise(wpos.xz * 1.7) * 0.3 + vnoise(wpos.xz * 6.0) * 0.15;
-	ALBEDO = COLOR.rgb * (0.78 + n * 0.42);
+	vec3 col = COLOR.rgb * (0.78 + n * 0.42);
+	float road = COLOR.a;  // 1 on a road (ground_color puts it there)
+	vec3 up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+	float grassy = (1.0 - road) * smoothstep(0.8, 0.92, up.y) * (1.0 - smoothstep(20.0, 28.0, wpos.y));
+	// grass: darker clumps and lighter sunny patches
+	float clump = vnoise(wpos.xz * 2.3 + 7.0);
+	col *= mix(1.0, mix(0.82, 1.12, clump), grassy);
+	// wildflowers: a few tiny dots of white, yellow and violet in the grass
+	vec2 cell = wpos.xz * 3.0;
+	float pick = hash(floor(cell));
+	vec2 inside = fract(cell) - 0.5 + (vec2(hash(floor(cell) + 3.1), hash(floor(cell) + 7.7)) - 0.5) * 0.5;
+	float flower = step(0.965, pick) * (1.0 - smoothstep(0.07, 0.11, length(inside))) * grassy;
+	vec3 petal = pick > 0.988 ? vec3(0.95, 0.93, 0.85) : (pick > 0.976 ? vec3(0.98, 0.82, 0.25) : vec3(0.62, 0.45, 0.85));
+	col = mix(col, petal, flower);
+	// roads: packed earth with pebbles and darker wheel-worn patches
+	float peb = step(0.82, hash(floor(wpos.xz * 7.0))) * (1.0 - smoothstep(0.18, 0.3, length(fract(wpos.xz * 7.0) - 0.5)));
+	float worn = vnoise(wpos.xz * vec2(0.6, 3.5));
+	col = mix(col, col * mix(0.82, 1.05, worn) + peb * vec3(0.12, 0.11, 0.09), road);
+	ALBEDO = col;
 	ROUGHNESS = 0.95;
 	SPECULAR = 0.2;
 }
@@ -56,7 +74,7 @@ void vertex() {
 	VERTEX.z += sway * 0.06 * tip * tip;
 }
 void fragment() {
-	ALBEDO = COLOR.rgb * mix(0.45, 1.15, tip);
+	ALBEDO = COLOR.rgb * mix(0.4, 1.0, tip);
 	ROUGHNESS = 0.9;
 	BACKLIGHT = vec3(0.15, 0.2, 0.05);
 }
@@ -147,7 +165,7 @@ func road_distance(x: float, z: float) -> float:
 ## Ground colour: grass with patches, dirt roads, rocky slopes, snowy peaks.
 func ground_color(x: float, z: float, h: float, slope: float) -> Color:
 	var n := noise.get_noise_2d(x * 3.0, z * 3.0)
-	var grass := Color("#3f6a24").lerp(Color("#5d8a2c"), clampf(n + 0.5, 0.0, 1.0))
+	var grass := Color("#355c1e").lerp(Color("#4f7a24"), clampf(n + 0.5, 0.0, 1.0))
 	if Vector2(x, z).length() > FLAT + 8.0:  # darker forest floor on the hills
 		grass = grass.lerp(Color("#33502a"), smoothstep(FLAT + 8.0, FLAT + 40.0, Vector2(x, z).length()) * 0.6)
 	var col := grass
@@ -155,9 +173,11 @@ func ground_color(x: float, z: float, h: float, slope: float) -> Color:
 	col = col.lerp(Color("#77746d"), smoothstep(26.0, 36.0, h))  # high up: grey stone
 	col = col.lerp(Color("#cdd3de"), smoothstep(46.0, 54.0, h + n * 6.0))  # peaks: snow
 	var road := road_distance(x, z)
-	col = col.lerp(Color("#66503a"), smoothstep(ROAD_WIDTH, ROAD_WIDTH * 0.55, road + n * 0.6))  # dirt road
+	var on_road := smoothstep(ROAD_WIDTH, ROAD_WIDTH * 0.55, road + n * 0.6)
+	col = col.lerp(Color("#66503a"), on_road)  # dirt road
 	var dc := Vector2(x - CASTLE.x, z - CASTLE.z).length()
 	col = col.lerp(Color("#6e6250"), smoothstep(15.0, 12.0, dc))  # the castle's trodden courtyard
+	col.a = maxf(on_road, smoothstep(15.0, 12.0, dc))  # (the shader adds pebbles where this is 1)
 	return col
 
 
@@ -444,7 +464,7 @@ func add_grass() -> void:
 		for i in spots.size():
 			var s := rng.randf_range(0.55, 1.2)
 			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.4), s)), spots[i]))
-			var g := Color("#4a7a26").lerp(Color("#6f9a32"), rng.randf()).darkened(rng.randf_range(0.0, 0.25))
+			var g := Color("#3e6a20").lerp(Color("#5e8a2a"), rng.randf()).darkened(rng.randf_range(0.0, 0.25))
 			mm.set_instance_color(i, g)
 		ctx["grass_cache"] = mm
 		ctx["grass_version"] = VERSION

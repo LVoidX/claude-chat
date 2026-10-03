@@ -135,7 +135,10 @@ func make_bar() -> void:
 		name_label.size = Vector2(SLOT_SIZE, SLOT_SIZE)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		name_label.add_theme_font_size_override("font_size", 13)
+		name_label.add_theme_font_size_override("font_size", 14)
+		name_label.add_theme_color_override("font_color", Color("#f2e6c8"))
+		name_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		name_label.add_theme_constant_override("outline_size", 4)
 		panel.add_child(name_label)
 		slot_panels.append(panel)
 
@@ -146,9 +149,11 @@ var _styles := {}  # selected? -> StyleBoxFlat, made once
 func style(selected: bool) -> StyleBoxFlat:
 	if not selected in _styles:
 		var s := StyleBoxFlat.new()
-		s.bg_color = Color(0.1, 0.1, 0.12, 0.75)
-		s.border_color = Color("#ffd24d") if selected else Color(1, 1, 1, 0.35)
-		s.set_border_width_all(3 if selected else 1)
+		s.bg_color = Color("#3a2614", 0.88) if selected else Color("#21160c", 0.8)  # dark oak
+		s.border_color = Color("#ffd24d") if selected else Color("#8a6a3a")  # gold when in hand, bronze otherwise
+		s.set_border_width_all(3 if selected else 2)
+		s.shadow_color = Color(1.0, 0.8, 0.3, 0.35) if selected else Color(0, 0, 0, 0.4)
+		s.shadow_size = 6 if selected else 3
 		s.set_corner_radius_all(4)
 		_styles[selected] = s
 	return _styles[selected]

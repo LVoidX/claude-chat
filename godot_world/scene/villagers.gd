@@ -139,6 +139,9 @@ func build_logs() -> void:
 
 # --- the villagers themselves ------------------------------------------------------------------------------
 
+const HIP := 0.86  # the body pivots here
+
+
 func add_person(p: Dictionary) -> void:
 	var node := Node3D.new()
 	var first: Array = p.steps[0]
@@ -156,12 +159,15 @@ func add_person(p: Dictionary) -> void:
 		W.box(leg, Vector3(0, -0.36, 0), Vector3(0.13, 0.72, 0.14), Color("#4a3d30"))  # hose
 		W.box(leg, Vector3(0, -0.76, -0.03), Vector3(0.15, 0.1, 0.22), Color("#2b2119"))  # shoes
 		legs.append(leg)
-	W.box(node, Vector3(0, 1.12, 0), Vector3(0.42, 0.62, 0.26), tunic)  # tunic
-	W.box(node, Vector3(0, 0.86, 0), Vector3(0.44, 0.08, 0.28), Color("#3b2a1e"))  # belt
-	W.box(node, Vector3(0, 1.48, 0), Vector3(0.12, 0.08, 0.12), skin)  # neck
+	var body := Node3D.new()  # everything above the hips, so they can lean into their work
+	body.position.y = HIP
+	node.add_child(body)
+	W.box(body, Vector3(0, 1.12 - HIP, 0), Vector3(0.42, 0.62, 0.26), tunic)  # tunic
+	W.box(body, Vector3(0, 0.86 - HIP, 0), Vector3(0.44, 0.08, 0.28), Color("#3b2a1e"))  # belt
+	W.box(body, Vector3(0, 1.48 - HIP, 0), Vector3(0.12, 0.08, 0.12), skin)  # neck
 	var head := Node3D.new()
-	head.position = Vector3(0, 1.66, 0)
-	node.add_child(head)
+	head.position = Vector3(0, 1.66 - HIP, 0)
+	body.add_child(head)
 	W.box(head, Vector3.ZERO, Vector3(0.26, 0.28, 0.26), skin)
 	for side in [-1, 1]:
 		W.box(head, Vector3(side * 0.06, 0.03, -0.131), Vector3(0.04, 0.04, 0.01), Color("#1a1410"))  # eyes
@@ -176,22 +182,23 @@ func add_person(p: Dictionary) -> void:
 		"helmet":
 			W.box(head, Vector3(0, 0.13, 0), Vector3(0.3, 0.12, 0.3), Color("#8d939a"))
 			W.box(head, Vector3(0, 0.05, -0.14), Vector3(0.04, 0.16, 0.03), Color("#8d939a"))  # nose guard
-			W.box(node, Vector3(0, 1.2, -0.135), Vector3(0.2, 0.2, 0.01), Color("#e8c25a"))  # a badge on the tabard
+			W.box(body, Vector3(0, 1.2 - HIP, -0.135), Vector3(0.2, 0.2, 0.01), Color("#e8c25a"))  # a badge on the tabard
 		_:
 			W.box(head, Vector3(0, 0.12, 0.02), Vector3(0.28, 0.1, 0.28), hair)
 	var arms := []
 	var tool_arm: Node3D
 	for side in [-1, 1]:
 		var arm := Node3D.new()
-		arm.position = Vector3(side * 0.27, 1.38, 0)
-		node.add_child(arm)
+		arm.position = Vector3(side * 0.27, 1.38 - HIP, 0)
+		body.add_child(arm)
 		W.box(arm, Vector3(0, -0.26, 0), Vector3(0.11, 0.52, 0.11), tunic.darkened(0.1))
 		W.box(arm, Vector3(0, -0.56, 0), Vector3(0.1, 0.1, 0.1), skin)
 		arms.append(arm)
 		if side > 0:
 			tool_arm = arm
 	make_tool(tool_arm, p.tool)
-	folk.append({"node": node, "legs": legs, "arms": arms, "tool_arm": tool_arm, "steps": p.steps, "step": 0,
+	folk.append({"node": node, "body": body, "tool": p.tool, "offset": rng.randf(), "legs": legs, "arms": arms,
+		"tool_arm": tool_arm, "steps": p.steps, "step": 0,
 		"wait": randf_range(0.0, float(first[2])), "phase": randf() * TAU, "name": p.name, "work": first[1] == "work",
 		"look": 0.0})
 
@@ -255,15 +262,43 @@ func _process(delta: float) -> void:
 		f.legs[0].rotation.x = swing
 		f.legs[1].rotation.x = -swing
 		f.arms[0].rotation.x = -swing * 0.8
+		f.arms[0].rotation.z = 0.0
+		f.tool_arm.rotation.z = 0.0
+		f.body.rotation.x = 0.0
 		if moving:
 			f.tool_arm.rotation.x = swing * 0.8
-		elif f.work:  # chopping / hoeing / drawing water: the tool arm swings up and comes down hard
-			var t := fmod(spin * 1.1 + f.phase, 1.0)
-			f.tool_arm.rotation.x = -2.2 * (1.0 - t * t) if t < 0.85 else -0.1
+		elif f.work:
+			work_pose(f)
 		else:  # standing about: tool held, and a slow look around now and then
-			f.tool_arm.rotation.x = lerpf(f.tool_arm.rotation.x, -0.15, minf(delta * 4.0, 1.0))
+			f.tool_arm.rotation.x = lerpf(f.tool_arm.rotation.x, 0.15, minf(delta * 4.0, 1.0))
 			if Vector2(player.x - node.position.x, player.z - node.position.z).length() < 4.0:
 				node.rotation.y = lerp_angle(node.rotation.y, atan2(-(player.x - node.position.x), -(player.z - node.position.z)), minf(delta * 3.0, 1.0))
+
+
+## Working: (positive x rotation lifts a hand forward, towards -z where they face.)
+## Hoe and axe: both hands on the handle, a slow lift over the head, a fast strike down, a short rest.
+## Bucket: lower it into the well and haul it up. Others: a gentle swing of the tool.
+func work_pose(f: Dictionary) -> void:
+	var u := fmod(spin * 0.75 + f.offset, 1.0)  # where in the stroke they are, 0..1
+	match f.tool:
+		"hoe", "axe":
+			var lift := 0.0
+			if u < 0.55:
+				lift = ease(u / 0.55, 0.5)  # rising, slowing near the top
+			elif u < 0.66:
+				lift = 1.0 - (u - 0.55) / 0.11  # the strike
+			var top := 2.75 if f.tool == "axe" else 2.5
+			var low := 0.55 if f.tool == "axe" else 0.35
+			var angle := lerpf(low, top, lift)
+			f.tool_arm.rotation.x = angle
+			f.arms[0].rotation.x = angle  # the other hand on the handle too
+			f.arms[0].rotation.z = -0.38  # (hands come together in front)
+			f.tool_arm.rotation.z = 0.2
+			f.body.rotation.x = -0.18 * (1.0 - lift)  # leaning into the stroke
+		"bucket":
+			f.tool_arm.rotation.x = 0.6 + sin(u * TAU) * 0.5
+		_:
+			f.tool_arm.rotation.x = 0.3 + sin(u * TAU) * 0.3
 
 
 func seen_from(from: Vector3, _viewer: Node) -> Array:

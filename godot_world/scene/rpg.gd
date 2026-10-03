@@ -196,10 +196,10 @@ func add_gold(n: int, quiet := false) -> void:
 	refresh_hud()
 
 
-func sfx(sound: String) -> void:  # sounds.gd makes the sounds
-	var sounds = ctx.parts.get("sounds")
-	if sounds:
-		sounds.play(sound)
+func sfx(sound: String) -> void:  # music.gd makes the jingles ("levelup", "quest", "chapter")
+	var music = ctx.parts.get("music")
+	if music:
+		music.play_sfx.call_deferred({"handin": "quest"}.get(sound, sound))
 
 
 func add_xp(n: int) -> void:
@@ -209,9 +209,6 @@ func add_xp(n: int) -> void:
 		st().level = int(st().level) + 1
 		st().hp = max_hp()
 		W.show_notice("LEVEL UP!  You are now level %d.  Health %d, damage +%d" % [st().level, max_hp(), int(st().level) - 1], 5.0)
-		var music = ctx.parts.get("music")
-		if music:
-			music.play_sfx.call_deferred("levelup")
 		level_up_burst()
 		sfx("levelup")
 		W.send({"t": "notice", "text": "level %d" % st().level})
@@ -339,10 +336,7 @@ func hand_in(id: String) -> void:
 		give(item, int(q.items[item]), true)
 		got.append(("%d %s" % [q.items[item], ITEMS[item].name]) if int(q.items[item]) > 1 else ITEMS[item].name)
 	W.show_notice("Quest complete: %s!  %s" % [q.title, ", ".join(got)], 6.0)
-	var music = ctx.parts.get("music")
-	if music:
-		music.play_sfx.call_deferred("quest")
-	sfx("handin")
+	sfx("quest")
 	add_xp(int(q.xp))
 	refresh_panel()
 
@@ -473,7 +467,7 @@ func bar(fill: Color, height: int) -> ProgressBar:
 	var b := ProgressBar.new()
 	b.show_percentage = false
 	b.custom_minimum_size = Vector2(260, height)
-	b.add_theme_stylebox_override("background", style(Color(0, 0, 0, 0.55), Color(0, 0, 0, 0.8), 1, 3))
+	b.add_theme_stylebox_override("background", style(Color("#1a1009", 0.75), Color("#8a6a3a"), 2, 3))  # bronze frame
 	var f := StyleBoxFlat.new()
 	f.bg_color = fill
 	f.set_corner_radius_all(3)
@@ -566,6 +560,8 @@ func open_panel(kind: String) -> void:
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	panel.custom_minimum_size = Vector2(720, 460)
+	if ctx.has("ui_theme"):
+		panel.theme = ctx["ui_theme"]  # the book font (style.gd)
 	layer.add_child(panel)
 	ctx["ui_open"] = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

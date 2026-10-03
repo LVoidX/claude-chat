@@ -154,6 +154,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 ## Story flags
 - troll: slain | appeased (ch.1). camp: bandits | cleared | tolled (ch.2): bandits (kind "bandit", creatures.gd) hold Gorrak's camp (96, 12); build_bandit_camp() draws tents/flag per state; "tolled" bandits are tame.
+- barrow: stirring | sealed | laid | bargain (ch.3): creatures.gd build_tomb_marks() dresses the barrow; "stirring" = 11 skeletons + Barrow Wight (kind "wight") at the door, "bargain" = tame wight and 4 tame skeletons, sealed/laid = no dead.
 
 ## RPG layer (2026-10-03)
 - scene/rpg.gd: level/xp/health/gold, inventory (I), quest journal (J), quest board by the village road (E), the smith's
@@ -169,5 +170,5 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - scene/sounds.gd: code-made sounds: level-up and quest hand-in jingles (rpg.gd sfx()) and a soft wind loop (AMBIENT_DB). ambience.gd stays off.
 
-- Ambient wind removed (user hated it). sounds.gd now plays music.ogg / music.mp3 from next to chat.pyw if present (loops, MUSIC_DB).
+- Ambient wind removed (user hated it). (The old sounds.gd was removed: music.gd does music and jingles.)
 - Music and jingles (scene/music.gd): CC0 medieval tracks in godot_world/music/ (day: Market Day, The Bard's Tale; night: The Old Tower Inn), K toggles; jingles made in code: play_sfx("levelup" | "quest" | "chapter").

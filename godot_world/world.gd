@@ -379,12 +379,44 @@ func mat(color: Color, texture := "", tiles := Vector2.ONE, double_sided := fals
 			m.albedo_texture = tex(texture)
 			m.uv1_triplanar = true  # one picture per box face, like before
 			m.uv1_scale = Vector3(tiles.x, tiles.y, tiles.x)
+		elif color.a >= 1.0:  # plain colours get a faint grain, so boxes read as wood / cloth / hide, not plastic
+			m.albedo_texture = grain_texture()
+			m.uv1_triplanar = true  # mapped on the object itself, so it moves with characters
+			m.uv1_scale = Vector3.ONE * 1.5
+			m.albedo_color = color.lightened(0.06)  # (the grain darkens a little on average)
 		if color.a < 1.0:
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		if double_sided:
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_materials[key] = m
 	return _materials[key]
+
+
+## The grain every plain box gets: soft blotches plus fine speckle, 0.84..1.0 grey (multiplies the colour).
+## Kept on the ctx so world reloads reuse it.
+func grain_texture() -> Texture2D:
+	if ctx.has("grain_texture"):
+		return ctx["grain_texture"]
+	var noise := FastNoiseLite.new()
+	noise.seed = 11
+	noise.frequency = 0.045
+	noise.fractal_octaves = 4
+	var fine := FastNoiseLite.new()
+	fine.seed = 5
+	fine.frequency = 0.5
+	var s := 128
+	var soft := noise.get_seamless_image(s, s)  # (seamless, so the repeats don't show an edge)
+	var speck := fine.get_seamless_image(s, s)
+	var img := Image.create(s, s, false, Image.FORMAT_RGB8)
+	for y in s:
+		for x in s:
+			var v := 0.8 + soft.get_pixel(x, y).r * 0.16 + speck.get_pixel(x, y).r * 0.05
+			v = clampf(v, 0.8, 1.0)
+			img.set_pixel(x, y, Color(v, v, v))
+	img.generate_mipmaps()
+	var t := ImageTexture.create_from_image(img)
+	ctx["grain_texture"] = t
+	return t
 
 
 func mesh(kind: String) -> Mesh:
