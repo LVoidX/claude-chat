@@ -410,6 +410,8 @@ class ChatApp:
         self.entry.focus_set()
 
         self.restore(state)
+        if self.jobs:  # requests queued before a live reload: carry on with them
+            self.root.after(300, self.next_job)
         # pythonw hides Python errors, so show any callback error in the log instead.
         def on_error(*exc):
             text = "".join(traceback.format_exception(*exc))
@@ -654,6 +656,7 @@ class ChatApp:
         self.builder_session_id = state.get("builder_session_id")
         self.persona_sigs = state.get("persona_sigs") or {}
         self.sent_static = state.get("sent_static") or {}
+        self.jobs = state.get("jobs") or []  # requests still queued for the assistant (kept across a reload)
         world = state.get("world")  # the running 3D world; its messages now come to this version
         self.world = world if isinstance(world, subprocess.Popen) else None  # (older versions stored a list)
         if self.world:
@@ -766,6 +769,7 @@ class ChatApp:
             "history": self.lanes["main"].history,
             "npc_history": self.lanes["npc"].history,
             "marigold_history": self.lanes["npc2"].history,
+            "jobs": self.jobs,
             "draft": self.entry.get(),
             "fullscreen": bool(self.root.attributes("-fullscreen")),
         }
@@ -1649,6 +1653,14 @@ class ChatApp:
         text = " ".join(prompt.split())
         return text if len(text) <= 38 else text[:37].rsplit(" ", 1)[0] + "…"
 
+    def next_job(self):
+        """Start the next queued request. Taken off the queue only now, by the window version that is current
+        (a live reload in between hands the queue to the new version, which calls this itself)."""
+        if not self.alive or not self.jobs or self.lanes["main"].busy:
+            return
+        job = self.jobs.pop(0)
+        self.submit(job["text"], job["voice"])
+
     def refresh_jobs(self):
         """Show what the assistant is doing and what is queued behind it (top left of the world)."""
         lines = ([self.job_now] if self.job_now else []) + [j["title"] for j in self.jobs]
@@ -1843,8 +1855,7 @@ class ChatApp:
             self.entry.focus_set()
             self.job_now = ""
             if self.jobs:  # next one in the queue
-                job = self.jobs.pop(0)
-                self.root.after(300, self.submit, job["text"], job["voice"])
+                self.root.after(300, self.next_job)
             self.refresh_jobs()
         if lane.voice_turn and not lane.spoken_early and not lane.muted:
             self.speak("".join(lane.reply), npc=lane.npc_turn, lane=lane)

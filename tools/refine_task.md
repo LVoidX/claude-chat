@@ -2,6 +2,12 @@
 
 Refine this project; do not add new features. The goal is to make what is already here as good as it can be.
 
+Already done (2026-10-03, see git log), so don't redo these: errors name their file; the chat link reads bytes;
+one shared speech bubble (talk.gd) for both characters; one shared "what is around" (seen_from / seen_around);
+quest_done throttled; shared glow/light helpers; Barnaby recovers from an interrupted throw; the assistant's job
+queue survives a live reload. Look for what is left: other duplicated code between parts, rough movement and
+animation, edge cases in the parts added since then, and chat.pyw beyond those fixes.
+
 Read CLAUDE.md and PROJECT_NOTES.md first: they explain the project (a Windows chat app, chat.pyw, that talks
 to Claude, plus a Godot 4.7 world in godot_world/ with the characters Barnaby and Marigold), how the pieces fit
 together, and the user's preferences.

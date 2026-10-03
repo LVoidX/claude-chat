@@ -47,11 +47,16 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Godot itself: D:\Claude\godot\Godot_v4.7.2-stable_win64.exe. chat.pyw runs godot_bridge.py, which starts
   Godot and passes the chat's JSON lines over a local TCP socket.
 - godot_world/world.gd = engine: player (CharacterBody3D), HUD (status top-center, notices top-right, quests
-  top-left), show/hide (only chat or world on screen), the link, and helpers for parts: box(), build_model(),
-  mat(), tex(), where(), face(), add_collider(), send(), show_notice(). Editing it restarts the world.
+  top-left), show/hide (only chat or world on screen), the link, and helpers for parts: box(), glow(),
+  light(), build_model(), mat(), tex(), where(), face(), add_collider(), seen_around(), send(), quest_done()
+  (throttled: safe every frame), show_notice(). Editing it restarts the world. Errors in a part name its file
+  (res://scene/x.gd:line) in claude-world.log.
 - godot_world/scene/*.gd = the world's parts, one file per thing, all rebuilt live when any part or model is
   saved; a file with an error is refused and the old world keeps running. See the top of scene/base.gd for the
-  hooks (build, handle, key, describe/is_near/npc_id for characters, quest_progress).
+  hooks (build, handle, key, seen_from, quest_progress, describe/is_near/npc_id for characters).
+  What the characters "see": every part reports itself with seen_from(from, viewer) -> Array of phrases, and
+  both characters' describe() use W.seen_around(). A new thing only needs a seen_from() to be noticed.
+  Talking (bubble, mouth, "?"/"..." symbol) is the shared Talker in scene/talk.gd, used by both characters.
   - base.gd: ground (dark green grid), night sky panorama (sky_night.png), moonlight with shadows, red fog,
     movement settings, placed objects (spawn/remove), sky command.
   - barnaby.gd: Barnaby Finch (model: models/barnaby.json, 275 textured boxes, textures barnaby_*.png);
@@ -80,8 +85,9 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   When textures clip: look for coplanar faces and parts that overlap swinging arms/legs.
 
 - scene/sea.gd: a glowing conch on a rock at (-16, -22) with a light beam; press E near it and the sea rises
-  knee-deep over the whole field (wave shader), E again drains it. state["sea"]; Barnaby is told via describe_sea().
-- Barnaby's speech bubble is pixel art (SubViewport on a billboard Sprite3D), letters typed out ~2x voice speed.
+  knee-deep over the whole field (wave shader), E again drains it. state["sea"]; the characters are told via its seen_from().
+- The speech bubble (talk.gd) is pixel art (SubViewport on a billboard Sprite3D), letters typed out ~1.7x voice
+  speed; say_start/say_end from the chat time it to the real voice, say() estimates.
 
 - Bubble sync: the tts PowerShell process prints "S" when a sentence starts and "." when it ends; chat.pyw turns
   those into say_start / say_end for the world (texts queued in t.texts). Barnaby learns his reading speed (cps).
@@ -115,5 +121,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).
 - Builder hammer (scene/builder.gd): H or [hammer] holds it; click builds 1 m blocks, right click removes, C/wheel colour. Barnaby can [climb] onto placed objects.
-- Barnaby talking: chat.pyw sends cmd=say (who, text) per spoken sentence; barnaby.gd animates a mouth box over the face texture and shows a billboard Label3D chat bubble (timed ~15 chars/s).
 - Goblins (scene/goblins.gd, [goblins] / [goblins away]): harmless ring army, 3 sword hits each. Hotbar + sword in scene/hotbar.gd ([sword] gives; keys 1 hammer, 2 sword).
