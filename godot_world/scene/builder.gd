@@ -17,6 +17,9 @@ var swing := 0.0
 func build(c: Dictionary) -> void:
 	ctx = c
 	W = ctx["world"]
+	if not ctx.state.get("blocks_cleared", false):  # one-time: the user asked to remove all placed blocks
+		ctx.state["blocks"] = []
+		ctx.state["blocks_cleared"] = true
 	for spec in ctx.state.get_or_add("blocks", []):
 		make_block(int(spec[0]), int(spec[1]), int(spec[2]), int(spec[3]))
 	make_hammer()

@@ -146,6 +146,23 @@ func shoot(origin: Vector3, dir: Vector3, max_dist: float, damage: int) -> float
 	return best_t
 
 
+## An explosion at `pos` (rocket launcher): goblins within `radius` are hurt, the closer the harder
+## (full health lost in the inner half), and thrown away from the blast.
+func blast(pos: Vector3, radius: float) -> void:
+	var killed := 0
+	for g in army.duplicate():
+		var node: Node3D = g.node
+		var d := Vector3(node.position.x - pos.x, 0, node.position.z - pos.z)
+		var dist := Vector3(d.x, node.position.y + 0.75 * g.base - pos.y, d.z).length()
+		if dist > radius:
+			continue
+		var away := d.normalized() if d.length() > 0.01 else Vector3.FORWARD
+		if hurt(g, pos, away, HEALTH if dist < radius * 0.5 else 1):
+			killed += 1
+	if killed > 0:
+		report_kills()
+
+
 func clear_army() -> void:
 	for g in army:
 		g.node.queue_free()
