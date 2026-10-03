@@ -9,6 +9,7 @@ const WALL_H := 7.0
 const WALL_T := 1.6
 const GATE_W := 4.0
 const BANNER := Color("#9e2230")
+const SINK := 0.3  # how far the whole castle is sunk into the levelled hilltop
 
 var ctx: Dictionary
 var W
@@ -23,7 +24,7 @@ func build(c: Dictionary) -> void:
 	W = ctx["world"]
 	kit = ctx.parts["kit"]
 	var terrain = ctx.parts["terrain"]
-	position = Vector3(terrain.CASTLE.x, terrain.CASTLE_TOP, terrain.CASTLE.z)
+	position = Vector3(terrain.CASTLE.x, terrain.CASTLE_TOP - SINK, terrain.CASTLE.z)  # sunk so the wall bottoms are buried, not level with the ground
 	build_walls()
 	for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
 		tower(Vector3(corner.x * HALF, 0, corner.y * HALF), 2.8, 12.0)
@@ -60,7 +61,7 @@ func build_walls() -> void:
 	battlements(Vector3(HALF, 0, -HALF), Vector3(HALF, 0, HALF), WALL_H, WALL_T)
 	battlements(Vector3(-HALF, 0, HALF), Vector3(-GATE_W / 2.0 - 2.0, 0, HALF), WALL_H, WALL_T)
 	battlements(Vector3(GATE_W / 2.0 + 2.0, 0, HALF), Vector3(HALF, 0, HALF), WALL_H, WALL_T)
-	s(Vector3(0, 0.05, 0), Vector3(HALF * 2 - WALL_T, 0.1, HALF * 2 - WALL_T), "dark_stone", false)  # courtyard paving
+	s(Vector3(0, SINK + 0.05, 0), Vector3(HALF * 2 - WALL_T, 0.1, HALF * 2 - WALL_T), "dark_stone", false)  # courtyard paving, just above the ground
 
 
 ## A round tower with a conical slate roof and a banner on top.
@@ -120,6 +121,25 @@ func build_gatehouse() -> void:
 	for i in 5:  # the portcullis, raised: only its spiked lower edge shows below the arch
 		W.box(self, Vector3(-1.6 + i * 0.8, 6.3, z + 1.3), Vector3(0.1, 0.9, 0.1), Color("#26231f"))
 	W.box(self, Vector3(0, 6.6, z + 1.3), Vector3(GATE_W, 0.12, 0.12), Color("#26231f"))
+	if W.flag("castle") in ["", "restored", "rebuilt", "fortified"]:  # (the story may burn or seize the castle)
+		for side in [-1, 1]:  # great banners hanging down the gate towers
+			hanging_banner(Vector3(side * (GATE_W / 2.0 + 1.6), 9.4, z + 1.83))
+
+
+## A long cloth banner hanging from a rod: red, gold-edged, a gold emblem, a swallow-tail end.
+func hanging_banner(top: Vector3) -> void:
+	var gold := Color("#e8c25a")
+	W.box(self, top + Vector3(0, 0.1, 0.05), Vector3(1.8, 0.1, 0.1), Color("#3b2a1e"))  # rod
+	W.box(self, top + Vector3(0, -2.0, 0.04), Vector3(1.4, 4.0, 0.04), BANNER)
+	for x in [-0.66, 0.66]:
+		W.box(self, top + Vector3(x, -2.0, 0.065), Vector3(0.08, 4.0, 0.02), gold)  # gold edges
+	for dx in [-0.36, 0.36]:  # the swallow tail
+		var tail: MeshInstance3D = W.box(self, top + Vector3(dx, -4.25, 0.04), Vector3(0.66, 0.66, 0.04), BANNER)
+		tail.rotation.z = PI / 4.0
+	var emblem: MeshInstance3D = W.box(self, top + Vector3(0, -1.6, 0.07), Vector3(0.7, 0.7, 0.02), gold)
+	emblem.rotation.z = PI / 4.0
+	W.box(self, top + Vector3(0, -1.6, 0.085), Vector3(0.12, 0.6, 0.02), BANNER)  # a red sword on the gold
+	W.box(self, top + Vector3(0, -1.45, 0.085), Vector3(0.4, 0.08, 0.02), BANNER)
 
 
 func torch(at: Vector3) -> void:

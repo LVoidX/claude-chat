@@ -31,11 +31,13 @@ func build(c: Dictionary) -> void:
 	fence(Vector3(-16, 0, -4), Vector3(-16, 0, -14))
 	fence(Vector3(-16, 0, -14), Vector3(-9, 0, -17))
 	fence(Vector3(11, 0, -3), Vector3(14, 0, 6))
-	for p in [Vector3(-14, 0, -8), Vector3(-13, 0, -11), Vector3(12, 0, 1)]:
+	for p in [Vector3(-14, 0, -8), Vector3(-13, 0, -11), Vector3(9.8, 0, 1)]:  # (the east one stands 2 m clear of the fence, which runs through x=12.3 here)
 		hay(p)
 	for p in [Vector3(-3.5, 0, -7.5), Vector3(-2.9, 0, -7.9), Vector3(4.5, 0, 6.8)]:
 		barrel(p)
 	cart(Vector3(3.5, 0, -3.5))
+	market_stall(Vector3(-4.8, 0, 4.6))
+	tavern_sign(Vector3(5.4, 0, -5.2), "The Gilded Goose")
 	windmill(terrain.MILL - terrain.VILLAGE, terrain)
 
 
@@ -68,6 +70,7 @@ func well() -> void:
 	roof.position = Vector3(0, 2.75, 0)
 	roof.rotation.y = PI / 2.0
 	add_child(roof)
+	roof.create_convex_collision()
 	W.box(self, Vector3(0.3, 1.6, 0), Vector3(0.3, 0.32, 0.3), Color("#6b4a2b"))  # the bucket
 
 
@@ -104,6 +107,7 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 	roof.material_override = kit.mat("thatch")
 	roof.position = Vector3(0, 0.4 + h + 1.3, 0)
 	house.add_child(roof)
+	roof.create_convex_collision()  # the sloped roof is solid too (you can stand on it)
 	var chimney_x := w / 2.0 - 0.7
 	kit.block(W, house, Vector3(chimney_x, 0.4 + h + 1.4, d / 4.0), Vector3(0.6, 2.8, 0.6), "stone", false)
 	if index % 2 == 0:
@@ -288,3 +292,57 @@ func _process(delta: float) -> void:
 	var night: float = ctx.get("night", 1.0)
 	for wl in windows:  # firelight inside, flickering a little (hardly noticeable by day)
 		wl[0].light_energy = 0.9 * (0.85 + 0.12 * sin(spin * 5.0 + wl[1]) + 0.05 * sin(spin * 13.0 + wl[1])) * lerpf(0.1, 1.0, night)
+
+
+## A market stall by the well: a striped awning on four posts, a table of produce in baskets.
+func market_stall(offset: Vector3) -> void:
+	var stall := Node3D.new()
+	stall.position = at_ground(offset)
+	stall.rotation.y = atan2(offset.x, offset.z)  # facing the well
+	add_child(stall)
+	var wood := Color("#5a3d24")
+	for x in [-1.2, 1.2]:
+		for z in [-0.6, 0.6]:
+			W.box(stall, Vector3(x, 1.1, z), Vector3(0.1, 2.2, 0.1), wood)
+	for i in 6:  # the awning: alternating stripes
+		var stripe: MeshInstance3D = W.box(stall, Vector3(-1.25 + i * 0.5, 2.25, 0), Vector3(0.5, 0.05, 1.6),
+			Color("#2e5a8a") if i % 2 == 0 else Color("#efe6cc"))
+		stripe.rotation.x = 0.18
+	W.box(stall, Vector3(0, 0.8, -0.1), Vector3(2.4, 0.08, 1.0), Color("#7a5a3a"), "cube", true)  # table
+	var produce := [Color("#c0392b"), Color("#e67e22"), Color("#7dbb3c"), Color("#8e5a2a"), Color("#d4b13a")]
+	for i in 5:  # baskets heaped with apples, carrots, cabbages, loaves, cheese
+		var b := Vector3(-0.95 + i * 0.47, 0.92, -0.1)
+		W.box(stall, b, Vector3(0.38, 0.16, 0.38), Color("#a07a48"))
+		for j in 4:
+			W.box(stall, b + Vector3((j % 2) * 0.12 - 0.06, 0.1 + (j / 2) * 0.05, (j / 2) * 0.1 - 0.05), Vector3(0.11, 0.1, 0.11), produce[i], "sphere")
+	for p in [Vector3(-1.6, 0.25, 0.4), Vector3(1.6, 0.25, -0.3)]:  # sacks of grain
+		W.box(stall, p, Vector3(0.45, 0.5, 0.4), Color("#c9b07a"), "sphere")
+
+
+## A tavern's hanging sign on a post: a painted board with a goose and its name.
+func tavern_sign(offset: Vector3, name: String) -> void:
+	var post := Node3D.new()
+	post.position = at_ground(offset)
+	post.rotation.y = atan2(offset.x, offset.z) + PI / 2.0
+	add_child(post)
+	var wood := Color("#4a3220")
+	W.box(post, Vector3(0, 1.6, 0), Vector3(0.16, 3.2, 0.16), wood, "cube", true)
+	W.box(post, Vector3(0.6, 3.0, 0), Vector3(1.3, 0.1, 0.1), wood)  # the bracket
+	for x in [0.25, 0.95]:
+		W.box(post, Vector3(x, 2.85, 0), Vector3(0.03, 0.3, 0.03), Color("#2a2622"))  # chains
+	W.box(post, Vector3(0.6, 2.3, 0), Vector3(1.0, 0.8, 0.06), Color("#2a4a2a"))  # the board
+	W.box(post, Vector3(0.6, 2.3, 0), Vector3(1.06, 0.86, 0.04), Color("#c9a24a"))  # its gilt frame
+	W.box(post, Vector3(0.55, 2.38, 0.045), Vector3(0.3, 0.2, 0.02), Color("#e8c25a"))  # a golden goose: body
+	W.box(post, Vector3(0.75, 2.5, 0.045), Vector3(0.06, 0.22, 0.02), Color("#e8c25a"))  # neck
+	W.box(post, Vector3(0.79, 2.6, 0.045), Vector3(0.1, 0.07, 0.02), Color("#e8c25a"))  # head
+	for side in [-1, 1]:
+		var l := Label3D.new()
+		l.text = name
+		l.font_size = 36
+		l.pixel_size = 0.0028
+		l.modulate = Color("#f2e6c8")
+		l.outline_size = 6
+		l.position = Vector3(0.6, 2.08, side * 0.04)
+		l.rotation.y = 0.0 if side > 0 else PI
+		post.add_child(l)
+
