@@ -16,7 +16,8 @@ SETUP (once)
 1. Unzip this folder somewhere, e.g. your Documents.
 2. Double-click setup.bat. It installs the Python packages, downloads Godot (the 3D engine, ~80 MB)
    next to this folder, and puts a "Claude Chat" shortcut on your desktop.
-3. If you never used Claude Code: open a terminal, run  claude  once and sign in.
+3. Sign in to Claude Code once: in PowerShell run  claude auth login  (if "claude" is not found,
+   install it first with  irm https://claude.ai/install.ps1 | iex  and run setup.bat again).
 
 PLAY
 - Start "Claude Chat" (or Start.bat).

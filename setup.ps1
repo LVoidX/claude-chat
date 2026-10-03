@@ -43,11 +43,19 @@ $claude = Get-Command claude -ErrorAction SilentlyContinue
 if (-not $claude) {
     $claude = Get-ChildItem (Join-Path $env:APPDATA "Claude\claude-code") -Recurse -Filter claude.exe -ErrorAction SilentlyContinue | Select-Object -First 1
 }
+$localBin = Join-Path $env:USERPROFILE ".localin"
+if (-not $claude -and (Test-Path (Join-Path $localBin "claude.exe"))) {
+    $claude = Get-Item (Join-Path $localBin "claude.exe")
+    if (-not (([Environment]::GetEnvironmentVariable("Path", "User")) -split ";" -contains $localBin)) {
+        [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$localBin", "User")
+        Write-Host "Added $localBin to your PATH (open a new terminal to use 'claude')."
+    }
+}
 if ($claude) {
     Write-Host "Claude Code found."
 } else {
-    Write-Host "Claude Code is not installed. Install the Claude desktop app (https://claude.com/download)" -ForegroundColor Yellow
-    Write-Host "or Claude Code, and sign in once. The characters in the world talk through it, on your own Claude plan."
+    Write-Host "Claude Code is not installed. In PowerShell run:  irm https://claude.ai/install.ps1 | iex" -ForegroundColor Yellow
+    Write-Host "then run setup.bat again, and sign in once with:  claude auth login"
 }
 
 Step "Desktop shortcut"

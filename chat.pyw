@@ -263,6 +263,10 @@ def find_claude():
     exe = shutil.which("claude")
     if exe:
         return exe
+    # The standalone installer puts it in ~/.local/bin, which may not be on PATH yet
+    local = os.path.join(os.path.expanduser("~"), ".local", "bin", "claude.exe")
+    if os.path.exists(local):
+        return local
     # The desktop app bundles the CLI under %APPDATA%\Claude\claude-code\<version>\<hash>\
     pattern = os.path.join(os.environ.get("APPDATA", ""), "Claude", "claude-code", "*", "*", "claude.exe")
     found = glob.glob(pattern)
