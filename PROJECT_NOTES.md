@@ -68,6 +68,15 @@ when you finish a notable feature or learn a preference, and fix lines that beco
     kit.gd = shared building materials drawn in code (stone, dark_stone, plaster, timber, planks, thatch,
     slate), mapped in world space: kit.mat("stone") or kit.block(W, parent, pos, size, "stone").
     The parkour pads are floating stone slabs with a glowing rune in their colour.
+  - animals.gd: sheep in the pasture (-40, 24) and chickens around the village; they graze/peck and shy away.
+  - villagers.gd: villagers with step routines ([place, "work"/"idle", seconds]): farmer (wheat field with a
+    scarecrow at (-30, -28)), woodcutter (log pile at (-54, -20)), water carrier, shepherd, guards at the castle
+    gate and on the south wall. Add a villager = add an entry to plan(). A base for a colony-sim direction.
+  - Day and night (base.gd): state["time"] = hour 0..24, a day = DAY_MINUTES (40) real minutes, starts at night.
+    A sky shader blends the red-moon panorama into a day sky with sun and dusk colours. ctx["night"] (1 night ..
+    0 day) is read by lanterns, torches, windows and fireflies. [sky day/sunset/night/...] sets the time.
+- The user hasn't decided the game's core concept yet (maybe a 3D RimWorld-like). Keep additions generic:
+  world, life, systems; don't lock in one game loop.
   - barnaby.gd: Barnaby Finch (model: models/barnaby.json, 275 textured boxes, textures barnaby_*.png);
     wanders, stops and faces you when near (hands-free listening), commands follow / wander / stay.
 - ctx.state is saved to world_state.json (next to chat.pyw) every few seconds and on exit: keep plain values.
