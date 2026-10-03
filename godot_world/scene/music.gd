@@ -4,7 +4,8 @@ extends Node3D
 ## By day it plays Market Day and The Bard's Tale, at night The Old Tower Inn, softly, with a quiet pause between
 ## tracks. K turns the music on and off (state["music_off"]); [music off] / [music on] do the same by voice.
 ## The player lives on the world node (not on this part), so rebuilding the parts doesn't restart the song.
-## Jingles are made here in code (no files): play_sfx("levelup") / play_sfx("quest") / play_sfx("chapter").
+## Jingles and sounds are made here in code (no files): play_sfx("levelup" | "quest" | "chapter" | "swing" | "hit" |
+## "hurt" | "pickup" | "coin").
 
 const DAY_TRACKS := ["Market_Day.mp3", "The_Bards_Tale.mp3"]
 const NIGHT_TRACKS := ["The_Old_Tower_Inn.mp3"]
@@ -17,6 +18,7 @@ var W
 var player: AudioStreamPlayer
 var sfx: AudioStreamPlayer
 var wait := 3.0  # until the next track starts
+var extra := []  # more sound players, for sounds that overlap
 
 
 func build(c: Dictionary) -> void:
@@ -34,16 +36,33 @@ func build(c: Dictionary) -> void:
 	sfx = AudioStreamPlayer.new()
 	sfx.volume_db = -6.0
 	add_child(sfx)
-	if not ctx.has("jingles"):
+	if not ctx.has("jingles") or not ctx.jingles.has("coin"):
 		ctx["jingles"] = {"levelup": jingle([[0, 523.3], [0.11, 659.3], [0.22, 784.0], [0.33, 1046.5]], 1.3),
 			"quest": jingle([[0, 392.0], [0.16, 523.3], [0.32, 659.3], [0.32, 392.0], [0.5, 784.0], [0.5, 523.3]], 1.6),
-			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6)}
+			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6),
+			"swing": noise_burst(0.2, 0.55, 0.02, 0.09),  # a whoosh of air
+			"hit": thud(110.0, 0.16, 0.7),  # the blade lands
+			"hurt": thud(70.0, 0.25, 1.0),  # you take a hit: deeper, with a crunch
+			"pickup": jingle([[0, 880.0], [0.07, 1318.5]], 0.35),
+			"coin": jingle([[0, 1760.0], [0.05, 2349.3]], 0.4)}
 
 
 func play_sfx(name: String) -> void:
-	if sfx and ctx.jingles.has(name):
-		sfx.stream = ctx.jingles[name]
-		sfx.play()
+	if not sfx or not ctx.jingles.has(name):
+		return
+	var player := sfx
+	if sfx.playing:  # (a hit during a jingle: use a free extra player, so neither cuts off)
+		player = null
+		for p in extra:
+			if not p.playing:
+				player = p
+		if player == null:
+			player = AudioStreamPlayer.new()
+			player.volume_db = sfx.volume_db
+			add_child(player)
+			extra.append(player)
+	player.stream = ctx.jingles[name]
+	player.play()
 
 
 ## A little plucked-lute jingle: notes = [[start seconds, frequency], ...], made into a WAV in memory.
@@ -65,6 +84,44 @@ func jingle(notes: Array, length: float) -> AudioStreamWAV:
 	bytes.resize(n * 2)
 	for i in n:
 		bytes.encode_s16(i * 2, int(clampf(buf[i] * minf(float(n - i) / 800.0, 1.0), -1.0, 1.0) * 32000.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = RATE
+	wav.data = bytes
+	return wav
+
+
+## Filtered noise that swells and fades: whooshes. `bright` 0..1 = how hissy.
+func noise_burst(length: float, bright: float, attack: float, peak: float) -> AudioStreamWAV:
+	var n := int(length * RATE)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var low := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		low = lerpf(low, randf_range(-1.0, 1.0), lerpf(0.05, 0.6, bright))  # a simple low-pass on white noise
+		var env := smoothstep(0.0, attack + peak, t) * (1.0 - smoothstep(attack + peak, length, t))
+		buf[i] = low * env * 0.8
+	return to_wav(buf)
+
+
+## A short low knock with a bit of noise on top (hits).
+func thud(freq: float, length: float, crunch: float) -> AudioStreamWAV:
+	var n := int(length * RATE)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	for i in n:
+		var t := float(i) / RATE
+		var f := freq * (1.0 + 1.5 * exp(-t * 30.0))  # the pitch drops fast, like a body blow
+		buf[i] = (sin(TAU * f * t) * exp(-t * 14.0) + randf_range(-1.0, 1.0) * crunch * 0.35 * exp(-t * 40.0)) * 0.7
+	return to_wav(buf)
+
+
+func to_wav(buf: PackedFloat32Array) -> AudioStreamWAV:
+	var bytes := PackedByteArray()
+	bytes.resize(buf.size() * 2)
+	for i in buf.size():
+		bytes.encode_s16(i * 2, int(clampf(buf[i], -1.0, 1.0) * 32000.0))
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = RATE

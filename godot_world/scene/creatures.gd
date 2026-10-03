@@ -13,6 +13,12 @@ const KINDS := {
 		"xp": 28, "gold": [2, 8], "loot": [["bone", 0.75], ["potion", 0.12]], "respawn": 75.0, "bar_y": 2.25},
 	"troll": {"name": "Gorrak the Troll", "hp": 170, "dmg": 15, "speed": 3.6, "aggro": 16.0, "reach": 3.2, "cooldown": 2.4,
 		"xp": 260, "gold": [60, 60], "loot": [["tusk", 1.0], ["potion", 1.0]], "respawn": 600.0, "bar_y": 4.3},
+	# Chapter 2: road bandits who move into Gorrak's camp. They do not come back once beaten.
+	"bandit": {"name": "Bandit", "hp": 30, "dmg": 7, "speed": 4.4, "aggro": 14.0, "reach": 1.9, "cooldown": 1.6,
+		"xp": 40, "gold": [6, 20], "loot": [["potion", 0.2], ["pelt", 0.2]], "respawn": 99999.0, "bar_y": 2.2},
+	# Chapter 3: the barrow lord, woken by all the blood spilled on the east road. He does not come back once beaten.
+	"wight": {"name": "Barrow Wight", "hp": 120, "dmg": 11, "speed": 3.8, "aggro": 15.0, "reach": 2.3, "cooldown": 2.0,
+		"xp": 260, "gold": [40, 40], "loot": [["bone", 1.0], ["potion", 1.0]], "respawn": 99999.0, "bar_y": 2.7},
 }
 const DENS := [Vector3(80, 0, -32), Vector3(-24, 0, 92), Vector3(-112, 0, -20)]  # three wolves each
 const BARROW := Vector3(-80, 0, -80)  # the old burial mound, six skeletons
@@ -39,10 +45,22 @@ func build(c: Dictionary) -> void:
 		build_arrow(at_ground(den))
 		for i in 3:
 			spawn("wolf", at_ground(den + Vector3(cos(i * 2.1) * 3.0, 0, sin(i * 2.1) * 3.0)), at_ground(den))
-	build_barrow(at_ground(BARROW))
-	for i in 6:
-		var a := i * TAU / 6.0
-		spawn("skeleton", at_ground(BARROW + Vector3(cos(a) * 9.0, 0, sin(a) * 9.0)), at_ground(BARROW))
+	# Chapter 3 (flag "barrow"): "stirring" = the dead are up and a wight stands at the door, "sealed" = the wight is
+	# slain and the door walled shut, "laid" = the dead were given rest, "bargain" = he is paid and keeps his dead quiet.
+	var tomb: String = W.flag("barrow")
+	build_barrow(at_ground(BARROW), tomb)
+	var skeletons: int = {"": 6, "stirring": 11, "bargain": 4}.get(tomb, 0)
+	for i in skeletons:
+		var a := i * TAU / float(skeletons)
+		var ring := 9.0 if i < 6 else 15.0
+		spawn("skeleton", at_ground(BARROW + Vector3(cos(a) * ring, 0, sin(a) * ring)), at_ground(BARROW))
+		if tomb == "bargain":
+			foes[-1]["tame"] = true
+	if tomb == "stirring" or tomb == "bargain":
+		var door := BARROW + Vector3(0, 0, 8.5)
+		spawn("wight", at_ground(door), at_ground(door))
+		if tomb == "bargain":
+			foes[-1]["tame"] = true
 	# The troll's fate is chapter 1 of the story (story/seed.json): slain, paid off with pelts, or still hungry.
 	var fate: String = W.flag("troll")
 	build_camp(at_ground(TROLL_CAMP), fate)
@@ -51,6 +69,18 @@ func build(c: Dictionary) -> void:
 		foes[-1]["tame"] = true
 	elif fate != "slain":
 		spawn("troll", at_ground(TROLL_CAMP + Vector3(0, 0, 4)), at_ground(TROLL_CAMP))
+	# Chapter 2: with Gorrak gone, bandits take his camp. "bandits" = they hold it, "cleared" = the valley's watch
+	# post, "tolled" = they stay, paid, and keep the road for the valley.
+	var camp: String = W.flag("camp")
+	if camp != "":
+		build_bandit_camp(at_ground(TROLL_CAMP), camp)
+		var n: int = {"bandits": 5, "tolled": 3}.get(camp, 0)
+		for i in n:
+			var a := i * TAU / float(n) + 0.5
+			var p := TROLL_CAMP + Vector3(cos(a) * 5.5, 0, sin(a) * 5.5)
+			spawn("bandit", at_ground(p), at_ground(TROLL_CAMP))
+			if camp == "tolled":
+				foes[-1]["tame"] = true
 
 
 func at_ground(p: Vector3) -> Vector3:
@@ -92,10 +122,11 @@ func build_arrow(at: Vector3) -> void:
 	arrows.append(arrow)
 
 
-func build_barrow(at: Vector3) -> void:
+func build_barrow(at: Vector3, tomb := "") -> void:
 	var barrow := Node3D.new()
 	barrow.position = at
 	add_child(barrow)
+	build_tomb_marks(barrow, tomb)
 	var stone: Material = ctx.parts["kit"].mat("stone") if ctx.parts.has("kit") else W.mat(Color("#77736c"))
 	var mound: MeshInstance3D = W.box(barrow, Vector3(0, 0, 0), Vector3(10, 5, 12), Color("#4f6b3a"), "sphere", true)
 	mound.position.y = 0.2
@@ -116,6 +147,40 @@ func build_barrow(at: Vector3) -> void:
 		var p := Vector3(randf_range(-9, 9), 0.4, randf_range(-11, -6))
 		var g: MeshInstance3D = W.box(barrow, p, Vector3(0.5, 0.8, 0.12), Color("#8a8680"))
 		g.rotation = Vector3(randf_range(-0.2, 0.2), randf() * 0.6, randf_range(-0.2, 0.2))
+
+
+## Chapter 3: what the story left at the barrow (drawn on top of the old mound, which stays as it was).
+func build_tomb_marks(barrow: Node3D, tomb: String) -> void:
+	var green := Color("#5dff9a")
+	if tomb == "stirring":  # green witch-fire round the ring, cracked ground, a pale beam from the mound
+		for i in 9:
+			var a := i * TAU / 9.0 + 0.2
+			W.glow(barrow, Vector3(cos(a) * 11.0, 0.15, sin(a) * 11.0), Vector3(0.4, 0.3, 0.4), green, 3.0)
+		W.glow(barrow, Vector3(0, 9.0, 0), Vector3(0.5, 8.0, 0.5), green, 1.2)
+		W.light(barrow, Vector3(0, 6.0, 0), green, 2.5, 22.0)
+		for i in 5:  # graves dug up from inside: dark pits with a heap of earth
+			var p := Vector3(-8 + i * 4.0, 0.03, -8.5)
+			W.box(barrow, p, Vector3(1.2, 0.05, 2.0), Color("#120e0a"))
+			W.box(barrow, p + Vector3(0, 0.2, 1.6), Vector3(1.4, 0.4, 0.9), Color("#3a2c1e"))
+	elif tomb == "sealed":  # a wall of fitted stones across the doorway, ward-marks glowing blue
+		var stone: Material = ctx.parts["kit"].mat("stone") if ctx.parts.has("kit") else W.mat(Color("#77736c"))
+		var wall: MeshInstance3D = W.box(barrow, Vector3(0, 1.05, 6.4), Vector3(3.2, 2.1, 0.9), Color.WHITE, "cube", true)
+		wall.material_override = stone
+		W.glow(barrow, Vector3(0, 1.2, 6.9), Vector3(0.7, 0.7, 0.05), Color("#6aa8ff"), 2.5)
+		W.light(barrow, Vector3(0, 1.6, 7.8), Color("#6aa8ff"), 1.2, 8.0)
+	elif tomb == "laid":  # candles and fresh flowers before the door; the graves are mounded and quiet
+		for i in 7:
+			var a := PI * 0.3 + i * PI * 0.4 / 6.0
+			W.box(barrow, Vector3(cos(a) * 8.0 - 0.0, 0.1, sin(a) * 8.0 + 0.5), Vector3(0.12, 0.2, 0.12), Color("#f2ead2"))
+			W.glow(barrow, Vector3(cos(a) * 8.0, 0.26, sin(a) * 8.0 + 0.5), Vector3(0.07, 0.1, 0.07), Color("#ffcf6a"), 3.0)
+		W.light(barrow, Vector3(0, 1.2, 8.0), Color("#ffcf6a"), 1.6, 9.0)
+		for i in 6:
+			W.box(barrow, Vector3(-9 + i * 3.6, 0.12, -8.5), Vector3(1.0, 0.24, 1.8), Color("#3a2c1e"))
+			W.box(barrow, Vector3(-9 + i * 3.6, 0.3, -8.5), Vector3(0.35, 0.12, 0.35), Color("#e8a0c8"))
+	elif tomb == "bargain":  # a dark brazier at the door where the wight keeps his tithe
+		W.box(barrow, Vector3(2.6, 0.5, 7.5), Vector3(0.9, 1.0, 0.9), Color("#2a2622"))
+		W.glow(barrow, Vector3(2.6, 1.15, 7.5), Vector3(0.6, 0.3, 0.6), green, 3.0)
+		W.light(barrow, Vector3(2.6, 2.0, 7.5), green, 1.8, 10.0)
 
 
 func build_camp(at: Vector3, fate := "") -> void:
@@ -143,6 +208,47 @@ func build_camp(at: Vector3, fate := "") -> void:
 		var bone: MeshInstance3D = W.box(camp, Vector3(randf_range(-5, 5), 0.06, randf_range(-5, 5)), Vector3(randf_range(0.3, 0.8), 0.09, 0.09), Color("#e6dcc0"))
 		bone.rotation.y = randf() * TAU
 	W.box(camp, Vector3(-4, 0.4, -3), Vector3(0.8, 0.8, 0.8), Color("#efe8d6"), "sphere")  # a skull the size of a pumpkin
+
+
+## Chapter 2 on top of the troll camp (which keeps its pike and bones): tents and a flag, whose kind depends on who holds it.
+func build_bandit_camp(at: Vector3, camp: String) -> void:
+	var node := Node3D.new()
+	node.position = at
+	add_child(node)
+	var flag_color: Color = {"bandits": Color("#5a1414"), "cleared": Color("#2f4f8a"), "tolled": Color("#7a5a1a")}.get(camp, Color.WHITE)
+	if camp != "cleared":  # tents: two leaning cloth slabs each, plus a ridge pole
+		for spec in [[Vector3(-7, 0, -6), 0.3], [Vector3(7, 0, -5), -0.4], [Vector3(8, 0, 6), 1.2]]:
+			var tent := Node3D.new()
+			tent.position = spec[0]
+			tent.rotation.y = spec[1]
+			node.add_child(tent)
+			for side in [-1, 1]:
+				var slab: MeshInstance3D = W.box(tent, Vector3(side * 1.0, 1.045, 0), Vector3(0.1, 3.0, 3.4),
+					Color("#7a6a4a") if side < 0 else Color("#6e5f42"))
+				slab.rotation.z = -side * 0.8
+			W.box(tent, Vector3(0, 2.1, 0), Vector3(0.14, 0.14, 3.7), Color("#4a3220"))
+	if camp == "bandits":  # a rough stake fence, crates, and a black-red banner
+		for i in 11:
+			var a := PI * 0.15 + i * PI * 1.7 / 10.0
+			W.box(node, Vector3(cos(a) * 11.0, 0.9, sin(a) * 11.0), Vector3(0.22, 1.8, 0.22), Color("#4a3220"))
+		for p in [Vector3(-3, 0.4, -7), Vector3(-2, 0.4, -7.2), Vector3(-2.6, 1.2, -7.1)]:
+			W.box(node, p, Vector3(0.8, 0.8, 0.8), Color("#8a6a3a"))
+		W.glow(node, Vector3(-4, 0.2, 5), Vector3(0.8, 0.3, 0.8), Color("#ff6a1a"), 3.0)  # their own cookfire
+		W.light(node, Vector3(-4, 1.4, 5), Color("#ff8a3a"), 2.0, 10.0)
+	if camp == "cleared":  # a cairn and a watch fire the valley keeps lit
+		for i in 3:
+			W.box(node, Vector3(-5, 0.35 + i * 0.7, 3), Vector3(2.4 - i * 0.6, 0.7, 2.4 - i * 0.6), Color("#77736c").darkened(i * 0.05), "cube")
+		W.glow(node, Vector3(-5, 2.3, 3), Vector3(0.7, 0.5, 0.7), Color("#ffb04a"), 3.5)
+		W.light(node, Vector3(-5, 3.2, 3), Color("#ffb04a"), 3.0, 18.0)
+	if camp == "tolled":  # a rope across the road side and a toll chest
+		for x in [-9, -4]:
+			W.box(node, Vector3(x, 0.8, 9), Vector3(0.2, 1.6, 0.2), Color("#4a3220"))
+		W.box(node, Vector3(-6.5, 1.3, 9), Vector3(5.0, 0.06, 0.06), Color("#b09a6a"))
+		W.box(node, Vector3(-6.5, 0.3, 10), Vector3(1.0, 0.6, 0.6), Color("#6a4a2a"))
+		W.glow(node, Vector3(0, 0.25, 0), Vector3(0.9, 0.35, 0.9), Color("#ff6a1a"), 3.5)  # the fire is lit again
+		W.light(node, Vector3(0, 1.4, 0), Color("#ff8a3a"), 2.5, 12.0)
+	W.box(node, Vector3(0, 3.0, -9), Vector3(0.18, 6.0, 0.18), Color("#4a3220"))  # banner pole and cloth
+	W.box(node, Vector3(0.9, 4.9, -9), Vector3(1.6, 1.8, 0.05), flag_color)
 
 
 # --- making creatures ------------------------------------------------------------------------------------
@@ -230,6 +336,65 @@ func model_skeleton(node: Node3D) -> Dictionary:
 	return {"body": body, "head": head, "legs": legs, "arms": arms}
 
 
+func model_bandit(node: Node3D) -> Dictionary:
+	var cloth := Color("#4a3a2c").lerp(Color("#3a3a2e"), randf())
+	var body := Node3D.new()
+	node.add_child(body)
+	var legs := []
+	for side in [-1, 1]:
+		var leg := limb(body, Vector3(side * 0.13, 0.9, 0))
+		W.box(leg, Vector3(0, -0.45, 0), Vector3(0.2, 0.9, 0.22), Color("#3a2f26"))
+		legs.append(leg)
+	W.box(body, Vector3(0, 1.2, 0), Vector3(0.52, 0.65, 0.3), cloth)  # jerkin
+	W.box(body, Vector3(0, 0.93, 0), Vector3(0.56, 0.08, 0.34), Color("#2a1d14"))  # belt
+	var head := limb(body, Vector3(0, 1.72, 0))
+	W.box(head, Vector3(0, 0, 0), Vector3(0.28, 0.3, 0.28), Color("#c89a78"))
+	W.box(head, Vector3(0, 0.1, 0.0), Vector3(0.32, 0.2, 0.32), Color("#5a1414"))  # red hood
+	W.box(head, Vector3(0, -0.08, -0.145), Vector3(0.28, 0.12, 0.02), Color("#2a2a2a"))  # face cloth
+	var arms := []
+	for side in [-1, 1]:
+		var arm := limb(body, Vector3(side * 0.35, 1.48, 0))
+		W.box(arm, Vector3(0, -0.3, 0), Vector3(0.14, 0.6, 0.14), cloth.darkened(0.1))
+		arms.append(arm)
+	var blade := limb(arms[1], Vector3(0, -0.6, -0.05))
+	W.box(blade, Vector3(0, 0, -0.35), Vector3(0.05, 0.03, 0.65), Color("#b8bcc4"))
+	W.box(blade, Vector3(0, 0, -0.02), Vector3(0.2, 0.04, 0.04), Color("#5a4030"))
+	return {"body": body, "head": head, "legs": legs, "arms": arms}
+
+
+## A tall, hooded barrow lord: dark robe, pale skull, green fire in the eyes, a long rusted blade.
+func model_wight(node: Node3D) -> Dictionary:
+	var bone := Color("#cfd6c4")
+	var robe := Color("#1f2a26")
+	var body := Node3D.new()
+	node.add_child(body)
+	var legs := []
+	for side in [-1, 1]:
+		var leg := limb(body, Vector3(side * 0.15, 1.0, 0))
+		W.box(leg, Vector3(0, -0.5, 0), Vector3(0.22, 1.0, 0.24), robe.darkened(0.2))
+		legs.append(leg)
+	W.box(body, Vector3(0, 1.0, 0), Vector3(0.7, 0.8, 0.42), robe)  # ragged robe skirt
+	W.box(body, Vector3(0, 1.75, 0), Vector3(0.62, 0.7, 0.36), robe.lightened(0.05))  # chest
+	W.box(body, Vector3(0, 1.62, -0.19), Vector3(0.66, 0.08, 0.04), Color("#8a7a3a"))  # a tarnished gold sash
+	var head := limb(body, Vector3(0, 2.25, 0))
+	W.box(head, Vector3(0, 0, 0), Vector3(0.3, 0.32, 0.3), bone)
+	W.box(head, Vector3(0, 0.0, 0.03), Vector3(0.4, 0.42, 0.34), robe)  # hood, open at the front
+	W.box(head, Vector3(0, 0, -0.1), Vector3(0.26, 0.28, 0.12), bone.darkened(0.05))  # face stands inside the hood
+	W.box(head, Vector3(0, 0.24, 0.0), Vector3(0.28, 0.06, 0.28), Color("#8a7a3a"))  # a thin crown
+	for side in [-1, 1]:
+		W.glow(head, Vector3(side * 0.07, 0.04, -0.166), Vector3(0.07, 0.07, 0.01), Color("#5dff9a"), 4.0)
+	var arms := []
+	for side in [-1, 1]:
+		var arm := limb(body, Vector3(side * 0.42, 2.0, 0))
+		W.box(arm, Vector3(0, -0.4, 0), Vector3(0.14, 0.8, 0.14), robe)
+		W.box(arm, Vector3(0, -0.88, 0), Vector3(0.1, 0.16, 0.1), bone)
+		arms.append(arm)
+	var blade := limb(arms[1], Vector3(0, -0.9, -0.05))
+	W.box(blade, Vector3(0, 0, -0.6), Vector3(0.07, 0.03, 1.1), Color("#6a7a72"))
+	W.box(blade, Vector3(0, 0, -0.02), Vector3(0.3, 0.05, 0.05), Color("#8a7a3a"))
+	return {"body": body, "head": head, "legs": legs, "arms": arms}
+
+
 func model_troll(node: Node3D) -> Dictionary:
 	var skin := Color("#6f7d5a")
 	var body := Node3D.new()
@@ -285,12 +450,29 @@ func sword_hit(origin: Vector3, forward: Vector3, reach: float, arc: float) -> b
 	return any
 
 
+## A rocket blast (rocket.gd): creatures within `radius` take `amount` in the inner half, half of it further out,
+## and are shoved away from the centre.
+func blast(pos: Vector3, radius: float, amount: int) -> void:
+	for f in foes.duplicate():
+		if f.dead > 0.0:
+			continue
+		var d: Vector3 = f.node.position + Vector3(0, 0.8, 0) - pos
+		if d.length() > radius:
+			continue
+		var away := Vector3(d.x, 0, d.z).normalized() if Vector2(d.x, d.z).length() > 0.01 else Vector3.FORWARD
+		damage(f, amount if d.length() < radius * 0.5 else maxi(amount / 2, 1), away)
+
+
 func damage(f: Dictionary, amount: int, push: Vector3) -> void:
 	if f.get("tame", false):  # attacking a creature that made peace with you ends the peace
 		f.tame = false
 		W.show_notice("%s roars: \"Oathbreaker!\"" % KINDS[f.kind].name, 4.0)
 	f.hp -= amount
 	f.hurt = 0.18
+	var music = ctx.parts.get("music")
+	if music:
+		music.play_sfx("hit")
+
 	f.bar.visible = true
 	f.fill.scale.x = 0.86 * clampf(float(f.hp) / float(KINDS[f.kind].hp), 0.0, 1.0)
 	f.fill.position.x = -0.43 + f.fill.scale.x / 2.0
@@ -382,7 +564,10 @@ func pop_number(at: Vector3, text: String, color: Color) -> void:
 
 func _process(delta: float) -> void:
 	t += delta
+	var wolf_rpg = ctx.parts.get("rpg")
+	var wolves_done: bool = wolf_rpg != null and (wolf_rpg.qstate("wolves") == "done" or wolf_rpg.ready_to_hand_in(wolf_rpg.quest("wolves")))
 	for arrow in arrows:
+		arrow.visible = not wolves_done  # the markers go once the wolf quest has its kills (or is handed in)
 		arrow.position.y = W.ground_y(arrow.position.x, arrow.position.z) + ARROW_HEIGHT + sin(t * 2.0) * 0.6
 		arrow.rotation.y = t
 	var player: Vector3 = W.player.global_position
@@ -523,5 +708,8 @@ func animate(f: Dictionary, moving: bool, speed: float, delta: float) -> void:
 
 func seen_from(from: Vector3, _viewer: Node) -> Array:
 	return ["wolf dens in the woods (%s, %s and %s)" % [W.where(from, DENS[0]), W.where(from, DENS[1]), W.where(from, DENS[2])],
-		"the old barrow where skeletons walk, %s" % W.where(from, BARROW),
-		"the camp of Gorrak the troll, %s" % W.where(from, TROLL_CAMP)]
+		"the old barrow, %s%s" % [W.where(from, BARROW), {"": " (skeletons walk there)", "stirring": " (woken: green fire, many skeletons and a barrow wight at the door)",
+			"sealed": " (the wight is slain and the door walled shut)", "laid": " (the dead were given rest, candles burn there)",
+			"bargain": " (the wight was paid his tithe and keeps his dead quiet)"}.get(W.flag("barrow"), "")],
+		"the camp of Gorrak the troll, %s%s" % [W.where(from, TROLL_CAMP), {"bandits": " (bandits have taken it over)",
+			"cleared": " (now a watch post of the valley)", "tolled": " (bandits hold it, paid, and tolled the road)"}.get(W.flag("camp"), "")]]

@@ -249,6 +249,9 @@ func attack() -> void:
 	if swing > 0.35:
 		return
 	swing = 1.0
+	var music = ctx.parts.get("music")
+	if music:
+		music.play_sfx("swing")
 	var forward: Vector3 = -W.player.global_transform.basis.z
 	var goblins = ctx.parts.get("goblins")
 	if goblins:

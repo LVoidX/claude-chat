@@ -164,6 +164,7 @@ func give(item: String, n := 1, quiet := false) -> void:
 		return
 	st().inv[item] = count(item) + n
 	if not quiet:
+		sfx("pickup")
 		W.show_notice("+%d %s" % [n, ITEMS[item].name] if n > 1 else "+ " + ITEMS[item].name)
 	if item == "ring":
 		event("find", "ring")
@@ -192,6 +193,7 @@ func take(item: String, n := 1) -> bool:
 func add_gold(n: int, quiet := false) -> void:
 	st().gold = count("gold") + n
 	if not quiet and n > 0:
+		sfx("coin")
 		W.show_notice("+%d gold" % n)
 	refresh_hud()
 
@@ -248,6 +250,9 @@ func heal(n: int) -> void:
 func hurt(amount: int, source := "") -> void:
 	if panel_kind == "dead":
 		return
+	var music = ctx.parts.get("music")
+	if music:
+		music.play_sfx("hurt")
 	var taken := maxi(amount - defense(), 1)
 	st().hp = int(st().hp) - taken
 	hurt_flash.color.a = clampf(0.25 + taken * 0.02, 0.25, 0.55)

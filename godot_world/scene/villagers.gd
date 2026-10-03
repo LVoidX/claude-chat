@@ -151,6 +151,7 @@ func add_person(p: Dictionary) -> void:
 	rng.seed = hash(p.name + str(folk.size()))
 	var skin := Color("#e8b896").darkened(rng.randf_range(0.0, 0.35))
 	var tunic := Color(p.tunic)
+	var beard := false
 	var legs := []
 	for side in [-1, 1]:
 		var leg := Node3D.new()
@@ -165,13 +166,27 @@ func add_person(p: Dictionary) -> void:
 	W.box(body, Vector3(0, 1.12 - HIP, 0), Vector3(0.42, 0.62, 0.26), tunic)  # tunic
 	W.box(body, Vector3(0, 0.86 - HIP, 0), Vector3(0.44, 0.08, 0.28), Color("#3b2a1e"))  # belt
 	W.box(body, Vector3(0, 1.48 - HIP, 0), Vector3(0.12, 0.08, 0.12), skin)  # neck
+	W.box(body, Vector3(0, 1.41 - HIP, 0), Vector3(0.44, 0.05, 0.28), tunic.darkened(0.25))  # collar
+	W.box(body, Vector3(0.17, 0.86 - HIP, -0.12), Vector3(0.1, 0.12, 0.07), Color("#5a3d24"))  # a pouch on the belt
+	var guard: bool = p.hat == "helmet"
+	if guard:  # a long red tabard over mail, and a gold lion badge
+		W.box(body, Vector3(0, 0.95 - HIP, -0.135), Vector3(0.3, 0.75, 0.02), tunic.darkened(0.08))
+		W.box(body, Vector3(0, 0.95 - HIP, 0.135), Vector3(0.3, 0.75, 0.02), tunic.darkened(0.08))
+	if p.tool == "crook":  # the shepherd's cloak
+		W.box(body, Vector3(0, 1.0 - HIP, 0.15), Vector3(0.46, 0.95, 0.04), Color("#5a4632"))
+	if p.tool == "axe" or (p.hat != "helmet" and rng.randf() < 0.35):
+		beard = true
 	var head := Node3D.new()
 	head.position = Vector3(0, 1.66 - HIP, 0)
 	body.add_child(head)
 	W.box(head, Vector3.ZERO, Vector3(0.26, 0.28, 0.26), skin)
 	for side in [-1, 1]:
 		W.box(head, Vector3(side * 0.06, 0.03, -0.131), Vector3(0.04, 0.04, 0.01), Color("#1a1410"))  # eyes
+	W.box(head, Vector3(0, -0.02, -0.14), Vector3(0.04, 0.06, 0.03), skin.darkened(0.08))  # nose
 	var hair := Color(["#3a2618", "#6b4423", "#1e1a16", "#a07040", "#8a8580"][rng.randi() % 5])
+	if beard:
+		W.box(head, Vector3(0, -0.12, -0.11), Vector3(0.24, 0.12, 0.08), hair)
+		W.box(head, Vector3(0, -0.07, -0.135), Vector3(0.14, 0.03, 0.02), hair)  # moustache
 	match p.hat:
 		"straw":
 			W.box(head, Vector3(0, 0.17, 0), Vector3(0.5, 0.04, 0.5), Color("#c9a85a"))
@@ -191,7 +206,8 @@ func add_person(p: Dictionary) -> void:
 		var arm := Node3D.new()
 		arm.position = Vector3(side * 0.27, 1.38 - HIP, 0)
 		body.add_child(arm)
-		W.box(arm, Vector3(0, -0.26, 0), Vector3(0.11, 0.52, 0.11), tunic.darkened(0.1))
+		W.box(arm, Vector3(0, -0.26, 0), Vector3(0.11, 0.52, 0.11), Color("#8d939a") if guard else tunic.darkened(0.1))  # (mail on guards)
+		W.box(arm, Vector3(0, -0.47, 0), Vector3(0.125, 0.06, 0.125), tunic.darkened(0.3))  # cuff
 		W.box(arm, Vector3(0, -0.56, 0), Vector3(0.1, 0.1, 0.1), skin)
 		arms.append(arm)
 		if side > 0:
