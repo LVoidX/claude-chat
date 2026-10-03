@@ -43,7 +43,7 @@ $claude = Get-Command claude -ErrorAction SilentlyContinue
 if (-not $claude) {
     $claude = Get-ChildItem (Join-Path $env:APPDATA "Claude\claude-code") -Recurse -Filter claude.exe -ErrorAction SilentlyContinue | Select-Object -First 1
 }
-$localBin = Join-Path $env:USERPROFILE ".localin"
+$localBin = Join-Path $env:USERPROFILE ".local\bin"
 if (-not $claude -and (Test-Path (Join-Path $localBin "claude.exe"))) {
     $claude = Get-Item (Join-Path $localBin "claude.exe")
     if (-not (([Environment]::GetEnvironmentVariable("Path", "User")) -split ";" -contains $localBin)) {
