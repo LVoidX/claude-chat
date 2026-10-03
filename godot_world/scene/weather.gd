@@ -1,16 +1,14 @@
 extends Node3D
 ## Weather: now and then a rain shower rolls in. The sky greys, the light dims, the far hills fade into mist and
-## rain falls round you with a soft hiss; after a few minutes it clears. state["rain"] = 0..1 (how wet it is now),
+## rain falls round you; after a few minutes it clears. (Silent: a generated rain hiss sounded bad, the user said.) state["rain"] = 0..1 (how wet it is now),
 ## state["rain_until"] / ["dry_until"] = when it changes (in-game seconds played). [rain] / [rain stop] force it.
 
 const SHOWER := Vector2(120.0, 260.0)  # seconds a shower lasts
 const DRY := Vector2(300.0, 700.0)  # seconds between showers
-const HISS_DB := -24.0
 
 var ctx: Dictionary
 var W
 var rain: GPUParticles3D
-var hiss: AudioStreamPlayer
 var clock := 0.0
 var want := 0.0  # 1 = raining, 0 = dry (the wetness eases toward it)
 
@@ -23,11 +21,6 @@ func build(c: Dictionary) -> void:
 		ctx.state["dry_until"] = clock + randf_range(DRY.x, DRY.y)
 	want = 1.0 if clock < float(ctx.state.get("rain_until", -1.0)) else 0.0
 	make_rain()
-	hiss = AudioStreamPlayer.new()
-	hiss.stream = hiss_loop()
-	hiss.volume_db = -80.0
-	add_child(hiss)
-	hiss.play()
 
 
 func make_rain() -> void:
@@ -56,26 +49,6 @@ func make_rain() -> void:
 	add_child(rain)
 
 
-## Two seconds of soft brown noise, looped: the hiss of rain on grass.
-func hiss_loop() -> AudioStreamWAV:
-	var rate := 22050
-	var n := rate * 2
-	var bytes := PackedByteArray()
-	bytes.resize(n * 2)
-	var v := 0.0
-	for i in n:
-		v = clampf(v * 0.97 + randf_range(-1.0, 1.0) * 0.12, -1.0, 1.0)
-		var edge := minf(minf(float(i), float(n - i)) / 400.0, 1.0)  # (no click at the loop point)
-		bytes.encode_s16(i * 2, int(v * edge * 26000.0))
-	var wav := AudioStreamWAV.new()
-	wav.format = AudioStreamWAV.FORMAT_16_BITS
-	wav.mix_rate = rate
-	wav.data = bytes
-	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	wav.loop_end = n
-	return wav
-
-
 func _process(delta: float) -> void:
 	clock += delta
 	ctx.state["weather_clock"] = clock
@@ -88,7 +61,6 @@ func _process(delta: float) -> void:
 	ctx["rain"] = wet
 	rain.emitting = wet > 0.35
 	rain.global_position = W.player.global_position + Vector3(0, 16, 0)
-	hiss.volume_db = lerpf(-60.0, HISS_DB, clampf(wet * 1.5, 0.0, 1.0)) if wet > 0.02 else -80.0
 	var base = ctx.parts.get("base")  # (base.gd sets the light each frame before us: we dim what it set)
 	if base and base.light and wet > 0.0:
 		base.light.light_energy *= lerpf(1.0, 0.35, wet)
