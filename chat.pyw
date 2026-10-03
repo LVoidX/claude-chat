@@ -360,6 +360,7 @@ class ChatApp:
         except tk.TclError:
             pass
         if state is None:
+            root.geometry("1100x750")  # the size when un-maximized
             root.state("zoomed")
         root.bind("<F11>", lambda e: root.attributes("-fullscreen", not root.attributes("-fullscreen")))
         root.bind("<Escape>", self.on_escape)
@@ -551,6 +552,8 @@ class ChatApp:
         except Exception:
             pass
         self.world_send(cmd="show")
+        # withdraw() forgets "maximized"; remember it on the window itself (survives live reloads)
+        self.root.was_zoomed = self.root.state() == "zoomed"
         self.root.withdraw()
         self.showing_chat = False
         if self.claude:  # warm up Barnaby and the Sonnet helper he hands big requests to
@@ -564,6 +567,8 @@ class ChatApp:
         self.showing_chat = True
         self.root.title("Claude")
         self.root.deiconify()
+        if getattr(self.root, "was_zoomed", True) and not self.root.attributes("-fullscreen"):
+            self.root.state("zoomed")
         self.root.lift()
         try:
             # Windows only lets the program you last used bring itself to the front. A tapped Alt key
@@ -742,7 +747,7 @@ class ChatApp:
         except OSError:
             mtime = self.mtime
         # Wait until Claude's turn is over so the reply isn't lost mid-edit.
-        if mtime != self.mtime and not self.busy:
+        if mtime != self.mtime and not self.busy and not self.listening:  # don't lose a recording
             self.mtime = mtime
             self.reload()
             if not self.alive:
@@ -803,6 +808,8 @@ class ChatApp:
             app.write(f"Reload failed, kept the old version:\n{type(e).__name__}: {e}\n\n", "err")
 
     def write(self, text, tag=None, lane=None):
+        if not self.alive:  # an older version's leftover callback: its widgets are gone
+            return
         lane = lane or self.lanes["main"]
         history = lane.history
         if history and history[-1][1] == tag:
@@ -893,6 +900,8 @@ class ChatApp:
 
     def indicate(self, on, note=True):
         """Show listening state: red box outline, title and a line in the chat."""
+        if not self.alive:
+            return
         self.root.title("Claude - listening..." if on else "Claude")
         self.entry.configure(highlightthickness=2 if on else 1,
                              highlightbackground="#ff4d4d" if on else "#222222",
@@ -1037,6 +1046,8 @@ class ChatApp:
         return text
 
     def heard(self, text, gen):
+        if not self.alive:  # a live reload happened while this was being transcribed
+            return
         if not self.listening or gen != self.gen:  # cancelled with the button
             return
         text = NAME_FIXES.sub(lambda m: "Marigold" if m.group(0).lower().startswith("mari") else "Barnaby", text or "")
