@@ -73,6 +73,7 @@ $link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath("Desktop"
 $link.TargetPath = $pythonw
 $link.Arguments = '"' + (Join-Path $here "chat.pyw") + '"'
 $link.WorkingDirectory = $here
+$link.IconLocation = (Join-Path $here "claude-chat.ico")
 $link.Save()
 Write-Host "Made 'Claude Chat' on your desktop."
 

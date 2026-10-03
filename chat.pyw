@@ -354,6 +354,10 @@ class ChatApp:
 
         root.title("Claude")
         root.configure(bg=BG)
+        try:
+            root.iconbitmap(default=os.path.join(HERE, "claude-chat.ico"))
+        except tk.TclError:
+            pass
         if state is None:
             root.state("zoomed")
         root.bind("<F11>", lambda e: root.attributes("-fullscreen", not root.attributes("-fullscreen")))
@@ -1330,6 +1334,32 @@ class ChatApp:
         self.entry.delete(0, "end")
         self.submit(prompt)
 
+    def mic_test(self):
+        """/mic: which microphone is used, how loud it hears you (talk for 4 seconds), and which speech model
+        is loaded. For finding out why speech is not picked up well."""
+        say = lambda text, tag="you": self.root.after(0, self.write, text, tag)
+        try:
+            import numpy as np
+            import sounddevice as sd
+            device = sd.query_devices(kind="input")
+            say(f"[mic test: using \"{device['name']}\" (the Windows default). Say something for 4 seconds...]\n\n")
+            audio = sd.rec(int(4 * 16000), samplerate=16000, channels=1, dtype="float32")
+            sd.wait()
+            blocks = audio[: len(audio) // 1600 * 1600].reshape(-1, 1600)
+            levels = np.sqrt((blocks ** 2).mean(axis=1))
+            quiet, loud = float(np.percentile(levels, 10)), float(levels.max())
+            # hands-free listening starts when a block is louder than max(0.012, 3 x the background)
+            needed = max(0.012, quiet * 3)
+            verdict = ("good: your voice is well above what hands-free listening needs" if loud > needed * 2 else
+                       "borderline: hands-free listening may miss you; speak up or raise the mic volume" if loud > needed else
+                       "too quiet: hands-free listening won't hear you; raise the mic volume in Windows sound settings")
+            worker = getattr(self.worker, "device", "") if self.worker else ""
+            model = {"cuda": "large-v3-turbo on the GPU", "cpu": "small.en on the CPU"}.get(worker, "not loaded yet (still starting or downloading)")
+            say(f"[mic test: background {quiet:.4f}, your voice up to {loud:.4f}, needed {needed:.4f} -> {verdict}. "
+                f"Speech model: {model}.]\n\n")
+        except Exception as e:
+            say(f"[mic test failed: {type(e).__name__}: {e}]\n\n", "err")
+
     def mouse_test(self, ticks=100, seen=None):
         """Report the key code of anything pressed for ~10s, to find a button's real code."""
         if seen is None:
@@ -1350,6 +1380,9 @@ class ChatApp:
         assistant in the left-hand one. The two lanes run independently."""
         if prompt == "/mousetest":
             self.mouse_test()
+            return
+        if prompt == "/mic":
+            threading.Thread(target=self.mic_test, daemon=True).start()
             return
         if prompt == "/closeworld":
             self.close_world()
@@ -1864,7 +1897,59 @@ class ChatApp:
         if lane.voice_turn and not lane.spoken_early and not lane.muted:
             self.speak("".join(lane.reply), npc=lane.npc_turn, lane=lane)
 
+class _GUID(ctypes.Structure):
+    _fields_ = [("d1", ctypes.c_uint32), ("d2", ctypes.c_uint16), ("d3", ctypes.c_uint16), ("d4", ctypes.c_ubyte * 8)]
+
+    def __init__(self, text):
+        h = text.replace("-", "")
+        super().__init__(int(h[:8], 16), int(h[8:12], 16), int(h[12:16], 16),
+                         (ctypes.c_ubyte * 8)(*bytes.fromhex(h[16:])))
+
+
+class _PROPKEY(ctypes.Structure):
+    _fields_ = [("fmtid", _GUID), ("pid", ctypes.c_uint32)]
+
+
+class _PROPVARIANT(ctypes.Structure):  # only the VT_LPWSTR form; padded to the full 24 bytes
+    _fields_ = [("vt", ctypes.c_ushort), ("r1", ctypes.c_ushort), ("r2", ctypes.c_ushort), ("r3", ctypes.c_ushort),
+                ("text", ctypes.c_wchar_p), ("pad", ctypes.c_void_p)]
+
+
+def taskbar_identity(root):
+    """Give the window its own taskbar identity with a relaunch command, so "Pin to taskbar" on the running
+    app pins Claude Chat itself (without this the pin is plain pythonw.exe, which opens nothing)."""
+    try:
+        app_id = "ClaudeChat.App"
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(ctypes.c_wchar_p(app_id))
+        root.update_idletasks()
+        hwnd = int(root.wm_frame(), 16)
+        exe = sys.executable
+        if exe.lower().endswith("python.exe"):  # relaunch without a console window
+            exe = exe[:-len("python.exe")] + "pythonw.exe"
+        store = ctypes.c_void_p()
+        iid = _GUID("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")  # IPropertyStore
+        if ctypes.windll.shell32.SHGetPropertyStoreForWindow(ctypes.c_void_p(hwnd), ctypes.byref(iid),
+                                                             ctypes.byref(store)) != 0:
+            return
+        vtbl = ctypes.cast(ctypes.cast(store, ctypes.POINTER(ctypes.c_void_p))[0], ctypes.POINTER(ctypes.c_void_p))
+        set_value = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_void_p, ctypes.POINTER(_PROPKEY),
+                                       ctypes.POINTER(_PROPVARIANT))(vtbl[6])
+        release = ctypes.WINFUNCTYPE(ctypes.c_ulong, ctypes.c_void_p)(vtbl[2])
+        fmt = "9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"
+        icon = os.path.join(HERE, "claude-chat.ico")
+        props = [(2, f'"{exe}" "{SCRIPT}"'),                              # RelaunchCommand
+                 (3, icon if os.path.exists(icon) else exe + ",0"),        # RelaunchIconResource
+                 (4, "Claude Chat"),                                       # RelaunchDisplayNameResource
+                 (5, app_id)]                                              # ID (set last)
+        for pid, text in props:
+            set_value(store, ctypes.byref(_PROPKEY(_GUID(fmt), pid)), ctypes.byref(_PROPVARIANT(31, 0, 0, 0, text)))
+        release(store)
+    except Exception:
+        traceback.print_exc()
+
+
 if __name__ == "__main__":
     root = tk.Tk()
+    taskbar_identity(root)
     ChatApp(root)
     root.mainloop()
