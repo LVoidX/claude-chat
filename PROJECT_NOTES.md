@@ -135,6 +135,8 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Barnaby said "wanderer" in nearly every line (the user's complaint): persona now forbids it. (The Barnabas name-fix above was a misreading.)
 
+- Ambient sound (scene/ambience.gd: wind hiss, crickets, birds) is switched off (ENABLED := false) because the user found the noise annoying.
+
 ## Ideas mentioned but not done
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).

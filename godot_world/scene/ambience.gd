@@ -2,6 +2,7 @@ extends Node3D
 ## Ambient sound, made in code (no sound files): a soft wind always, crickets at night and birdsong by day,
 ## following ctx["night"] from base.gd. Quiet on purpose; VOLUME_DB sets the overall level.
 
+const ENABLED := false  # off: the hiss and chirps were annoying; set to true to bring the ambience back
 const VOLUME_DB := -14.0
 const RATE := 22050.0
 
@@ -20,6 +21,8 @@ var cricket_rate := 0.0
 
 func build(c: Dictionary) -> void:
 	ctx = c
+	if not ENABLED:
+		return
 	var gen := AudioStreamGenerator.new()
 	gen.mix_rate = RATE
 	gen.buffer_length = 0.25
