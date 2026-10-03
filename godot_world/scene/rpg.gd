@@ -55,9 +55,6 @@ const QUESTS := [
 	{"id": "barrow", "title": "The Restless Dead", "level": 3, "kind": "kill", "what": "skeleton", "n": 6,
 		"text": "Something has stirred the old barrow in the north-western woods. The dead walk there. Put them back to rest.",
 		"xp": 140, "gold": 60, "items": {"potion": 2}},
-	{"id": "troll", "title": "The Troll of the East Wood", "level": 4, "kind": "kill", "what": "troll", "n": 1,
-		"text": "A troll has made camp in the eastern forest, past the mill road, and eats anyone who wanders near. The lord offers a reward, and the smith a blade.",
-		"xp": 300, "gold": 150, "items": {"steel_sword": 1}},
 ]
 
 ## What the smith sells (and he buys everything that has a price, for half of it).
@@ -287,6 +284,9 @@ func ready_to_hand_in(q: Dictionary) -> bool:
 
 ## Something happened that quests may count: ("kill", "wolf"), ("find", "ring"), ...
 func event(kind: String, what: String) -> void:
+	var story = ctx.parts.get("story")  # the main story's quests count too
+	if story:
+		story.event(kind, what)
 	for q in QUESTS:
 		if qstate(q.id) != "active" or q.what != what:
 			continue
@@ -521,11 +521,19 @@ func refresh_hud() -> void:
 	xp_bar.value = int(st().xp)
 	level_text.text = "Level %d" % st().level
 	gold_text.text = "%d gold" % count("gold")
+	var text := ""
+	var story = ctx.parts.get("story")  # the main story's chapter and quests first
+	if story and story.built():
+		var main: Array = story.tracker_lines()
+		if not main.is_empty():
+			text = story.chapter_title().to_upper() + "\n" + "\n".join(main) + "\n\n"
 	var lines := []
 	for q in QUESTS:
 		if qstate(q.id) == "active":
 			lines.append(quest_line(q))
-	tracker.text = ("QUESTS\n" + "\n".join(lines)) if lines else ""
+	if lines:
+		text += "QUESTS\n" + "\n".join(lines)
+	tracker.text = text
 
 
 # --- screens (inventory, journal, board, shop) ------------------------------------------------------------
@@ -652,6 +660,19 @@ func fill_inventory(body: VBoxContainer) -> void:
 
 
 func fill_journal(body: VBoxContainer) -> void:
+	var story = ctx.parts.get("story")
+	if story and story.built():
+		body.add_child(label(story.chapter_title(), 19, Color("#ffd24d")))
+		var intro := label(str(story.data.get("intro", "")), 14, Color("#e8d9b0"))
+		intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		intro.custom_minimum_size = Vector2(660, 0)
+		body.add_child(intro)
+		for q in story.quests():
+			var head: String = ("[done] " + q.title) if story.is_done(q.id) else q.title + story.progress_text(q)
+			row(body, head, "" if story.is_done(q.id) else str(q.get("text", "")), [])
+		if story.st().get("finished", false):
+			body.add_child(label("This chapter is over. The next one is being written...", 14, Color("#8fb4ff")))
+		body.add_child(HSeparator.new())
 	var any := false
 	for q in QUESTS:
 		var s := qstate(q.id)

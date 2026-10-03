@@ -162,6 +162,53 @@ e.g. `[follow] On my way.` (it runs about two seconds after you finish, once the
 When done, answer AS the character the user was talking to, in one short spoken sentence, in their own voice
 and personality: plain text, no markdown, saying in simple words what you did. Never mention being an AI or Sonnet.
 """
+STORY_DIR = os.path.join(HERE, "godot_world", "story")
+# The storyteller: started (as its own claude process) when a chapter of the main story ends. It reads what the
+# player did and writes the next chapter, building the consequences into the world. See scene/story.gd.
+STORYTELLER_NOTE = """
+
+You are the STORYTELLER of the 3D world (the Godot game in godot_world/). The user plays a medieval RPG there.
+Its main story is told in chapters, and the whole point of the game is that the story CHANGES THE WORLD: what
+the player chose and did must stay visible in the places, people and creatures, and every change opens new quests.
+(Example: a castle-raid quest burns the castle; next time the player comes by it is a burnt ruin, and the next
+chapter asks them to rebuild it, or to deal with whoever moved into the ruin.)
+A chapter just ended. Write the next one, and build it into the world.
+
+Read first: godot_world/story/log.md (the story so far, with what the player actually did), godot_world/story/
+flags.json (the world's current story flags), the chapter just finished (godot_world/story/chapter.json, or
+seed.json for chapter 1, as an example of the format), the top of godot_world/scene/story.gd (the chapter format and
+quest kinds), PROJECT_NOTES.md (what exists and the user's taste), and the scene/*.gd files of anything you change.
+
+1. Decide the consequences of what the player did, and what happens next. Make it react to their actual choice and
+   outcome. Escalate gradually, keep it grounded medieval fantasy, coherent with earlier chapters. Keep it generic
+   enough that the game's direction stays open (the user has not decided on a core concept yet).
+2. Build the changes into the world, gated on story flags, so a world without the flag looks exactly as before:
+   `if W.flag("castle") == "burnt": ...`. Change existing places (burn, damage, occupy, abandon, fortify, decorate,
+   repair), people (someone leaves, arrives, moves, changes), creatures (a new threat, an ally; creatures.gd has
+   KINDS, spawn(kind, at, home) and model_<kind>() for new kinds; a tame creature has "tame": true). Never delete
+   what was there: branch on the flag. Use W.flag in build() and rebuild-safe code (all parts are rebuilt when
+   flags change). Keep each chapter to one or two big, visible changes done well, rather than many small ones.
+3. Pre-build the outcomes of the NEW chapter's quests too: each quest's "sets" flags are applied the moment it is
+   done and the world rebuilds right away, so the code for those outcomes must already exist (gated on those flags).
+   A choice between two or three quests with different outcomes ("ends_when": "any") is great; or a few steps that
+   all must be done ("all"). Use "start_sets" for changes that happen as the chapter begins (e.g. the raid already
+   happened: "start_sets": {"castle": "burnt"}).
+4. Quest kinds: kill (existing or new creature kind), reach (a place), bring (items to a place; rpg.gd ITEMS lists
+   them, and you may add items), event (custom: a part calls ctx.parts["story"].complete("quest_id"), e.g. from an
+   E action: a part's interactables() returns [{"pos", "label", "act": Callable, "range"}]). Make every quest truly
+   doable with what exists or what you build now; fair for the player's level (state in world_state.json, "rpg").
+   Give rewards that fit (xp 100-400, some gold or items).
+5. Places (x, z; north is -z): meadow centre (0, 0), flat, radius 58; castle (0, -140) on a hilltop (y 17), gate
+   facing south at (0, -120); village (-46, 0) with the quest board (-30, -5.5) and the smith (-30, 8); Marigold's
+   stall (12, 18); windmill (74, 58); wheat field (-30, -28); log pile (-54, -20); sheep pasture (-40, 24); wolf dens
+   (80, -32), (-24, 92), (-112, -20); the old barrow (-80, -80); the troll camp (96, 12); roads from the centre north
+   to the castle, west to the village, east to the mill. W.ground_y(x, z) is the height; terrain.keep_clear() keeps
+   trees off places (bump terrain VERSION if you change it).
+6. Write godot_world/story/chapter.json LAST (it starts the chapter in the running game), with "chapter" one higher
+   than the last. Then read claude-world.log and fix any error until the world reloads cleanly. Never edit chat.pyw,
+   godot_bridge.py or world_state.json. Add a short line about the new flags/changes to PROJECT_NOTES.md.
+When done, reply with one short sentence naming the new chapter. No questions: you are working alone.
+"""
 NPCS = {  # the characters you can talk to by walking up to them: who -> display name, process kind
     "barnaby": {"name": "Barnaby", "kind": "npc"},
     "marigold": {"name": "Marigold", "kind": "npc2"},
@@ -351,6 +398,7 @@ class ChatApp:
         self.xbutton4_down = False
         self.tab_down = False
         self.alive = True  # set False when a newer version takes over the window
+        root.chat_app = self  # the current version, for threads started by an older one
         self.mtime = os.path.getmtime(SCRIPT)
 
         root.title("Claude")
@@ -518,6 +566,8 @@ class ChatApp:
             self.npc_event(message.get("text", ""), message.get("label"), message.get("who", "barnaby"))
         elif kind == "switch":  # Tab was pressed in the world
             self.show_chat()
+        elif kind == "story_next":  # a chapter of the main story ended: have the next one written
+            self.start_storyteller(int(message.get("chapter", 0)))
 
     def lane_for(self, who):
         """The lane a character talks in: Marigold has her own, Barnaby (and anyone else) the "npc" one."""
@@ -1721,7 +1771,62 @@ class ChatApp:
     def refresh_jobs(self):
         """Show what the assistant is doing and what is queued behind it (top left of the world)."""
         lines = ([self.job_now] if self.job_now else []) + [j["title"] for j in self.jobs]
+        story = getattr(self.root, "story_job", {})
+        if story.get("running"):
+            lines.append(f"Storyteller: writing chapter {story['chapter'] + 1}")
         self.world_send(cmd="jobs", lines=lines)
+
+    # --- the storyteller: writes the next chapter of the main story when one ends (scene/story.gd) ---
+    def start_storyteller(self, chapter):
+        """Kept on the window itself (self.root), so a live reload of this file doesn't lose track of it."""
+        job = getattr(self.root, "story_job", None) or {"running": False, "tries": {}}
+        self.root.story_job = job
+        try:  # already written (the world re-asks after a reload)?
+            with open(os.path.join(STORY_DIR, "chapter.json"), encoding="utf-8") as f:
+                if int(json.load(f).get("chapter", 0)) > chapter:
+                    return
+        except (OSError, ValueError):
+            pass
+        if job["running"] or not self.claude or job["tries"].get(chapter, 0) >= 2:
+            return
+        job.update(running=True, chapter=chapter)
+        job["tries"][chapter] = job["tries"].get(chapter, 0) + 1
+        self.debug(f"storyteller: writing chapter {chapter + 1}")
+        self.refresh_jobs()
+        threading.Thread(target=self.run_storyteller, args=(job, chapter), daemon=True).start()
+
+    def run_storyteller(self, job, chapter):
+        prompt = (f"Chapter {chapter} of the story just ended. Read godot_world/story/log.md and the rest as described, "
+                  f"then write chapter {chapter + 1} and build it into the world.")
+        cmd = [self.claude, "-p", "--model", "sonnet", "--output-format", "json",
+               "--permission-mode", "acceptEdits", "--strict-mcp-config",
+               "--tools", "Read,Edit,Write,Glob,Grep", "--disable-slash-commands",
+               "--append-system-prompt", SYSTEM_PROMPT + STORYTELLER_NOTE]
+        summary = ""
+        try:
+            done = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
+                                  cwd=HERE, timeout=1500,
+                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            try:
+                summary = json.loads(done.stdout).get("result", "")
+            except ValueError:
+                summary = (done.stdout or done.stderr or "")[-300:]
+        except Exception as e:
+            summary = f"{type(e).__name__}: {e}"
+        self.debug(f"storyteller finished chapter {chapter + 1}: {summary[:300]!r}")
+        job["running"] = False
+        try:  # the world shows the new chapter by itself once chapter.json is written
+            with open(os.path.join(STORY_DIR, "chapter.json"), encoding="utf-8") as f:
+                ok = int(json.load(f).get("chapter", 0)) > chapter
+        except (OSError, ValueError):
+            ok = False
+        if not ok:
+            self.world_send(cmd="notice", text="The storyteller stumbled. It will try again shortly.")
+            self.debug("storyteller: no new chapter.json was written")
+        app = getattr(self.root, "chat_app", self)  # (the window may have live-reloaded meanwhile)
+        self.root.after(0, app.refresh_jobs)
+        if not ok:
+            self.root.after(20000, app.start_storyteller, chapter)
 
     def refresh_quests(self):
         """Show the active quests on the chat's top bar and on the world's screen."""

@@ -239,7 +239,7 @@ func handle(c: Dictionary) -> void:
 # --- the world's parts (scene/*.gd), reloaded live ---------------------------------------------------
 
 # Parts that are switched off for now (everything that isn't medieval). Delete a name to bring it back.
-const DISABLED_PARTS := ["parkour.gd", "goblins.gd", "knockback.gd", "sea.gd", "conchpolish.gd"]
+const DISABLED_PARTS := ["parkour.gd", "knockback.gd", "sea.gd", "conchpolish.gd"]
 
 
 func part_files() -> Array:
@@ -528,6 +528,12 @@ func quest_done(id: String) -> void:
 	send({"t": "quest_done", "id": id})
 
 
+## A story flag: what the main story has done to the world ("" = never happened). Parts build by it, e.g.
+## if W.flag("castle") == "burnt": build the ruin instead. Set by scene/story.gd when story quests finish.
+func flag(name: String) -> String:
+	return str(ctx.get("state", {}).get("story", {}).get("flags", {}).get(name, ""))
+
+
 ## The height of the ground at x, z (0 in the flat meadow; the hills come from scene/terrain.gd).
 func ground_y(x: float, z: float) -> float:
 	var terrain = ctx.get("parts", {}).get("terrain")
@@ -616,6 +622,17 @@ func _physics_process(delta: float) -> void:
 	head.position.y = lerpf(EYE_HEIGHT, CROUCH_EYE, crouch_amount)
 	var speed: float = setting("RUN_SPEED", 10.0) if Input.is_physical_key_pressed(KEY_SHIFT) else setting("WALK_SPEED", 5.0)
 	speed *= lerpf(1.0, 0.4, crouch_amount) if crouch_amount > 0.0 else 1.0
+	if ctx.get("state", {}).get("flying", false):  # flight (Barnaby's [fly]): Space up, Ctrl down, no gravity
+		var up := float(playing and Input.is_physical_key_pressed(KEY_SPACE)) - float(want_crouch)
+		var fly_speed: float = 60.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 20.0
+		var fly_dir := dir
+		if playing:  # W/S go where you look (up or down too), A/D strafe level; Space/Ctrl still work
+			var fx := float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
+			var fz := float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))
+			fly_dir = (head.global_transform.basis * Vector3(0, 0, fz) + player.transform.basis * Vector3(fx, 0, 0)).normalized()
+		player.velocity = fly_dir * fly_speed + Vector3(0, up * fly_speed, 0)
+		player.move_and_slide()
+		return
 	player.velocity.x = dir.x * speed
 	player.velocity.z = dir.z * speed
 	if player.is_on_floor():

@@ -9,3 +9,9 @@ __pycache__/
 
 # Godot's own cache (rebuilt automatically)
 godot_world/.godot/
+barnaby_chat.txt
+marigold_chat.txt
+# the player's own story so far (scene/story.gd); story/seed.json is chapter 1 and is kept
+godot_world/story/chapter.json
+godot_world/story/log.md
+godot_world/story/flags.json

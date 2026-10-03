@@ -17,6 +17,7 @@ const KINDS := {
 const DENS := [Vector3(80, 0, -32), Vector3(-24, 0, 92), Vector3(-112, 0, -20)]  # three wolves each
 const BARROW := Vector3(-80, 0, -80)  # the old burial mound, six skeletons
 const TROLL_CAMP := Vector3(96, 0, 12)
+const TROLL_ROADSIDE := Vector3(60, 0, 28)  # where Gorrak stands guard over the east road once he is paid
 const LEASH := 34.0  # how far they follow you from home
 const WINDUP := 0.45  # seconds between starting an attack and the hit
 
@@ -26,6 +27,8 @@ var foes := []  # each: {kind, node, parts, home, hp, state, timer, ...}
 var drops := []  # [node, item, count, age]
 var numbers := []  # floating damage numbers: [Label3D, age]
 var t := 0.0
+var arrows := []  # the green markers over the wolf dens; they bob and turn
+const ARROW_HEIGHT := 14.0  # tall enough to be seen over the trees
 
 
 func build(c: Dictionary) -> void:
@@ -33,14 +36,21 @@ func build(c: Dictionary) -> void:
 	W = ctx["world"]
 	for den in DENS:
 		build_den(at_ground(den))
+		build_arrow(at_ground(den))
 		for i in 3:
 			spawn("wolf", at_ground(den + Vector3(cos(i * 2.1) * 3.0, 0, sin(i * 2.1) * 3.0)), at_ground(den))
 	build_barrow(at_ground(BARROW))
 	for i in 6:
 		var a := i * TAU / 6.0
 		spawn("skeleton", at_ground(BARROW + Vector3(cos(a) * 9.0, 0, sin(a) * 9.0)), at_ground(BARROW))
-	build_camp(at_ground(TROLL_CAMP))
-	spawn("troll", at_ground(TROLL_CAMP + Vector3(0, 0, 4)), at_ground(TROLL_CAMP))
+	# The troll's fate is chapter 1 of the story (story/seed.json): slain, paid off with pelts, or still hungry.
+	var fate: String = W.flag("troll")
+	build_camp(at_ground(TROLL_CAMP), fate)
+	if fate == "appeased":  # he keeps the bargain: guards the east road, harmless unless you start it
+		spawn("troll", at_ground(TROLL_ROADSIDE), at_ground(TROLL_ROADSIDE))
+		foes[-1]["tame"] = true
+	elif fate != "slain":
+		spawn("troll", at_ground(TROLL_CAMP + Vector3(0, 0, 4)), at_ground(TROLL_CAMP))
 
 
 func at_ground(p: Vector3) -> Vector3:
@@ -61,6 +71,25 @@ func build_den(at: Vector3) -> void:
 	for i in 4:
 		var bone: MeshInstance3D = W.box(den, Vector3(randf_range(-1.5, 1.5), 0.05, randf_range(-1.5, 1.5)), Vector3(0.5, 0.07, 0.07), Color("#e6dcc0"))
 		bone.rotation.y = randf() * TAU
+
+
+## A green arrow floating over a den, pointing down at it, so you can spot the wolves from far away.
+func build_arrow(at: Vector3) -> void:
+	var arrow := Node3D.new()
+	arrow.position = at + Vector3(0, ARROW_HEIGHT, 0)
+	add_child(arrow)
+	var green := Color("#5dff9a")
+	var shaft: MeshInstance3D = W.glow(arrow, Vector3(0, 2.0, 0), Vector3(0.8, 3.0, 0.8), green, 2.5)
+	var head: MeshInstance3D = W.glow(arrow, Vector3(0, -0.2, 0), Vector3.ONE, green, 2.5)
+	var cone := CylinderMesh.new()  # a cone whose tip points down (bottom radius 0); sits just under the shaft
+	cone.top_radius = 1.8
+	cone.bottom_radius = 0.0
+	cone.height = 2.4
+	cone.radial_segments = 4
+	head.mesh = cone
+	head.position.y = 0.3
+	shaft.position.y = 3.0  # shaft bottom (1.5) just touches the cone's flat top (1.5), no overlap
+	arrows.append(arrow)
 
 
 func build_barrow(at: Vector3) -> void:
@@ -89,15 +118,24 @@ func build_barrow(at: Vector3) -> void:
 		g.rotation = Vector3(randf_range(-0.2, 0.2), randf() * 0.6, randf_range(-0.2, 0.2))
 
 
-func build_camp(at: Vector3) -> void:
+func build_camp(at: Vector3, fate := "") -> void:
 	var camp := Node3D.new()
 	camp.position = at
 	add_child(camp)
+	if fate == "slain":  # his head on a pike, the fire long cold
+		W.box(camp, Vector3(2.5, 1.6, -1.0), Vector3(0.12, 3.2, 0.12), Color("#5a3d24"))
+		W.box(camp, Vector3(2.5, 3.35, -1.0), Vector3(0.75, 0.62, 0.7), Color("#5f6b4c"))
+		for side in [-1, 1]:
+			W.box(camp, Vector3(2.5 + side * 0.18, 3.13, -1.36), Vector3(0.07, 0.24, 0.07), Color("#efe6cc"))
+		W.box(camp, Vector3(0, 0.12, 0), Vector3(0.9, 0.2, 0.9), Color("#2a2622"))  # ashes
+	elif fate == "appeased":  # a bed of wolf pelts by the fire
+		W.box(camp, Vector3(-2.5, 0.12, 1.5), Vector3(2.6, 0.22, 1.6), Color("#7a7570"))
 	for i in 6:  # a firepit ringed with stones, logs to sit on, and an awful lot of bones
 		var a := i * TAU / 6.0
 		W.box(camp, Vector3(cos(a) * 1.0, 0.15, sin(a) * 1.0), Vector3(0.4, 0.3, 0.4), Color("#5a5650"), "sphere")
-	W.glow(camp, Vector3(0, 0.25, 0), Vector3(0.9, 0.35, 0.9), Color("#ff6a1a"), 3.5)
-	W.light(camp, Vector3(0, 1.4, 0), Color("#ff8a3a"), 2.5, 12.0)
+	if fate != "slain":
+		W.glow(camp, Vector3(0, 0.25, 0), Vector3(0.9, 0.35, 0.9), Color("#ff6a1a"), 3.5)
+		W.light(camp, Vector3(0, 1.4, 0), Color("#ff8a3a"), 2.5, 12.0)
 	for p in [Vector3(3, 0.3, 0), Vector3(-2, 0.3, 2.5)]:
 		var log: MeshInstance3D = W.box(camp, p, Vector3(2.4, 0.5, 0.5), Color("#5a3d24"), "cube", true)
 		log.rotation.y = randf() * PI
@@ -248,6 +286,9 @@ func sword_hit(origin: Vector3, forward: Vector3, reach: float, arc: float) -> b
 
 
 func damage(f: Dictionary, amount: int, push: Vector3) -> void:
+	if f.get("tame", false):  # attacking a creature that made peace with you ends the peace
+		f.tame = false
+		W.show_notice("%s roars: \"Oathbreaker!\"" % KINDS[f.kind].name, 4.0)
 	f.hp -= amount
 	f.hurt = 0.18
 	f.bar.visible = true
@@ -341,6 +382,9 @@ func pop_number(at: Vector3, text: String, color: Color) -> void:
 
 func _process(delta: float) -> void:
 	t += delta
+	for arrow in arrows:
+		arrow.position.y = W.ground_y(arrow.position.x, arrow.position.z) + ARROW_HEIGHT + sin(t * 2.0) * 0.6
+		arrow.rotation.y = t
 	var player: Vector3 = W.player.global_position
 	var rpg = ctx.parts.get("rpg")
 	for f in foes:
@@ -372,6 +416,18 @@ func _process(delta: float) -> void:
 			numbers.erase(n)
 
 
+## Leaves you alone: a tamed creature, or the troll while you bring him the pelts he was promised (story).
+func peaceful(f: Dictionary) -> bool:
+	if f.get("tame", false):
+		return true
+	if f.kind == "troll":
+		var story = ctx.parts.get("story")
+		var rpg = ctx.parts.get("rpg")
+		if story and rpg and story.built() and story.open_quests().any(func(q): return q.id == "pay_gorrak") and rpg.count("pelt") >= 4:
+			return true
+	return false
+
+
 func think(f: Dictionary, player: Vector3, rpg, delta: float) -> void:
 	var info: Dictionary = KINDS[f.kind]
 	var node: Node3D = f.node
@@ -392,7 +448,7 @@ func think(f: Dictionary, player: Vector3, rpg, delta: float) -> void:
 				f.goal = f.home + Vector3(randf_range(-6, 6), 0, randf_range(-6, 6))
 			goal = f.goal
 			speed = float(info.speed) * 0.25
-			if dist < float(info.aggro) and not dead_player and absf(player.y - node.position.y) < 4.0:
+			if dist < float(info.aggro) and not dead_player and absf(player.y - node.position.y) < 4.0 and not peaceful(f):
 				f.state = "chase"
 				if f.kind == "troll" and rpg:
 					W.show_notice("Gorrak the Troll roars!", 3.0)

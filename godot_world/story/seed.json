@@ -1,0 +1,37 @@
+{
+  "chapter": 1,
+  "title": "Gorrak's Hunger",
+  "intro": "Gorrak the troll has grown bold. Three sheep vanished from the pasture last night, and the shepherd swears he saw the troll's shadow on the east road. Kill the beast, or buy his peace with wolf pelts. Either way, the valley will remember what you chose.",
+  "ends_when": "any",
+  "start_sets": {},
+  "quests": [
+    {
+      "id": "slay_gorrak",
+      "title": "Slay Gorrak",
+      "text": "Find the troll's camp in the eastern forest, past the mill road, and end him. He is strong: level 4 and good armour are wise.",
+      "kind": "kill",
+      "what": "troll",
+      "n": 1,
+      "sets": {"troll": "slain"},
+      "outcome": "The wanderer slew Gorrak the troll in his own camp. His head now rots on a pike there, his fire is cold, and the east road is safe.",
+      "xp": 300,
+      "gold": 150,
+      "items": {"steel_sword": 1}
+    },
+    {
+      "id": "pay_gorrak",
+      "title": "Buy Gorrak's peace",
+      "text": "Bring the troll 4 wolf pelts for his bed (he won't attack while you carry them). A warm, flattered troll might leave the sheep alone.",
+      "kind": "bring",
+      "what": "pelt",
+      "n": 4,
+      "pos": [96, 16],
+      "radius": 7,
+      "sets": {"troll": "appeased"},
+      "outcome": "The wanderer paid Gorrak a tribute of four wolf pelts. The troll, warm and flattered, swore off sheep and now stands guard over the east road by the mill.",
+      "xp": 150,
+      "gold": 0,
+      "items": {}
+    }
+  ]
+}
