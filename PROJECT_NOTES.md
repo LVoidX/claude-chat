@@ -137,9 +137,11 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Ambient sound (scene/ambience.gd: wind hiss, crickets, birds) is switched off (ENABLED := false) because the user found the noise annoying.
 
-- Non-medieval stuff switched off temporarily (2026-10-03): world.gd DISABLED_PARTS (parkour, goblins,
+- Non-medieval stuff switched off temporarily (2026-10-03): world.gd DISABLED_PARTS (parkour,
   knockback, sea, conchpolish) and base.gd SHOW_PLACED := false (spawned objects). Files and saved state are untouched; remove
   the names / set true to bring them back.
+
+- scene/fly.gd: [fly] / [land] toggle state["flying"]; world.gd physics then lets Space rise, Ctrl descend, Shift faster.
 
 ## Ideas mentioned but not done
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
@@ -148,3 +150,16 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Goblins (scene/goblins.gd, [goblins] / [goblins away]): harmless ring army, 3 sword hits each. Hotbar + sword in scene/hotbar.gd ([sword] gives; keys 1 hammer, 2 sword).
 
 - barnaby_chat.txt / marigold_chat.txt: plain-text copies of the characters talks, written by save_state(). When the user says "read Barnaby", read barnaby_chat.txt (Marigold: marigold_chat.txt).
+- scene/rocket.gd: [rocket] launcher on slot 3 (key 3), rockets explode and shove the user/characters (rocket jump).
+
+## RPG layer (2026-10-03)
+- scene/rpg.gd: level/xp/health/gold, inventory (I), quest journal (J), quest board by the village road (E), the smith's
+  shop across the road (E: buy, sell for half), Q drinks a potion, death = wake at the well minus 10% gold. State in
+  state["rpg"]. API for other parts: give/take/count/add_xp/add_gold/hurt/event; parts can offer E actions with
+  interactables(). Commands [give item n], [xp n], [heal] (Barnaby and Marigold have them).
+- scene/creatures.gd: wolf dens (E, S, W woods), the barrow with skeletons (NW), Gorrak the troll's camp (E forest).
+  hotbar.gd's sword calls creatures.sword_hit(); damage = weapon + level - 1. Loot drops are picked up by walking over.
+- scene/gathering.gd: silverleaf herbs (meadow edge), mushrooms (woods), iron ore rocks (high slopes, E to mine), the
+  miller's ring near the windmill (only while that quest is active).
+- New quests: add an entry to QUESTS in rpg.gd (kinds kill / bring / find). New items: ITEMS. terrain.keep_clear keeps
+  trees out of the camps.

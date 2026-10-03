@@ -33,7 +33,7 @@ func plan() -> Array:
 	var castle: Vector3 = ctx.parts["terrain"].CASTLE
 	var top: float = ctx.parts["terrain"].CASTLE_TOP
 	var gate := Vector3(castle.x, top, castle.z + 20.0)
-	var wall_y := top + 7.0  # walking along the top of the south wall, behind the battlements
+	var wall_y := top - 0.3 + 7.0 # walking along the top of the south wall, behind the battlements
 	var wall_z := castle.z + 15.6
 	var pasture: Vector3 = ctx.parts["animals"].PASTURE if ctx.parts.has("animals") else village + Vector3(6, 0, 24)
 	return [
@@ -203,9 +203,14 @@ func make_tool(arm: Node3D, tool: String) -> void:
 		"axe":
 			W.box(arm, hand + Vector3(0, -0.05, -0.25), Vector3(0.05, 0.05, 0.75), wood)
 			W.box(arm, hand + Vector3(0, -0.05, -0.6), Vector3(0.04, 0.22, 0.14), Color("#9aa0a8"))
-		"hoe":
-			W.box(arm, hand + Vector3(0, -0.05, -0.45), Vector3(0.04, 0.04, 1.3), wood)
-			W.box(arm, hand + Vector3(0, -0.15, -1.08), Vector3(0.16, 0.2, 0.03), Color("#7c828a"))
+		"hoe":  # held at the hand, the shaft slanting forward and down so the blade reaches the ground
+			var grip := Node3D.new()
+			grip.position = hand
+			grip.rotation.x = -0.61
+			arm.add_child(grip)
+			W.box(grip, Vector3(0, 0, -0.55), Vector3(0.045, 0.045, 1.4), wood)
+			var blade: MeshInstance3D = W.box(grip, Vector3(0, -0.07, -1.24), Vector3(0.2, 0.17, 0.03), Color("#7c828a"))
+			blade.rotation.x = 0.61  # the blade hangs straight down
 		"bucket":
 			W.box(arm, hand + Vector3(0, -0.22, 0), Vector3(0.22, 0.24, 0.22), Color("#7a5530"))
 			W.box(arm, hand + Vector3(0, -0.1, 0), Vector3(0.02, 0.12, 0.02), Color("#333333"))

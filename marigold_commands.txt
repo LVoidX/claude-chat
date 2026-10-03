@@ -1,4 +1,9 @@
 [throw]  Marigold picks Barnaby up and flings him in an arc through the air so he lands in front of the user (he lies dazed a moment, then gets up).  | when: throw barnaby to me, throw barnaby, toss barnaby to me, toss barnaby, chuck barnaby, throw him to me, hurl barnaby, launch barnaby
 
+[land]  takes flight away from the user; they fall back to the ground.  | when: stop flying, let me land, no more flying, take away flight, take away my flying, i want to land
+[fly]  grants the user the power of flight until [land].  | when: let me fly, give me flight, i want to fly, grant me flight, make me fly
 [bread]  Marigold gives the user a glowing loaf of moonbread to hold; F eats it and they glow for a while.  | when: give me bread, give me the bread, can i have some bread, give me moonbread, give me a loaf, can i have a loaf, give me some moonbread
 [goblins]  calls up a harmless army of green goblins that march in and surround the user ([goblins 20] for a number, [goblins away] sends them off).  | when: spawn the goblins, spawn goblins, spawn the goblin army, goblin army, summon the goblins, call the goblins, bring the goblins, release the goblins
+[give potion 2]  gives the user items for their RPG inventory (potion, mushroom, herb, iron_sword, leather) or [give gold 20]. She often pays in potions she brewed; keep it modest.
+[xp 50]  gives the user experience points towards their next level (a reward for a good deed).
+[heal]  Marigold tends the user's wounds with her salves: full health.  | when: heal me, i need healing, patch me up, can you heal me, i'm hurt, tend my wounds

@@ -4,7 +4,7 @@ extends Node3D
 ## Sword: left click swings it and hurts goblins (goblins.gd) in front of you. Given with [sword] or [hotbar].
 ## state["hotbar"] = the bar has been given, state["sword_held"] = the sword is in hand.
 
-const SLOTS := ["Hammer", "Sword", "Gun", "", "", "", "", "", ""]
+const SLOTS := ["Hammer", "Sword", "Rocket", "","", "", "", "", ""]
 const GUN_RANGE := 80.0
 const GUN_DAMAGE := 2  # a goblin takes 3 hit points: two shots
 const SLOT_SIZE := 58
@@ -29,6 +29,8 @@ var tracers := []  # [node, age] bullet trails that fade after a moment
 func build(c: Dictionary) -> void:
 	ctx = c
 	W = ctx["world"]
+	ctx.state["gun_held"] = false  # no gun any more
+	ctx.state["hotbar"] = true  # the bar is always there now, no need to be given it
 	make_sword()
 	sword.visible = held()
 	make_gun()
@@ -179,13 +181,13 @@ func give(slot := 1) -> void:
 	ctx.state["sword_held"] = false  # (so selecting the slot puts that item in hand rather than away)
 	ctx.state["gun_held"] = false
 	select(slot)
-	W.show_notice("Hotbar: 1 hammer, 2 sword, 3 gun. Left click uses what you hold.", 6.0)
+	W.show_notice("Hotbar: 1 hammer, 2 sword. Left click uses what you hold.", 6.0)
 
 
 func key(event: InputEventKey) -> void:
 	if not has_bar():
 		return
-	if event.keycode >= KEY_1 and event.keycode <= KEY_3:
+	if event.keycode >= KEY_1 and event.keycode <= KEY_2:  # (slot 3, the gun, is taken away)
 		select(event.keycode - KEY_1)
 
 
@@ -242,10 +244,13 @@ func attack() -> void:
 	if swing > 0.35:
 		return
 	swing = 1.0
+	var forward: Vector3 = -W.player.global_transform.basis.z
 	var goblins = ctx.parts.get("goblins")
 	if goblins:
-		var forward: Vector3 = -W.player.global_transform.basis.z
 		goblins.hit(W.player.position, forward, REACH, ARC)
+	var creatures = ctx.parts.get("creatures")  # the RPG's wolves, skeletons and troll
+	if creatures:
+		creatures.sword_hit(W.player.position, forward, REACH, ARC)
 
 
 func _process(delta: float) -> void:
@@ -288,8 +293,8 @@ func _process(delta: float) -> void:
 func seen_from(_from: Vector3, _viewer: Node) -> Array:
 	var seen := []
 	if has_bar():
-		seen.append("the wanderer has a hotbar (1 hammer, 2 sword, 3 gun)%s" % (
-			", the sword drawn" if held() else ", holding a pistol" if gun_held() else ""))
+		seen.append("the wanderer has a hotbar (1 hammer, 2 sword)%s" % (
+			", the sword drawn" if held() else ""))
 	return seen
 
 
@@ -298,7 +303,7 @@ func handle(c: Dictionary) -> bool:
 		"sword", "hotbar":
 			give()
 		"gun":
-			give(2)
+			pass  # the gun is taken away
 		"unsword", "ungun":
 			ctx.state["sword_held"] = false
 			ctx.state["gun_held"] = false
