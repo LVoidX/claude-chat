@@ -49,7 +49,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - godot_world/world.gd = engine: player (CharacterBody3D), HUD (status top-center, notices top-right, quests
   top-left), show/hide (only chat or world on screen), the link, and helpers for parts: box(), glow(),
   light(), build_model(), mat(), tex(), where(), face(), add_collider(), seen_around(), send(), quest_done()
-  (throttled: safe every frame), show_notice(). Editing it restarts the world. Errors in a part name its file
+  (throttled: safe every frame), show_notice(). Editing it swaps the engine in place (reload_engine/take_over: link, player spot, window and ctx carry over; an error keeps the old one). Only godot_bridge.py edits restart the world. Errors in a part name its file
   (res://scene/x.gd:line) in claude-world.log.
 - godot_world/scene/*.gd = the world's parts, one file per thing, all rebuilt live when any part or model is
   saved; a file with an error is refused and the old world keeps running. See the top of scene/base.gd for the
@@ -137,8 +137,14 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Ambient sound (scene/ambience.gd: wind hiss, crickets, birds) is switched off (ENABLED := false) because the user found the noise annoying.
 
+- Non-medieval stuff switched off temporarily (2026-10-03): world.gd DISABLED_PARTS (parkour, goblins,
+  knockback, sea, conchpolish) and base.gd SHOW_PLACED := false (spawned objects). Files and saved state are untouched; remove
+  the names / set true to bring them back.
+
 ## Ideas mentioned but not done
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).
 - Builder hammer (scene/builder.gd): H or [hammer] holds it; click builds 1 m blocks, right click removes, C/wheel colour. Barnaby can [climb] onto placed objects.
 - Goblins (scene/goblins.gd, [goblins] / [goblins away]): harmless ring army, 3 sword hits each. Hotbar + sword in scene/hotbar.gd ([sword] gives; keys 1 hammer, 2 sword).
+
+- barnaby_chat.txt / marigold_chat.txt: plain-text copies of the characters talks, written by save_state(). When the user says "read Barnaby", read barnaby_chat.txt (Marigold: marigold_chat.txt).

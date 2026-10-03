@@ -8,11 +8,14 @@ extends Node3D
 ## What is IN the world lives in scene/*.gd, one file per thing (base.gd = ground and sky, barnaby.gd =
 ## Barnaby, ...). When any of them, or a model in models/, is saved, all parts are rebuilt inside the same
 ## window without restarting. If a file has an error, nothing is swapped: the old world keeps running and
-## the error goes to the log (claude-world.log). Editing THIS file restarts the whole world.
+## the error goes to the log (claude-world.log). Editing THIS file swaps the engine in place too (reload_engine):
+## the new version takes over the link, the player's spot and view, the window and ctx, then rebuilds the
+## parts. If it has an error, the old engine keeps running. Only godot_bridge.py edits restart the world.
 ##
 ## Controls: WASD move, Shift run, Space jump, mouse look, Esc frees the mouse (click to grab it again),
 ## Tab back to the chat, R back to the middle, F11 fullscreen, M / N = talk / stop (like the mouse buttons).
 
+const ENGINE_FILE := "res://world.gd"  # this file: saving it swaps the engine in place
 const PARTS_DIR := "res://scene"
 const MODELS_DIR := "res://models"
 const GRAVITY := 18.0
@@ -55,9 +58,15 @@ var state_path := ""
 var _meshes := {}
 var _materials := {}
 var _textures := {}
+var engine_mtime := 0
+var retired := false  # replaced by a newer version of this file; stop doing anything
 
 
 func _ready() -> void:
+	engine_mtime = FileAccess.get_modified_time(ENGINE_FILE)
+	if has_meta("handover"):  # a newer world.gd taking over from the running one
+		take_over(get_meta("handover"))
+		return
 	var port := 0
 	var start_hidden := false
 	for arg in OS.get_cmdline_user_args():
@@ -91,6 +100,60 @@ func _ready() -> void:
 	else:
 		show_world.call_deferred()
 	send({"t": "ready"})
+
+
+## world.gd was saved: compile it, and if it is fine, put a node running it in our place.
+func reload_engine() -> void:
+	var script := GDScript.new()
+	script.source_code = FileAccess.get_file_as_string(ENGINE_FILE)
+	script.take_over_path(ENGINE_FILE)
+	if script.reload() != OK:
+		printerr("world.gd has an error, so the engine was not swapped (the old one keeps running). Details are above.")
+		return
+	save_state()
+	retired = true
+	state_path = ""  # the new one saves from now on
+	var next := Node3D.new()
+	next.set_script(script)
+	next.set_meta("handover", {"tcp": tcp, "connected": connected, "inbox": inbox, "outbox": outbox, "ctx": ctx,
+		"state_path": project_file("world_state.json"), "was_fullscreen": was_fullscreen, "near_who": near_who,
+		"player": player.transform, "head_x": head.rotation.x, "velocity": player.velocity,
+		"status": status_label.text})
+	_swap_in.call_deferred(next)
+
+
+func _swap_in(next: Node3D) -> void:
+	var tree := get_tree()
+	var root := get_parent()
+	root.remove_child(self)
+	next.name = "World"
+	root.add_child(next)  # runs its _ready -> take_over()
+	tree.current_scene = next
+	queue_free()
+
+
+## The other half of reload_engine, in the new version: carry on exactly where the old one was.
+func take_over(h: Dictionary) -> void:
+	tcp = h.tcp
+	connected = h.connected
+	inbox = h.inbox
+	outbox = h.outbox
+	was_fullscreen = h.was_fullscreen
+	near_who = h.near_who
+	state_path = h.state_path
+	build_player()
+	build_hud()
+	player.transform = h.player
+	head.rotation.x = h.head_x
+	player.velocity = h.velocity
+	camera.make_current()
+	status_label.text = h.status
+	ctx = h.ctx  # same state and caches; the engine-side entries point to us now
+	ctx.merge({"world": self, "player": player, "camera": camera, "hud": hud, "parts": {}}, true)
+	parts_sig = parts_signature()
+	load_parts(true)
+	draw_quests()
+	print("[world] engine (world.gd) reloaded in place")
 
 
 func _notification(what: int) -> void:
@@ -175,10 +238,14 @@ func handle(c: Dictionary) -> void:
 
 # --- the world's parts (scene/*.gd), reloaded live ---------------------------------------------------
 
+# Parts that are switched off for now (everything that isn't medieval). Delete a name to bring it back.
+const DISABLED_PARTS := ["parkour.gd", "goblins.gd", "knockback.gd", "sea.gd", "conchpolish.gd"]
+
+
 func part_files() -> Array:
 	var files := []
 	for f in DirAccess.get_files_at(PARTS_DIR):
-		if f.ends_with(".gd"):
+		if f.ends_with(".gd") and f not in DISABLED_PARTS:
 			files.append(f)
 	files.sort()
 	return files
@@ -229,10 +296,17 @@ func load_parts(first := false) -> void:
 
 
 func _process(_delta: float) -> void:
+	if retired:
+		return
 	poll_link()
 	var now := Time.get_ticks_msec() / 1000.0
 	if now > next_parts_check:  # a part or model saved? rebuild in place
 		next_parts_check = now + 0.5
+		var engine_time := FileAccess.get_modified_time(ENGINE_FILE)
+		if engine_time != engine_mtime:  # this file itself was saved: swap the engine, keep everything else
+			engine_mtime = engine_time
+			reload_engine()
+			return
 		var sig := parts_signature()
 		if sig != parts_sig:
 			parts_sig = sig
@@ -524,6 +598,8 @@ func head_room() -> bool:
 
 
 func _physics_process(delta: float) -> void:
+	if retired:
+		return
 	var playing := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	var dir := Vector3.ZERO
 	if playing:
@@ -553,6 +629,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if retired:
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var sens: float = deg_to_rad(setting("LOOK_SENSITIVITY", 0.08))  # degrees per pixel
 		player.rotate_y(-event.relative.x * sens)

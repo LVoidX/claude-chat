@@ -33,7 +33,7 @@ FONT = ("Consolas", 13)
 SCRIPT = os.path.abspath(__file__)
 HERE = os.path.dirname(SCRIPT)
 WORLD_SCRIPT = os.path.join(HERE, "godot_bridge.py")  # starts the Godot world (godot_world/) and links it to us
-WORLD_ENGINE_FILES = [WORLD_SCRIPT, os.path.join(HERE, "godot_world", "world.gd")]  # edited -> restart the world
+WORLD_ENGINE_FILES = [WORLD_SCRIPT]  # edited -> restart the world (world.gd swaps itself in place, see reload_engine)
 
 
 def files_mtime(paths):
@@ -93,8 +93,9 @@ objects; barnaby.gd = Barnaby; add new files for new things). Saving any part, o
 godot_world/models/, rebuilds the world live with no restart; if a file has an error nothing is swapped, the
 old world keeps running and the error goes to claude-world.log (read it after an edit to check). Read the
 comments at the top of scene/base.gd first: they explain ctx, the helpers in world.gd and the hooks a part
-can have. godot_world/world.gd is the engine side (player, HUD, link to the chat, helpers); editing it or
-godot_bridge.py restarts the whole world, so only touch it for engine-level things.
+can have. godot_world/world.gd is the engine side (player, HUD, link to the chat, helpers); it also reloads live
+(swapped in place, the player keeps their spot), so edit it freely for engine-level things. Never edit
+godot_bridge.py: that restarts the whole world.
 Shell commands are not available, except installing Python packages: you may run
 `pip install ...` (or `python -m pip install ...`) yourself, in Bash or PowerShell.
 Everything else is file reads and edits.
@@ -724,6 +725,14 @@ class ChatApp:
             os.replace(tmp, SAVE_FILE)
         except OSError:
             pass
+        # Plain-text copies of the characters' talks, so the assistant can be asked to read them.
+        for lane_name, fname in (("npc", "barnaby_chat.txt"), ("npc2", "marigold_chat.txt")):
+            try:
+                text = "".join(t for t, _tag in self.lanes[lane_name].history[-HISTORY_KEEP:])
+                with open(os.path.join(HERE, fname), "w", encoding="utf-8") as f:
+                    f.write(text)
+            except OSError:
+                pass
 
     def watch(self):
         if not self.alive:
