@@ -64,8 +64,8 @@ func plate(target: Node3D, text: String, height: float) -> void:
 	l.modulate = Color("#f2e6c8")
 	l.outline_modulate = Color(0, 0, 0, 0.85)
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	l.pixel_size = 0.005
-	l.no_depth_test = false
+	l.pixel_size = 0.0009
+	l.fixed_size = true  # the same size on screen near or far
 	add_child(l)
 	plates.append([l, target, height])
 

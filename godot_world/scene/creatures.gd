@@ -269,7 +269,21 @@ func spawn(kind: String, at: Vector3, home: Vector3) -> void:
 		bar.scale = Vector3.ONE * 2.2
 	foes.append({"kind": kind, "node": node, "parts": parts, "home": home, "start": at, "hp": int(KINDS[kind].hp),
 		"state": "idle", "timer": randf_range(1.0, 4.0), "goal": at, "cool": 0.0, "wind": 0.0, "stagger": 0.0,
-		"dead": 0.0, "bar": bar, "fill": fill, "phase": randf() * TAU, "hurt": 0.0})
+		"dead": 0.0, "bar": bar, "fill": fill, "phase": randf() * TAU, "hurt": 0.0, "tag": name_tag(node, kind)})
+
+
+func name_tag(node: Node3D, kind: String) -> Label3D:
+	var l := Label3D.new()
+	l.text = KINDS[kind].name
+	l.font_size = 36
+	l.outline_size = 9
+	l.pixel_size = 0.0009 * (1.4 if kind == "troll" else 1.0)
+	l.fixed_size = true  # the same size on screen near or far, like a nameplate
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.position.y = float(KINDS[kind].bar_y) + (0.6 if kind == "troll" else 0.32)
+	l.visible = false
+	node.add_child(l)
+	return l
 
 
 func limb(parent: Node3D, pivot: Vector3) -> Node3D:
@@ -691,6 +705,10 @@ func think(f: Dictionary, player: Vector3, rpg, delta: float) -> void:
 	elif f.state == "chase" and dist > 0.1:
 		node.rotation.y = lerp_angle(node.rotation.y, atan2(-to_player.x, -to_player.z), minf(delta * 8.0, 1.0))
 	animate(f, moving, speed, delta)
+	var tag: Label3D = f.tag  # its name, red for foes, pale for tamed ones, when you are near
+	var near := node.global_position.distance_to(W.camera.global_position)
+	tag.visible = near < 15.0
+	tag.modulate = (Color("#e8e0c8") if f.get("tame", false) else Color("#ff6a50")) * Color(1, 1, 1, clampf((15.0 - near) / 4.0, 0.0, 1.0))
 	if f.bar.visible:  # the health bar faces the camera
 		var cam: Vector3 = W.camera.global_position
 		f.bar.look_at(Vector3(cam.x, f.bar.global_position.y, cam.z), Vector3.UP)
