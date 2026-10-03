@@ -64,8 +64,10 @@ if ($claude) {
 }
 
 Step "Desktop shortcut"
-$pythonw = Join-Path (Split-Path -Parent (Get-Command python).Source) "pythonw.exe"
-if (-not (Test-Path $pythonw)) { $pythonw = "pythonw.exe" }
+# ask Python where it really lives (the "python" command can be a Windows stand-in somewhere else)
+$pyexe = (python -c "import sys; print(sys.executable)").Trim()
+$pythonw = Join-Path (Split-Path -Parent $pyexe) "pythonw.exe"
+if (-not (Test-Path $pythonw)) { $pythonw = $pyexe }
 $shell = New-Object -ComObject WScript.Shell
 $link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath("Desktop")) "Claude Chat.lnk"))
 $link.TargetPath = $pythonw
