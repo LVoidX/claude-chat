@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 9  # bump to rebuild the cached ground after changing the shape below
+const VERSION := 10  # bump to rebuild the cached ground after changing the shape below
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -268,6 +268,10 @@ func keep_clear(x: float, z: float) -> bool:
 			return true
 	if Vector2(x + 80.0, z + 80.0).length() < 17.0 or Vector2(x - 96.0, z - 12.0).length() < 10.0:
 		return true  # the old barrow and the troll's camp (creatures.gd)
+	for chest in [Vector2(-92, -66), Vector2(18, -150), Vector2(84, 66), Vector2(-120, 30), Vector2(110, -40),
+			Vector2(-30, 120), Vector2(60, 110), Vector2(-60, -118)]:  # treasure chests (gathering.gd CHESTS)
+		if Vector2(x, z).distance_to(chest) < 3.5:
+			return true
 	return false
 
 

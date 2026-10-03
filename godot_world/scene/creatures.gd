@@ -469,6 +469,7 @@ func damage(f: Dictionary, amount: int, push: Vector3) -> void:
 		W.show_notice("%s roars: \"Oathbreaker!\"" % KINDS[f.kind].name, 4.0)
 	f.hp -= amount
 	f.hurt = 0.18
+	spark(f.node.position + Vector3(0, KINDS[f.kind].bar_y * 0.55, 0) - push * 0.3)
 	var music = ctx.parts.get("music")
 	if music:
 		music.play_sfx("hit")
@@ -490,8 +491,14 @@ func damage(f: Dictionary, amount: int, push: Vector3) -> void:
 func die(f: Dictionary) -> void:
 	var info: Dictionary = KINDS[f.kind]
 	f.dead = float(info.respawn)
-	f.node.visible = false
 	f.bar.visible = false
+	var body: Node3D = f.parts.body  # topple over sideways, lie a moment, sink into the ground, then gone
+	var tw := create_tween()
+	tw.tween_property(body, "rotation:z", PI / 2.0 * (1.0 if randf() < 0.5 else -1.0), 0.35).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(body, "position:y", body.position.y + (0.25 if f.kind == "wolf" else 0.15), 0.35)
+	tw.tween_interval(1.4)
+	tw.tween_property(body, "position:y", body.position.y - 1.2, 1.0)
+	tw.tween_callback(func(): f.node.visible = false)
 	var rpg = ctx.parts.get("rpg")
 	burst(f.node.position + Vector3(0, 0.8, 0), Color("#e3dccb") if f.kind == "skeleton" else Color("#8a1a1a"))
 	if rpg:
@@ -511,6 +518,8 @@ func respawn(f: Dictionary) -> void:
 	f.hp = int(KINDS[f.kind].hp)
 	f.node.position = f.start
 	f.node.visible = true
+	f.parts.body.rotation = Vector3.ZERO
+	f.parts.body.position = Vector3.ZERO
 	f.bar.visible = false
 	f.state = "idle"
 	f.fill.scale.x = 0.86
@@ -543,6 +552,17 @@ func burst(at: Vector3, color: Color) -> void:
 		var tw := create_tween()
 		tw.tween_property(bit, "position", at + dir * 1.4, 0.5).set_ease(Tween.EASE_OUT)
 		tw.parallel().tween_property(bit, "scale", Vector3.ONE * 0.01, 0.5)
+		tw.tween_callback(bit.queue_free)
+
+
+## A few bright chips flying off where a blow lands.
+func spark(at: Vector3) -> void:
+	for i in 5:
+		var bit: MeshInstance3D = W.glow(self, at, Vector3.ONE * 0.07, Color("#fff0b0"), 3.0)
+		var dir := Vector3(randf_range(-1, 1), randf_range(0.2, 1.2), randf_range(-1, 1)).normalized()
+		var tw := create_tween()
+		tw.tween_property(bit, "position", at + dir * randf_range(0.4, 0.8), 0.18)
+		tw.parallel().tween_property(bit, "scale", Vector3.ONE * 0.01, 0.18)
 		tw.tween_callback(bit.queue_free)
 
 
