@@ -82,6 +82,9 @@ func load_chapter() -> void:
 		if not start.is_empty():
 			set_flags(start)
 		W.show_notice("CHAPTER %d: %s" % [number, data.get("title", "")], 7.0)
+		var music = ctx.parts.get("music")
+		if music:
+			music.play_sfx.call_deferred("chapter")
 		get_tree().create_timer(7.5).timeout.connect(W.show_notice.bind(str(data.get("intro", "")), 12.0))
 		log_line("\n## Chapter %d: %s\n%s\n" % [number, data.get("title", ""), data.get("intro", "")])
 		writing = false
@@ -146,6 +149,9 @@ func complete(id: String) -> void:
 		if int(q.get("xp", 0)) > 0:
 			rpg.add_xp(int(q.xp))
 	W.show_notice("%s - done." % q.title, 6.0)
+	var music = ctx.parts.get("music")
+	if music:
+		music.play_sfx.call_deferred("quest")
 	log_line("- %s" % q.get("outcome", "The wanderer completed: " + q.title))
 	var sets: Dictionary = q.get("sets", {})
 	var ends: bool = data.get("ends_when", "all") == "any" or open_quests().is_empty()

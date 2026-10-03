@@ -1,0 +1,127 @@
+extends Node3D
+## Background music and the RPG's jingles.
+## Music: three public-domain (CC0) medieval tracks by RandomMind from opengameart.org, in godot_world/music/.
+## By day it plays Market Day and The Bard's Tale, at night The Old Tower Inn, softly, with a quiet pause between
+## tracks. K turns the music on and off (state["music_off"]); [music off] / [music on] do the same by voice.
+## The player lives on the world node (not on this part), so rebuilding the parts doesn't restart the song.
+## Jingles are made here in code (no files): play_sfx("levelup") / play_sfx("quest") / play_sfx("chapter").
+
+const DAY_TRACKS := ["Market_Day.mp3", "The_Bards_Tale.mp3"]
+const NIGHT_TRACKS := ["The_Old_Tower_Inn.mp3"]
+const VOLUME_DB := -15.0
+const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
+const RATE := 22050
+
+var ctx: Dictionary
+var W
+var player: AudioStreamPlayer
+var sfx: AudioStreamPlayer
+var wait := 3.0  # until the next track starts
+
+
+func build(c: Dictionary) -> void:
+	ctx = c
+	W = ctx["world"]
+	var existing = ctx.get("music_player")
+	if is_instance_valid(existing):  # (a reload keeps the one already playing)
+		player = existing
+	else:
+		player = AudioStreamPlayer.new()
+		player.name = "Music"
+		player.volume_db = VOLUME_DB
+		W.add_child(player)
+		ctx["music_player"] = player
+	sfx = AudioStreamPlayer.new()
+	sfx.volume_db = -6.0
+	add_child(sfx)
+	if not ctx.has("jingles"):
+		ctx["jingles"] = {"levelup": jingle([[0, 523.3], [0.11, 659.3], [0.22, 784.0], [0.33, 1046.5]], 1.3),
+			"quest": jingle([[0, 392.0], [0.16, 523.3], [0.32, 659.3], [0.32, 392.0], [0.5, 784.0], [0.5, 523.3]], 1.6),
+			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6)}
+
+
+func play_sfx(name: String) -> void:
+	if sfx and ctx.jingles.has(name):
+		sfx.stream = ctx.jingles[name]
+		sfx.play()
+
+
+## A little plucked-lute jingle: notes = [[start seconds, frequency], ...], made into a WAV in memory.
+func jingle(notes: Array, length: float) -> AudioStreamWAV:
+	var n := int(length * RATE)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	for note in notes:
+		var start := int(float(note[0]) * RATE)
+		var f := float(note[1])
+		for i in range(start, n):
+			var t := float(i - start) / RATE
+			var env := minf(t * 200.0, 1.0) * exp(-t * 3.2)  # quick pluck, slow ring
+			if env < 0.001:
+				break
+			var v := sin(TAU * f * t) + 0.45 * sin(TAU * f * 2.0 * t) * exp(-t * 6.0) + 0.2 * sin(TAU * f * 3.0 * t) * exp(-t * 9.0)
+			buf[i] += v * env * 0.22
+	var bytes := PackedByteArray()
+	bytes.resize(n * 2)
+	for i in n:
+		bytes.encode_s16(i * 2, int(clampf(buf[i] * minf(float(n - i) / 800.0, 1.0), -1.0, 1.0) * 32000.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = RATE
+	wav.data = bytes
+	return wav
+
+
+func music_on() -> bool:
+	return not ctx.state.get("music_off", false)
+
+
+func next_track() -> void:
+	var night: bool = float(ctx.get("night", 0.0)) > 0.5
+	var list: Array = NIGHT_TRACKS if night else DAY_TRACKS
+	var last: String = ctx.get("music_last", "")
+	var choices := list.filter(func(f): return f != last)
+	var file: String = (choices if not choices.is_empty() else list).pick_random()
+	var bytes := FileAccess.get_file_as_bytes("res://music/" + file)
+	if bytes.is_empty():
+		return
+	var stream := AudioStreamMP3.new()
+	stream.data = bytes
+	player.stream = stream
+	player.volume_db = VOLUME_DB
+	player.play()
+	ctx["music_last"] = file
+
+
+func _process(delta: float) -> void:
+	if not is_instance_valid(player):
+		return
+	if not music_on():
+		if player.playing:
+			player.stop()
+		return
+	if not player.playing:
+		wait -= delta
+		if wait <= 0.0:
+			wait = randf_range(PAUSE.x, PAUSE.y)
+			next_track()
+
+
+func key(event: InputEventKey) -> void:
+	if event.keycode == KEY_K:
+		set_music(not music_on())
+
+
+func set_music(on: bool) -> void:
+	ctx.state["music_off"] = not on
+	W.show_notice("Music on (K)" if on else "Music off (K)")
+	if on:
+		wait = 0.5
+
+
+func handle(c: Dictionary) -> bool:
+	if c.get("cmd", "") != "music":
+		return false
+	var args: Array = c.get("args", [])
+	set_music(args.is_empty() or str(args[0]).to_lower() != "off")
+	return true

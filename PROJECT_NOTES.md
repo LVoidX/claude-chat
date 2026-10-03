@@ -152,6 +152,9 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - barnaby_chat.txt / marigold_chat.txt: plain-text copies of the characters talks, written by save_state(). When the user says "read Barnaby", read barnaby_chat.txt (Marigold: marigold_chat.txt).
 - scene/rocket.gd: [rocket] launcher on slot 3 (key 3), rockets explode and shove the user/characters (rocket jump).
 
+## Story flags
+- troll: slain | appeased (ch.1). camp: bandits | cleared | tolled (ch.2): bandits (kind "bandit", creatures.gd) hold Gorrak's camp (96, 12); build_bandit_camp() draws tents/flag per state; "tolled" bandits are tame.
+
 ## RPG layer (2026-10-03)
 - scene/rpg.gd: level/xp/health/gold, inventory (I), quest journal (J), quest board by the village road (E), the smith's
   shop across the road (E: buy, sell for half), Q drinks a potion, death = wake at the well minus 10% gold. State in
@@ -163,3 +166,8 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   miller's ring near the windmill (only while that quest is active).
 - New quests: add an entry to QUESTS in rpg.gd (kinds kill / bring / find). New items: ITEMS. terrain.keep_clear keeps
   trees out of the camps.
+
+- scene/sounds.gd: code-made sounds: level-up and quest hand-in jingles (rpg.gd sfx()) and a soft wind loop (AMBIENT_DB). ambience.gd stays off.
+
+- Ambient wind removed (user hated it). sounds.gd now plays music.ogg / music.mp3 from next to chat.pyw if present (loops, MUSIC_DB).
+- Music and jingles (scene/music.gd): CC0 medieval tracks in godot_world/music/ (day: Market Day, The Bard's Tale; night: The Old Tower Inn), K toggles; jingles made in code: play_sfx("levelup" | "quest" | "chapter").

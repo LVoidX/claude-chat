@@ -128,7 +128,12 @@ func defense() -> int:
 	return int(ITEMS[armor].get("def", 0)) if armor in ITEMS else 0
 
 
+const TEMP_SWORD_DAMAGE := 30  # temporary, asked for by the user: every sword hit does this; set to 0 to go back to normal
+
+
 func strike_damage() -> int:
+	if TEMP_SWORD_DAMAGE > 0:
+		return TEMP_SWORD_DAMAGE
 	var weapon: String = st().weapon
 	var base := int(ITEMS[weapon].get("dmg", 1)) if weapon in ITEMS else 1
 	return base + int(st().level) - 1
@@ -191,6 +196,12 @@ func add_gold(n: int, quiet := false) -> void:
 	refresh_hud()
 
 
+func sfx(sound: String) -> void:  # sounds.gd makes the sounds
+	var sounds = ctx.parts.get("sounds")
+	if sounds:
+		sounds.play(sound)
+
+
 func add_xp(n: int) -> void:
 	st().xp = int(st().xp) + n
 	while int(st().xp) >= xp_needed():
@@ -198,7 +209,11 @@ func add_xp(n: int) -> void:
 		st().level = int(st().level) + 1
 		st().hp = max_hp()
 		W.show_notice("LEVEL UP!  You are now level %d.  Health %d, damage +%d" % [st().level, max_hp(), int(st().level) - 1], 5.0)
+		var music = ctx.parts.get("music")
+		if music:
+			music.play_sfx.call_deferred("levelup")
 		level_up_burst()
+		sfx("levelup")
 		W.send({"t": "notice", "text": "level %d" % st().level})
 	refresh_hud()
 	refresh_panel()
@@ -324,6 +339,10 @@ func hand_in(id: String) -> void:
 		give(item, int(q.items[item]), true)
 		got.append(("%d %s" % [q.items[item], ITEMS[item].name]) if int(q.items[item]) > 1 else ITEMS[item].name)
 	W.show_notice("Quest complete: %s!  %s" % [q.title, ", ".join(got)], 6.0)
+	var music = ctx.parts.get("music")
+	if music:
+		music.play_sfx.call_deferred("quest")
+	sfx("handin")
 	add_xp(int(q.xp))
 	refresh_panel()
 
