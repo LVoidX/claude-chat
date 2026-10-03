@@ -60,7 +60,7 @@ func is_near() -> bool:
 
 func describe() -> String:
 	var here := body.position
-	var seen := ["a wide grassy meadow in a valley, under a dark night sky with a red moon"]
+	var seen := ["a wide grassy meadow in a valley"]
 	seen.append_array(W.seen_around(here, self))  # everything the other parts report (see world.gd)
 	if st().get("mode") == "atop":
 		seen.append("you are standing on top of the placed object")

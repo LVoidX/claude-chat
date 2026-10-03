@@ -1,6 +1,6 @@
 [spawn box blue]  puts an object in front of the user. Shapes: box, sphere, pillar. Any color name.
 [remove]  removes the placed object nearest to the user.
-[sky night]  changes the sky: night, day, sunset, dawn, or any color.
+[sky night]  changes the time of day: night, dawn, morning, day, afternoon, sunset, dusk (or any colour for a strange sky).
 [follow]  Barnaby follows the user around, staying a few steps behind, until told to wander or stay.  | when: follow me, come with me, come along, keep up, stay with me, walk with me
 [wander]  Barnaby wanders around on his own again.  | when: wander, walk around, go wander, off you go, go explore, do your own thing
 [climb purple single]  Barnaby walks to a placed object or built block (optionally named by color or shape; add "single" for a lone block of that colour, else the highest ones win) and climbs on top of it; wander/follow/stay brings him down.  | when: get on the box, climb the box, climb on the box, get on top, climb on top, get on the blue box

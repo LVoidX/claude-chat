@@ -159,8 +159,9 @@ func build_keep() -> void:
 
 func _process(delta: float) -> void:
 	spin += delta
+	var night: float = ctx.get("night", 1.0)
 	for t in torches:
-		t[0].light_energy = 2.2 * (0.8 + 0.12 * sin(spin * 9.0 + t[1]) + 0.08 * sin(spin * 23.0 + t[1]))
+		t[0].light_energy = 2.2 * (0.8 + 0.12 * sin(spin * 9.0 + t[1]) + 0.08 * sin(spin * 23.0 + t[1])) * lerpf(0.2, 1.0, night)
 	for b in banners:  # banners stirring in the wind
 		b[0].rotation.y = sin(spin * 1.3 + b[1]) * 0.25
 		b[0].rotation.x = sin(spin * 2.1 + b[1]) * 0.05

@@ -535,7 +535,7 @@ func is_near() -> bool:
 func describe() -> String:
 	var here := body.position
 	var seen := ["your own market stall right behind you, with your oven, your herbs and your moonbread loaves on the counter (%d baked so far)" % int(ctx.state.get("moonbread", 0)),
-		"a grassy meadow in a valley under a red moon, where glowing blue moonblooms grow here and there (you need five to bake moonbread, your grandmother's recipe)"]
+		"a grassy meadow in a valley, where glowing blue moonblooms grow here and there (you need five to bake moonbread, your grandmother's recipe)"]
 	seen.append_array(W.seen_around(here, self))  # everything the other parts report (see world.gd)
 	if blooms() > 0:
 		seen.append("the wanderer is carrying %d moonbloom%s" % [blooms(), "" if blooms() == 1 else "s"])

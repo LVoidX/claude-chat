@@ -66,6 +66,7 @@ var ctx: Dictionary
 var W
 var noise: FastNoiseLite
 var lanterns := []  # [light, base energy, phase]
+var fireflies: GPUParticles3D
 var spin := 0.0
 
 
@@ -534,13 +535,17 @@ func add_fireflies() -> void:
 	p.draw_pass_1 = dot
 	p.position = Vector3(0, 1.4, 0)
 	add_child(p)
+	fireflies = p
 
 
 func _process(delta: float) -> void:
 	spin += delta
-	for l in lanterns:  # a warm, uneven flicker
+	var night: float = ctx.get("night", 1.0)  # (base.gd: 1 at night, 0 by day)
+	for l in lanterns:  # a warm, uneven flicker; dimmer by day
 		var light: OmniLight3D = l[0]
-		light.light_energy = l[1] * (0.85 + 0.1 * sin(spin * 7.0 + l[2]) + 0.06 * sin(spin * 17.3 + l[2] * 2.0))
+		light.light_energy = l[1] * (0.85 + 0.1 * sin(spin * 7.0 + l[2]) + 0.06 * sin(spin * 17.3 + l[2] * 2.0)) * lerpf(0.15, 1.0, night)
+	if fireflies:
+		fireflies.emitting = night > 0.4  # they come out after dark
 
 
 ## What the characters see of the land.

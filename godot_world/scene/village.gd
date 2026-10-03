@@ -285,5 +285,6 @@ func _process(delta: float) -> void:
 	spin += delta
 	if sails:
 		sails.rotation.z -= delta * 0.45
-	for wl in windows:  # firelight inside, flickering a little
-		wl[0].light_energy = 0.9 * (0.85 + 0.12 * sin(spin * 5.0 + wl[1]) + 0.05 * sin(spin * 13.0 + wl[1]))
+	var night: float = ctx.get("night", 1.0)
+	for wl in windows:  # firelight inside, flickering a little (hardly noticeable by day)
+		wl[0].light_energy = 0.9 * (0.85 + 0.12 * sin(spin * 5.0 + wl[1]) + 0.05 * sin(spin * 13.0 + wl[1])) * lerpf(0.1, 1.0, night)
