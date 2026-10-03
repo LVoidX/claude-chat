@@ -172,3 +172,15 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Ambient wind removed (user hated it). (The old sounds.gd was removed: music.gd does music and jingles.)
 - Music and jingles (scene/music.gd): CC0 medieval tracks in godot_world/music/ (day: Market Day, The Bard's Tale; night: The Old Tower Inn), K toggles; jingles made in code: play_sfx("levelup" | "quest" | "chapter").
+
+## Look and feel (2026-10-03 polish)
+- base.gd: ACES tonemap, exposure 0.72, saturation/contrast grading, strong sun + weak fill. Keep colours rich, not pastel.
+- terrain.gd ground shader: grass clumps, tiny wildflowers, pebbly roads (vertex colour alpha = road mask).
+- world.gd W.mat(): every plain-colour box gets a faint grain texture (object-mapped). W.flag(name) reads story flags.
+- style.gd: book-like serif UI font (Windows system font) for all text; ctx["ui_theme"] for HUD panels on CanvasLayers.
+- landmarks.gd: nameplates over people, crossroads signpost, place names announced on entry (Thornvale Village,
+  Highmoor Castle, the Old Mill, the Barrow of the Old Kings, Wolfwood dens, Gorrak's Camp), and the top compass with
+  gold markers for story quest targets.
+- gathering.gd: 8 treasure chests (E, refill after 30 min). creatures.gd: enemies topple and sink, sparks on hits.
+- music.gd sounds: play_sfx("swing" | "hit" | "hurt" | "pickup" | "coin" | "levelup" | "quest" | "chapter").
+- villagers.gd: hip pivot (body), two-handed hoe/axe strokes, guards in tabards and mail.

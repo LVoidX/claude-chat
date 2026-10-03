@@ -23,6 +23,10 @@ var ctx: Dictionary
 var W
 var plates := []  # [Label3D, Node3D to follow, height]
 var here := ""  # the place the player is in now
+var compass: Control  # the strip at the top of the screen: N / E / S / W and gold markers for story quests
+var compass_items := []  # [Control, bearing source: float (fixed angle) or "quest"]
+var markers := []  # gold diamonds, reused for the story quest targets
+const COMPASS_W := 520.0
 
 
 func build(c: Dictionary) -> void:
@@ -30,6 +34,7 @@ func build(c: Dictionary) -> void:
 	W = ctx["world"]
 	here = ctx.get("place_here", "")
 	build_signpost(Vector3(-5.5, 0, -5.5))
+	build_compass()
 	make_plates.call_deferred()  # (after every part is built: Marigold and the villagers come after this one)
 
 
@@ -94,7 +99,102 @@ func build_signpost(at: Vector3) -> void:
 			board.add_child(l)
 
 
+func build_compass() -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	compass = Control.new()
+	compass.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	compass.offset_left = -COMPASS_W / 2.0
+	compass.offset_right = COMPASS_W / 2.0
+	compass.offset_top = 6
+	compass.offset_bottom = 34
+	compass.clip_contents = true
+	compass.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(compass)
+	var back := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#1a1009", 0.55)
+	sb.border_color = Color("#8a6a3a")
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(4)
+	back.add_theme_stylebox_override("panel", sb)
+	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	compass.add_child(back)
+	var tick := ColorRect.new()  # where you are looking
+	tick.color = Color("#ffd24d")
+	tick.size = Vector2(2, 8)
+	tick.position = Vector2(COMPASS_W / 2.0 - 1, 20)
+	compass.add_child(tick)
+	var names := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+	for i in 8:
+		var l := Label.new()
+		l.text = names[i]
+		l.add_theme_font_size_override("font_size", 17 if i % 2 == 0 else 12)
+		l.add_theme_color_override("font_color", Color("#f2e6c8") if i % 2 == 0 else Color("#c8b890"))
+		l.size = Vector2(40, 28)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		compass.add_child(l)
+		compass_items.append([l, i * PI / 4.0])
+	apply_theme.call_deferred()  # (style.gd, which makes the book font, is built after this part)
+	if W.status_label:  # (listening / thinking moves below the compass)
+		W.status_label.offset_top = 40
+
+
+func apply_theme() -> void:
+	if compass and ctx.has("ui_theme"):
+		compass.theme = ctx["ui_theme"]
+
+
+func quest_targets() -> Array:
+	var out := []
+	var story = ctx.parts.get("story")
+	if story and story.built():
+		for q in story.open_quests():
+			if q.has("pos"):
+				out.append(story.quest_pos(q))
+	return out
+
+
+func update_compass() -> void:
+	if not compass:
+		return
+	compass.visible = W.camera.current
+	var f: Vector3 = -W.camera.global_basis.z
+	var heading := atan2(f.x, -f.z)  # 0 = north (-z), clockwise
+	for item in compass_items:
+		place_on_compass(item[0], float(item[1]) - heading)
+	var targets := quest_targets()
+	while markers.size() < targets.size():
+		var d := ColorRect.new()
+		d.color = Color("#ffd24d")
+		d.size = Vector2(9, 9)
+		d.pivot_offset = Vector2(4.5, 4.5)
+		d.rotation = PI / 4.0
+		compass.add_child(d)
+		markers.append(d)
+	var me: Vector3 = W.camera.global_position
+	for i in markers.size():
+		markers[i].visible = i < targets.size()
+		if i < targets.size():
+			var to: Vector3 = targets[i] - me
+			var x := place_on_compass(markers[i], atan2(to.x, -to.z) - heading, false)
+			markers[i].position = Vector2(x - 4.5, 2)
+
+
+## Put a compass item at its spot (half a turn either way fills the strip); returns its x centre.
+func place_on_compass(c: Control, delta: float, centre_label := true) -> float:
+	delta = wrapf(delta, -PI, PI)
+	var x := COMPASS_W / 2.0 + delta / (PI / 2.0) * (COMPASS_W / 2.0)
+	c.visible = absf(delta) < PI / 2.0 + 0.1
+	if centre_label:
+		c.position = Vector2(x - c.size.x / 2.0, 0)
+	return x
+
+
 func _process(_delta: float) -> void:
+	update_compass()
 	var cam: Vector3 = W.camera.global_position
 	for p in plates:
 		var l: Label3D = p[0]
