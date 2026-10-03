@@ -23,6 +23,8 @@ var muzzle_flash: MeshInstance3D
 var crosshair: ColorRect
 var recoil := 0.0
 var flash := 0.0
+var blocking := false  # right mouse with the sword out (see _process)
+var guard := 0.0  # 0..1, how far the sword is raised into the block
 var tracers := []  # [node, age] bullet trails that fade after a moment
 
 
@@ -296,6 +298,12 @@ func _process(delta: float) -> void:
 	var arc := sin(t * PI) if swing > 0.0 else 0.0
 	sword.rotation_degrees = Vector3(-10 - arc * 70, arc * 25, -18 + arc * 55)
 	sword.position = Vector3(0.36 - arc * 0.2, -0.38 + arc * 0.08, -0.62 - arc * 0.12)
+	# right mouse held: blocking. The blade comes across in front of you, flat (rpg.gd takes 75% off each hit)
+	blocking = held() and swing <= 0.0 and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	guard = move_toward(guard, 1.0 if blocking else 0.0, delta * 9.0)
+	if guard > 0.0:
+		sword.rotation_degrees = sword.rotation_degrees.lerp(Vector3(-5, 10, 78), guard)
+		sword.position = sword.position.lerp(Vector3(0.18, -0.2, -0.5), guard)
 	if layer:
 		var bar: Control = layer.get_node_or_null("Bar")
 		if bar:

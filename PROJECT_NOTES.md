@@ -187,3 +187,5 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - travel.gd: waystones (touch to attune, E to travel; at the crossroads, Thornvale, Highmoor, the Old Mill, the Barrow) and
   a campfire at the crossroads (E: rest, full heal, night skips to morning). weather.gd: random rain showers (state
   "rain" 0..1), [rain] / [rain stop]. The sword in hand shows the equipped weapon (rusty / iron / blue Troll-Bane).
+- barks.gd: villagers say a line as you pass, chosen by story flags (FLAG_LINES "flag=value"), level, rain, night.
+  Storyteller: add lines for new flags there. Blocking: right mouse with the sword out (hotbar.blocking): 75% less damage.

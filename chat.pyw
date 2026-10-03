@@ -188,6 +188,7 @@ quest kinds), PROJECT_NOTES.md (what exists and the user's taste), and the scene
    KINDS, spawn(kind, at, home) and model_<kind>() for new kinds; a tame creature has "tame": true). Never delete
    what was there: branch on the flag. Use W.flag in build() and rebuild-safe code (all parts are rebuilt when
    flags change). Keep each chapter to one or two big, visible changes done well, rather than many small ones.
+   Also give the villagers something to say about it: add lines for your new flags to FLAG_LINES in scene/barks.gd.
 3. Pre-build the outcomes of the NEW chapter's quests too: each quest's "sets" flags are applied the moment it is
    done and the world rebuilds right away, so the code for those outcomes must already exist (gated on those flags).
    A choice between two or three quests with different outcomes ("ends_when": "any") is great; or a few steps that

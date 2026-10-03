@@ -257,6 +257,10 @@ func hurt(amount: int, source := "") -> void:
 	var music = ctx.parts.get("music")
 	if music:
 		music.play_sfx("hurt")
+	var hotbar = ctx.parts.get("hotbar")
+	if hotbar and hotbar.get("blocking"):  # caught on the blade: a quarter gets through
+		amount = int(ceil(amount * 0.25))
+		sfx("hit")
 	var taken := maxi(amount - defense(), 1)
 	st().hp = int(st().hp) - taken
 	hurt_flash.color.a = clampf(0.25 + taken * 0.02, 0.25, 0.55)
@@ -516,7 +520,7 @@ func build_hud() -> void:
 	box.add_child(hp_bar)
 	xp_bar = bar(Color("#5b8cff"), 8)
 	box.add_child(xp_bar)
-	box.add_child(label("I inventory   J journal   Q potion", 12, Color(1, 1, 1, 0.55)))
+	box.add_child(label("I inventory   J journal   Q potion   Right-click block   K music", 12, Color(1, 1, 1, 0.55)))
 	prompt_label = label("", 20, Color.WHITE)  # "[E] Read the quest board"
 	prompt_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	prompt_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
