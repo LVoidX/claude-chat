@@ -10,9 +10,10 @@ How to continue:
 3. Remove the task from todo.txt, update PROJECT_NOTES.md if something works differently, commit and push.
 4. When todo.txt is empty: refine (the user asked e.g. for better-looking village roofs), one commit per change.
 
-Currently working on (2026-10-05): all six lines in todo.txt are done and removed. The latest fixes are recorded in
-PROJECT_NOTES.md. The active, ignored story/chapter.json was clarified locally for the current Highmoor quest.
+Currently working on (2026-10-05): all nine lines in todo.txt are complete and removed. See PROJECT_NOTES.md and the
+local commits for sword audio/grip, chests, player model, ore mining, hammer removal, trees, chapter reset, and smith
+voice interaction. The active, ignored story/chapter.json remains the user's current chapter unless they use the new
+reset button. These changes have not been pushed; the previous push was rejected by automatic review.
 
-The bandit camp and cottage roof refinements are complete; see PROJECT_NOTES.md. All three camp states were loaded
-in scratch copies, and a rendered village screenshot was inspected. Keep refining when a new request or a clear issue
-comes up. Use `python tools/check.py` after each change.
+The bandit camp and cottage roof refinements are complete; see PROJECT_NOTES.md. Keep refining when a new request or a
+clear issue comes up. Use `python tools/check.py` after each change.

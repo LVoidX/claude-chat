@@ -88,6 +88,9 @@ var regen := 0.0
 var near_act: Dictionary = {}  # the interactable you are standing next to
 var smith_fire: OmniLight3D
 var smith_node: Node3D  # Hob the smith (gives a quest)
+var smith_talker: Node3D
+var npc_id := ""
+var npc_name := "Hob"
 var fire_t := 0.0
 var _styles := {}
 var reset_dialog: ConfirmationDialog
@@ -452,6 +455,9 @@ func build_smithy() -> void:
 	W.box(smith, Vector3(0, 1.84, 0.225), Vector3(0.07, 0.09, 0.05), Color("#c48a66"))
 	W.box(smith, Vector3(0, 1.79, 0.214), Vector3(0.18, 0.04, 0.02), Color("#3b2414"))  # moustache
 	W.box(smith, Vector3(0, 2.08, 0), Vector3(0.44, 0.08, 0.44), Color("#2a1a10"))  # hair
+	var talk = ctx.parts.get("talk")
+	if talk:
+		smith_talker = talk.make(W, smith, 2.45, Vector3(0, 1.79, 0.246), Vector3(0.08, 0.025, 0.012))
 	var sign := Label3D.new()
 	sign.text = "SMITH"
 	sign.font_size = 56
@@ -461,6 +467,22 @@ func build_smithy() -> void:
 	sign.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	sign.pixel_size = 0.006
 	smithy.add_child(sign)
+
+
+func is_near() -> bool:
+	var d: Vector3 = W.player.global_position - smith_node.global_position
+	npc_id = "folk:smith" if Vector2(d.x, d.z).length() < 2.6 else ""
+	return npc_id != ""
+
+
+func describe() -> String:
+	if npc_id != "folk:smith":
+		return ""
+	var here := smith_node.global_position
+	var seen := ["Hob Ironside, the broad-shouldered village smith, works at his forge and sells weapons and armour"]
+	seen.append_array(W.seen_around(here, self))
+	seen.append("the wanderer is %s" % W.where(here, W.player.global_position))
+	return "; ".join(seen)
 
 
 func interactables() -> Array:
@@ -1023,6 +1045,20 @@ func seen_from(from: Vector3, _viewer: Node) -> Array:
 
 func handle(c: Dictionary) -> bool:
 	var args: Array = c.get("args", [])
+	var who := str(c.get("who", ""))
+	if who == "folk:smith" and c.get("cmd", "") in ["say_start", "say_end", "say", "npc_state"]:
+		if smith_talker == null:
+			return true
+		match c.cmd:
+			"say_start":
+				smith_talker.say_start(str(c.get("text", "")))
+			"say_end":
+				smith_talker.say_end()
+			"say":
+				smith_talker.say(str(c.get("text", "")))
+			"npc_state":
+				smith_talker.set_mind(str(c.get("state", "")))
+		return true
 	match c.get("cmd", ""):
 		"give":  # [give potion 2] / [give gold 20]
 			if args.is_empty():
