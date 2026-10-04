@@ -222,3 +222,6 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Villagers can be talked to by voice like Barnaby: villagers.gd gives each a name/bio and a Talker, reports
   npc_id "folk:<who>" when you stand next to one; chat.pyw plays them all with ONE Haiku process (kind "npc3",
   FOLK_PERSONA, the "Folk" column), each message saying who is speaking and what they see. No commands or handoffs.
+- NPC pathfinding (villagers.gd): a walkability grid (1.5 m cells, probed for anything solid + steep ground, built the
+  first physics frame after a rebuild, ~0.16 s) and A* paths with line-of-sight smoothing. New buildings are avoided
+  automatically as long as they have colliders.

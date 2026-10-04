@@ -320,7 +320,9 @@ func _process(delta: float) -> void:
 		var moving := false
 		var by_you := Vector2(player.x - node.position.x, player.z - node.position.z).length() < 2.6
 		if to.length() > 0.12 and not by_you:  # (they stop to talk when you stand right by them)
-			var dir := steer(node.position, to.normalized(), goal)  # (around houses, not through them)
+			var aim := next_waypoint(f, goal, step[0].y > 0.0)  # (a path round walls and houses, see below)
+			var to_aim := Vector3(aim.x - node.position.x, 0, aim.z - node.position.z)
+			var dir := to_aim.normalized() if to_aim.length() > 0.01 else to.normalized()
 			var me := Vector3(player.x - node.position.x, 0, player.z - node.position.z)
 			if me.length() < 1.6 and me.normalized().dot(dir) > 0.3:  # you're in the way: step around you
 				dir = (dir + me.normalized().cross(Vector3.UP) * 1.2).normalized()
@@ -454,5 +456,108 @@ func handle(c: Dictionary) -> bool:
 			f.talker.say(str(c.get("text", "")))
 		"npc_state":
 			f.talker.set_mind(str(c.get("state", "")))
+	return true
+
+
+# --- pathfinding: a walkability map of the valley floor, and A* paths across it ---------------------------------
+# The map is made by probing for anything solid every CELL metres (walls, fences, the well, barrels, logs, steep
+# ground): so whatever the other parts or the storyteller build is avoided without being listed anywhere.
+# Made once the physics world has everything in it (the first physics frame after a rebuild).
+
+const CELL := 1.5
+const GRID_FROM := Vector2(-95.0, -180.0)  # covers the village, the meadow, the road and the castle
+const GRID_CELLS := Vector2i(127, 167)
+var grid: AStarGrid2D
+var grid_ready := false
+
+
+func _physics_process(_delta: float) -> void:
+	if not grid_ready:
+		grid_ready = true
+		build_grid()
+		for f in folk:
+			f.path = []
+
+
+func cell_of(p: Vector3) -> Vector2i:
+	var c := Vector2i(int((p.x - GRID_FROM.x) / CELL), int((p.z - GRID_FROM.y) / CELL))
+	return c.clamp(Vector2i.ZERO, GRID_CELLS - Vector2i.ONE)
+
+
+func cell_centre(c: Vector2i) -> Vector3:
+	var x := GRID_FROM.x + (c.x + 0.5) * CELL
+	var z := GRID_FROM.y + (c.y + 0.5) * CELL
+	return Vector3(x, W.ground_y(x, z), z)
+
+
+func build_grid() -> void:
+	grid = AStarGrid2D.new()
+	grid.region = Rect2i(Vector2i.ZERO, GRID_CELLS)
+	grid.cell_size = Vector2(CELL, CELL)
+	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	grid.update()
+	var space: PhysicsDirectSpaceState3D = W.get_world_3d().direct_space_state
+	var probe := PhysicsShapeQueryParameters3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(CELL * 0.7, 1.0, CELL * 0.7)
+	probe.shape = shape
+	probe.exclude = [W.player.get_rid()]
+	var terrain = ctx.parts.get("terrain")
+	for cx in GRID_CELLS.x:
+		for cz in GRID_CELLS.y:
+			var c := cell_centre(Vector2i(cx, cz))
+			var steep := false
+			if terrain:
+				var h0: float = c.y
+				steep = absf(terrain.height_at(c.x + 1.0, c.z) - h0) > 0.75 or absf(terrain.height_at(c.x, c.z + 1.0) - h0) > 0.75
+			probe.transform = Transform3D(Basis(), c + Vector3(0, 1.1, 0))  # (above the ground, so the ground itself isn't "solid")
+			if steep or not space.intersect_shape(probe, 1).is_empty():
+				grid.set_point_solid(Vector2i(cx, cz), true)
+
+
+## Where to head next on the way to `goal`: the next point of an A* path (planned when the goal changes), skipping
+## ahead whenever the way to a later point is clear. Straight at the goal when there is no map, or for spots
+## up on the castle wall (`raised`).
+func next_waypoint(f: Dictionary, goal: Vector3, raised: bool) -> Vector3:
+	if grid == null or raised:
+		return goal
+	var node: Node3D = f.node
+	if f.get("path_goal", Vector3.INF) != goal or f.get("path", []).is_empty():
+		f.path_goal = goal
+		var from := cell_of(node.position)
+		var to := cell_of(goal)
+		if grid.is_point_solid(from):  # standing in a "solid" cell (a doorway, by a wall): start from a free neighbour
+			from = nearest_free(from)
+		if grid.is_point_solid(to):
+			to = nearest_free(to)
+		var pts := grid.get_id_path(from, to, true)
+		var path := []
+		for c in pts:
+			path.append(cell_centre(c))
+		path.append(goal)
+		f.path = path
+	var path: Array = f.path
+	while path.size() > 1 and (Vector2(path[0].x - node.position.x, path[0].z - node.position.z).length() < 0.5 			or clear_line(node.position, path[1])):
+		path.pop_front()  # reached it, or can already see the next one
+	return path[0]
+
+
+func nearest_free(c: Vector2i) -> Vector2i:
+	for r in range(1, 6):
+		for dx in range(-r, r + 1):
+			for dz in range(-r, r + 1):
+				var n := c + Vector2i(dx, dz)
+				if grid.region.has_point(n) and not grid.is_point_solid(n):
+					return n
+	return c
+
+
+func clear_line(a: Vector3, b: Vector3) -> bool:
+	var steps := int(Vector2(b.x - a.x, b.z - a.z).length() / (CELL * 0.5)) + 1
+	for i in range(1, steps + 1):
+		var p := a.lerp(b, float(i) / steps)
+		if grid.is_point_solid(cell_of(p)):
+			return false
 	return true
 
