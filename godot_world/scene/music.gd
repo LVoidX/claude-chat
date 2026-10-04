@@ -13,7 +13,7 @@ const VOLUME_DB := -33.0  # was -15, then -22, then -28: too loud. A constant in
 const TRACK_TRIM_DB := {"The_Old_Tower_Inn.mp3": -3.0}  # per-track correction for songs mastered louder than the rest
 const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
 const RATE := 22050
-const SFX_DB := {"swing": -2.0, "hit": -3.0, "pickup": -4.0}  # quieter than the jingles
+const SFX_DB := {"swing": 2.0, "hit": -3.0, "pickup": -4.0}  # the sword's short whoosh should read clearly
 
 var ctx: Dictionary
 var W

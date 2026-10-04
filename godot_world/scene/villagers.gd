@@ -65,8 +65,8 @@ func base_plan(village: Vector3, gate: Vector3, wall_y: float, wall_z: float, ca
 			[LOGS + Vector3(0.9, 0, 0.6), "work", 9.0], [LOGS + Vector3(-1.5, 0, 2.5), "idle", 3.0], [LOGS + Vector3(0.9, 0, 0.6), "work", 7.0],
 			[village + Vector3(-1, 0, -3), "idle", 6.0]]},
 		{"who": "elsie", "display": "Elsie", "bio": "Elsie the water carrier: a quick, sharp-tongued young woman who hears all the village news at the well", "name": "the water carrier", "tunic": "#3d5a7a", "hat": "", "tool": "bucket", "steps": [
-			[village + Vector3(1.6, 0, 0.4), "work", 4.0], [village + Vector3(-5, 0, -7.2), "idle", 3.0], [village + Vector3(1.6, 0, 0.4), "work", 4.0],
-			[village + Vector3(5.5, 0, 6.5), "idle", 3.0], [village + Vector3(-9.5, 0, 2.5), "idle", 3.0]]},
+			[village + Vector3(1.6, 0, 0.4), "work", 4.0], [village + Vector3(-1, 0, -18), "idle", 3.0], [village + Vector3(1.6, 0, 0.4), "work", 4.0],
+			[village + Vector3(12, 0, 16), "idle", 3.0], [village + Vector3(-16, 0, 9), "idle", 3.0]]},
 		{"who": "tam", "display": "Tam", "bio": "Tam the shepherd: an anxious old man who counts his sheep constantly and hates wolves and trolls", "name": "the shepherd", "tunic": "#8a6a3a", "hat": "straw", "tool": "crook", "steps": [
 			[pasture + Vector3(-9, 0, -3), "idle", 8.0], [pasture + Vector3(-6, 0, 8), "idle", 8.0], [pasture + Vector3(8, 0, 9), "idle", 8.0],
 			[pasture + Vector3(10, 0, -4), "idle", 8.0]]},
@@ -560,4 +560,3 @@ func clear_line(a: Vector3, b: Vector3) -> bool:
 		if grid.is_point_solid(cell_of(p)):
 			return false
 	return true
-

@@ -6,7 +6,7 @@ extends Node3D
 
 const HERBS := 16
 const MUSHROOMS := 14
-const ORE_ROCKS := 9
+const ORE_ROCKS := 15  # enough rocks for the castle quest without waiting for regrowth
 const REGROW := 120.0  # seconds before a herb, mushroom or ore rock comes back
 ## Treasure chests tucked away round the valley: E opens one (gold, potions, now and then gear). They fill up again
 ## REFILL real seconds later. state["chests"] = {index: unix time it was opened}.

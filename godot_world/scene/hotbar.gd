@@ -60,25 +60,25 @@ func make_sword() -> void:
 	var weapon: String = ctx.state.get("rpg", {}).get("weapon", "iron_sword")
 	var steel: Color = {"rusty_sword": Color("#8a8078"), "steel_sword": Color("#9cc4ff")}.get(weapon, Color("#c9d1d9"))
 	var gold := Color("#c9a24a") if weapon != "rusty_sword" else Color("#6a5a48")
-	# a tapered blade: three sections narrowing to a point, a darker fuller (groove) down the middle
-	for k in 3:
-		var w := 0.06 - k * 0.011
-		W.box(sword, Vector3(0, 0.14 + k * 0.2, 0), Vector3(w, 0.2, 0.012), steel.lightened(0.04 * k))
+	# Narrow the blade toward its point; the raised centre strip reads as a fuller in the small first-person view.
+	W.box(sword, Vector3(0, 0.18, 0), Vector3(0.09, 0.26, 0.025), steel)
+	W.box(sword, Vector3(0, 0.43, 0), Vector3(0.07, 0.24, 0.023), steel.lightened(0.06))
+	W.box(sword, Vector3(0, 0.64, 0), Vector3(0.045, 0.2, 0.02), steel.lightened(0.1))
 	var tip := MeshInstance3D.new()
 	var prism := PrismMesh.new()
-	prism.size = Vector3(0.038, 0.1, 0.012)
+	prism.size = Vector3(0.045, 0.12, 0.02)
 	tip.mesh = prism
-	tip.material_override = W.mat(steel.lightened(0.1))
+	tip.material_override = W.mat(steel.lightened(0.12))
 	tip.position = Vector3(0, 0.79, 0)
 	sword.add_child(tip)
-	W.box(sword, Vector3(0, 0.33, 0), Vector3(0.012, 0.5, 0.016), steel.darkened(0.3))  # the fuller
+	W.box(sword, Vector3(0, 0.39, -0.014), Vector3(0.018, 0.38, 0.008), steel.darkened(0.3))  # recessed fuller
 	# crossguard with down-turned ends, a leather-wrapped grip with bands, a round pommel
 	W.box(sword, Vector3(0, 0.03, 0), Vector3(0.2, 0.035, 0.045), gold)
 	for side in [-1, 1]:
 		var end: MeshInstance3D = W.box(sword, Vector3(side * 0.115, 0.01, 0), Vector3(0.05, 0.03, 0.04), gold)
 		end.rotation.z = side * 0.6
 	W.box(sword, Vector3(0, 0.03, 0), Vector3(0.05, 0.06, 0.05), gold.darkened(0.15))  # the guard's centre block
-	W.box(sword, Vector3(0, -0.07, 0), Vector3(0.034, 0.15, 0.034), Color("#3e2a1a"))  # grip
+	W.box(sword, Vector3(0, -0.075, 0), Vector3(0.04, 0.17, 0.04), Color("#3e2a1a"))  # grip
 	for k in 3:
 		W.box(sword, Vector3(0, -0.02 - k * 0.045, 0), Vector3(0.038, 0.012, 0.038), Color("#2a1c12"))
 	W.box(sword, Vector3(0, -0.165, 0), Vector3(0.06, 0.06, 0.06), gold, "sphere")  # pommel
@@ -227,11 +227,11 @@ func _input(event: InputEvent) -> void:
 ## The swing, in keyed poses: rest, wind up (blade cocked back over the right shoulder), a fast diagonal cut down
 ## across to the left, follow-through, back to rest. t = 0..1 through the swing.
 const POSES := [  # [t, rotation degrees, position]
-	[0.0, Vector3(-32, 8, -24), Vector3(0.34, -0.42, -0.6)],
+	[0.0, Vector3(-18, 0, -7), Vector3(0.34, -0.44, -0.62)],
 	[0.22, Vector3(18, -10, -42), Vector3(0.46, -0.24, -0.5)],
 	[0.42, Vector3(-70, 20, 68), Vector3(-0.05, -0.4, -0.74)],
 	[0.55, Vector3(-82, 28, 78), Vector3(-0.16, -0.48, -0.68)],
-	[1.0, Vector3(-32, 8, -24), Vector3(0.34, -0.42, -0.6)],
+	[1.0, Vector3(-18, 0, -7), Vector3(0.34, -0.44, -0.62)],
 ]
 
 

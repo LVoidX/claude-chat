@@ -103,6 +103,10 @@ var env: Environment
 var sky_material: ShaderMaterial
 var light: DirectionalLight3D  # the sun by day, the moon by night
 var placed_nodes := {}  # index in state.placed -> node
+var sky_from := 0.0
+var sky_to := 0.0
+var sky_transition := 0.0
+var sky_transition_time := 0.0
 
 
 func build(c: Dictionary) -> void:
@@ -188,7 +192,10 @@ func apply_time(delta: float) -> void:
 ## A time of day by name ("day", "sunset", "night", ...), or a plain colour for the whole sky.
 func set_sky(name: String) -> void:
 	if name in SKY_PRESETS:
-		ctx.state["time"] = SKY_PRESETS[name]
+		sky_from = hour()
+		sky_to = float(SKY_PRESETS[name])
+		sky_transition = 3.0
+		sky_transition_time = 0.0
 		ctx.state.erase("sky_tint")
 	elif Color.html_is_valid(name) or Color.from_string(name, Color(0, 0, 0, 0)).a > 0.0:
 		ctx.state["sky_tint"] = name
@@ -199,7 +206,17 @@ func set_sky(name: String) -> void:
 
 func _process(delta: float) -> void:
 	if sky_material:
-		apply_time(delta)
+		if sky_transition > 0.0:
+			sky_transition_time = minf(sky_transition_time + delta, sky_transition)
+			var a := sky_from * TAU / 24.0
+			var b := sky_to * TAU / 24.0
+			var hour_angle := lerp_angle(a, b, smoothstep(0.0, 1.0, sky_transition_time / sky_transition))
+			ctx.state["time"] = fposmod(hour_angle * 24.0 / TAU, 24.0)
+			apply_time(0.0)
+			if sky_transition_time >= sky_transition:
+				sky_transition = 0.0
+		else:
+			apply_time(delta)
 
 
 ## A simple solid box, sphere or pillar placed on request.

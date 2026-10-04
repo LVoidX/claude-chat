@@ -173,6 +173,8 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Ch.4 after barrow=sealed (2026-10-04): reuses the castle flag (start_sets burnt; kill 8 raiders -> ruin, 250 gold at the gate -> tolled). No new code needed.
 
+- Ch.5 after castle=ruin (2026-10-04): "The Captain Returns", reuses host/castle code (start_sets host=camped; kill Varga -> host broken; 12 ore -> castle rebuilt + host gone). No new code needed.
+
 ## RPG layer (2026-10-03)
 - scene/rpg.gd: level/xp/health/gold, inventory (I), quest journal (J), quest board by the village road (E), the smith's
   shop across the road (E: buy, sell for half), Q drinks a potion, death = wake at the well minus 10% gold. State in
@@ -225,3 +227,9 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - NPC pathfinding (villagers.gd): a walkability grid (1.5 m cells, probed for anything solid + steep ground, built the
   first physics frame after a rebuild, ~0.16 s) and A* paths with line-of-sight smoothing. New buildings are avoided
   automatically as long as they have colliders.
+- 2026-10-05 fixes: the held sword has a tapered blade, fuller, guard, wrapped grip and pommel, rests near vertical,
+  and its swing sound is louder. Barnaby's [look]
+  context asks for a direct description of the valley without narrating his own actions. Named sky presets blend over
+  three seconds. Highmoor's rebuilding quest now explains where and how to mine ore, and 15 ore rocks are placed so
+  its 12-ore goal is possible without waiting for regrowth. Grass is scattered over walkable hills across the map;
+  Elsie's routine uses waypoints outside the cottages.

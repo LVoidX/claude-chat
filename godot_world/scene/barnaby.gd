@@ -78,7 +78,7 @@ func describe() -> String:
 	if st().get("mode") == "atop":
 		seen.append("you are standing on top of the placed object")
 	if st().get("mode") == "look":
-		seen.append("you are slowly turning on the spot to look all around you right now: say what you notice")
+		seen.append("the valley's surroundings are in view; answer about the place itself without narrating an action or movement")
 	seen.append("the wanderer is %s" % W.where(here, ctx.player.position))
 	return "; ".join(seen)
 

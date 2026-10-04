@@ -10,13 +10,10 @@ How to continue:
 3. Remove the task from todo.txt, update PROJECT_NOTES.md if something works differently, commit and push.
 4. When todo.txt is empty: refine (the user asked e.g. for better-looking village roofs), one commit per change.
 
-Currently working on (2026-10-04): the to-do book has two items left.
-- (Sword revamp: done.)
-  the swing; the blade colour follows the equipped weapon in rpg.gd). The user still doesn't like it: give it a better
-  shape (tapered blade, fuller, proper crossguard and grip, pommel), maybe hold it lower and angled, and a weightier swing.
-- Bandit camp looks messy: scene/creatures.gd build_bandit_camp() (and build_camp() under it, Gorrak's old camp, which it
-  sits on). Tidy it: fewer, well placed tents, a proper palisade with a gate, a central fire, crates/barrels in order.
-  Check every state of the "camp" flag ("bandits", "cleared", "tolled").
-Then refine: the user asked e.g. for better-looking cottage roofs (scene/village.gd cottage(): the thatch PrismMesh).
-Test visually: run Godot with `--path godot_world -- --shot=out.png` (the scratch copy trick: copy the project, set the
-player in world_state.json, render) and look at the screenshot; always `python tools/check.py`.
+Currently working on (2026-10-05): all six lines in todo.txt are done and removed. The latest fixes are recorded in
+PROJECT_NOTES.md. The active, ignored story/chapter.json was clarified locally for the current Highmoor quest.
+
+Next refinement: tidy the bandit camp in scene/creatures.gd (build_bandit_camp() sits over Gorrak's old build_camp()):
+fewer, well placed tents, a palisade with a gate, a central fire, and orderly crates/barrels. Check all camp flag
+states ("bandits", "cleared", "tolled"). After that, improve the thatch PrismMesh cottage roofs in scene/village.gd.
+Test visually with `--path godot_world -- --shot=out.png` and `python tools/check.py`.
