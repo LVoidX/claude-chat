@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 14  # rebuild cached terrain and grass after changing their scatter
+const VERSION := 15  # rebuild cached terrain and grass after changing their scatter
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -307,24 +307,24 @@ func pine_mesh() -> ArrayMesh:
 	trunk.top_radius = 0.16
 	trunk.bottom_radius = 0.24
 	trunk.height = 2.0
-	trunk.radial_segments = 6
+	trunk.radial_segments = 10
 	st.append_from(trunk, 0, Transform3D(Basis(), Vector3(0, 1.0, 0)))
 	var roots := CylinderMesh.new()  # a flare of roots where it meets the ground
 	roots.top_radius = 0.24
 	roots.bottom_radius = 0.24 * 1.9
 	roots.height = 0.45
-	roots.radial_segments = 6
+	roots.radial_segments = 10
 	st.append_from(roots, 0, Transform3D(Basis(), Vector3(0, 0.2, 0)))
 	st.commit(mesh)
 	mesh.surface_set_material(0, tree_material(Color("#4a3423")))
 	st = SurfaceTool.new()
-	for k in 5:  # stacked cones, each smaller and twisted a little, so the tiers read as boughs
+	for k in 7:  # broad overlapping boughs keep the crown full between its tiers
 		var cone := CylinderMesh.new()
-		cone.top_radius = 0.0
-		cone.bottom_radius = 2.2 - k * 0.38
-		cone.height = 2.1 - k * 0.2
-		cone.radial_segments = 8
-		st.append_from(cone, 0, Transform3D(Basis(Vector3.UP, k * 0.45), Vector3(0, 2.2 + k * 0.95, 0)))
+		cone.top_radius = maxf(0.08, 0.34 - k * 0.035)
+		cone.bottom_radius = 2.25 - k * 0.31
+		cone.height = 2.2 - k * 0.15
+		cone.radial_segments = 14
+		st.append_from(cone, 0, Transform3D(Basis(Vector3.UP, k * 0.38), Vector3(0, 1.9 + k * 0.72, 0)))
 	st.commit(mesh)
 	mesh.surface_set_material(1, foliage_material(Color("#2f5a32"), 1.2, 7.5))
 	return mesh
@@ -337,14 +337,23 @@ func oak_mesh() -> ArrayMesh:
 	trunk.top_radius = 0.22
 	trunk.bottom_radius = 0.34
 	trunk.height = 2.6
-	trunk.radial_segments = 6
+	trunk.radial_segments = 10
 	st.append_from(trunk, 0, Transform3D(Basis(), Vector3(0, 1.3, 0)))
 	var roots := CylinderMesh.new()  # a flare of roots where it meets the ground
 	roots.top_radius = 0.34
 	roots.bottom_radius = 0.34 * 1.9
 	roots.height = 0.45
-	roots.radial_segments = 6
+	roots.radial_segments = 10
 	st.append_from(roots, 0, Transform3D(Basis(), Vector3(0, 0.2, 0)))
+	for side in [-1, 1]:  # visible limbs support the broad crown instead of leaving a bare pole
+		var branch := CylinderMesh.new()
+		branch.top_radius = 0.07
+		branch.bottom_radius = 0.13
+		branch.height = 1.5
+		branch.radial_segments = 8
+		var tilt := Basis(Vector3.FORWARD, side * 0.85) * Basis(Vector3.RIGHT, -0.55)
+		st.append_from(branch, 0, Transform3D(tilt, Vector3(side * 0.62, 2.45, 0)))
+		st.append_from(branch, 0, Transform3D(tilt.rotated(Vector3.UP, PI * 0.72), Vector3(side * 0.58, 2.8, 0.2)))
 	st.commit(mesh)
 	mesh.surface_set_material(0, tree_material(Color("#53392a")))
 	st = SurfaceTool.new()
@@ -353,8 +362,8 @@ func oak_mesh() -> ArrayMesh:
 		var s := SphereMesh.new()
 		s.radius = blob[1]
 		s.height = blob[1] * 1.7
-		s.radial_segments = 8
-		s.rings = 5
+		s.radial_segments = 14
+		s.rings = 9
 		st.append_from(s, 0, Transform3D(Basis(), blob[0]))
 	st.commit(mesh)
 	mesh.surface_set_material(1, foliage_material(Color("#40722f"), 1.6, 5.4))
