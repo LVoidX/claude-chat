@@ -1,5 +1,6 @@
 extends Node3D
-## Barnaby Finch, the old lighthouse keeper looking for the sea. His look is models/barnaby.json (about 275
+## Barnaby Finch, an old soldier turned storyteller who keeps the campfire at the crossroads and tells the valley's
+## story: between chapters you sit with him there and tell him what you did (story.gd). His look is models/barnaby.json (about 275
 ## textured boxes; named parts: leg_l, leg_r, arm_l, arm_r, rod). He wanders, stops and faces you when you
 ## come close (the chat window then listens hands-free and he answers), and does what his commands say.
 ## His commands are listed for him in barnaby_commands.txt (next to chat.pyw); each one is handled in
@@ -44,6 +45,13 @@ func build(c: Dictionary) -> void:
 	W = ctx["world"]
 	var named: Dictionary = W.build_model("barnaby", self)
 	body = named["root"]
+	restyle(body)
+	if named.has("rod"):  # the old fishing rod: he walks with a staff now
+		named["rod"].visible = false
+	if named.has("arm_r"):
+		var staff: Node3D = named["arm_r"]
+		W.box(staff, Vector3(0.02, -0.55, -0.12), Vector3(0.07, 2.0, 0.07), Color("#5a3d24"))
+		W.box(staff, Vector3(0.02, 0.48, -0.12), Vector3(0.12, 0.14, 0.12), Color("#4a3220"), "sphere")  # a knotted top
 	for pair in [["leg_l", 1], ["leg_r", -1], ["arm_l", -1], ["arm_r", 1]]:
 		if named.has(pair[0]):
 			limbs.append([named[pair[0]], pair[1]])
@@ -79,7 +87,7 @@ func describe() -> String:
 func seen_from(from: Vector3, viewer: Node) -> Array:
 	if viewer == self or not body:
 		return []
-	return ["Barnaby, the old lighthouse keeper, %s" % W.where(from, body.position)]
+	return ["Barnaby, the old storyteller who keeps the campfire, %s" % W.where(from, body.position)]
 
 
 ## Walk toward `goal`, stopping `stop` m short. Returns true while still walking.
@@ -112,6 +120,30 @@ func fire_pos() -> Variant:
 	return Vector3(f.x, 0, f.y)
 
 
+## Between chapters (story.gd interlude) Barnaby keeps the campfire: he goes and sits there, and when you sit down
+## too he takes the spot right beside you, close enough to talk.
+func story_duty() -> void:
+	var story = ctx.parts.get("story")
+	if not story or not story.has_method("interlude") or not story.built():
+		return
+	var il: Dictionary = story.interlude()
+	if il.is_empty() or il.get("heard", false) or st().get("mode") in ["follow", "stay", "heli", "thrown", "throwing"]:
+		return
+	var fire = fire_pos()
+	if fire == null:
+		return
+	var seat: Vector3 = fire + SEATS[0]
+	if ctx.get("seated", false):  # beside you, a little round the fire
+		var me: Vector3 = ctx.player.position - fire
+		me.y = 0.0
+		seat = fire + me.normalized().rotated(Vector3.UP, 0.85) * 1.9
+	if st().get("mode") != "sit" or Vector2(st().get("sx", 0.0) - seat.x, st().get("sz", 0.0) - seat.z).length() > 0.5:
+		st()["mode"] = "sit"
+		st()["sx"] = seat.x
+		st()["sz"] = seat.z
+	st()["sit_left"] = 30.0  # (he stays as long as the interlude lasts)
+
+
 func go_sit() -> void:
 	var fire = fire_pos()
 	if fire == null:
@@ -126,6 +158,7 @@ func go_sit() -> void:
 func _process(delta: float) -> void:
 	if not body:
 		return
+	story_duty()
 	var player: Vector3 = ctx.player.position
 	var moving := false
 	match st().get("mode", "wander"):
@@ -268,8 +301,8 @@ func _process(delta: float) -> void:
 		limbs[3][0].rotation.x = lerpf(limbs[3][0].rotation.x, deg_to_rad(40), sit_amount)
 		body.position.y -= 0.36 * sit_amount
 	if stride > 0.0 and st().get("mode") != "heli":
-		body.position.y += absf(sin(phase)) * 0.045 * stride  # the bob of each step
-		body.rotation.z = sin(phase) * 0.035 * stride  # the roll
+		body.position.y += (0.5 - 0.5 * cos(phase * 2.0)) * 0.018 * stride  # a slight, smooth rise and fall each step
+		body.rotation.z = sin(phase) * 0.02 * stride  # a gentle roll
 		body.rotation.x = -0.05 * stride  # leaning into the walk
 	step_rate = 0.0
 	if limbs.size() == 4:  # arms straight out sideways while he is a helicopter
@@ -291,6 +324,9 @@ func handle(c: Dictionary) -> bool:
 			match c["cmd"]:
 				"say_start":
 					talker.say_start(str(c.get("text", "")))
+					var story = ctx.parts.get("story")  # (at the campfire between chapters, this is him hearing your tale)
+					if story and story.has_method("barnaby_spoke"):
+						story.barnaby_spoke()
 				"say_end":
 					talker.say_end()
 				"say":
@@ -376,3 +412,33 @@ func handle(c: Dictionary) -> bool:
 		_:
 			return false
 	return true
+
+
+## His model was made as a fisherman (yellow oilskin coat and sou'wester, navy trousers). Recolour it as he is now:
+## a forest-green wool cloak and hood, brown travelling breeches. Done on the built boxes, so the model file stays.
+func restyle(node: Node) -> void:
+	for child in node.get_children():
+		if child is MeshInstance3D and child.material_override is StandardMaterial3D:
+			var m: StandardMaterial3D = child.material_override
+			var c := m.albedo_color
+			var hue := c.h * 360.0
+			var swap := Color()
+			var changed := false
+			if hue > 30.0 and hue < 62.0 and c.s > 0.45:  # the yellow oilskin -> green wool
+				swap = Color.from_hsv(0.31, c.s * 0.45, c.v * 0.55)
+				changed = true
+			elif hue > 195.0 and hue < 235.0 and c.s > 0.3:  # navy canvas -> brown
+				swap = Color.from_hsv(0.075, c.s * 0.75, clampf(c.v * 1.25, 0.0, 1.0))
+				changed = true
+			if changed:
+				var nm := m.duplicate() as StandardMaterial3D
+				nm.albedo_color = swap
+				if m.albedo_texture and str(m.albedo_texture.resource_path).contains("oilskin"):
+					nm.albedo_texture = W.grain_texture()
+				elif not m.albedo_texture:
+					nm.albedo_texture = W.grain_texture()
+					nm.uv1_triplanar = true
+					nm.uv1_scale = Vector3.ONE * 1.5
+				child.material_override = nm
+		restyle(child)
+

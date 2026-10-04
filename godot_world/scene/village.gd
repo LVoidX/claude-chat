@@ -16,6 +16,7 @@ var W
 var kit
 var sails: Node3D
 var windows := []  # [light, phase]
+var house_nodes := []  # [node, width, depth]: footprints for villagers.gd to walk around
 var hearths := []  # [light, phase]: the fires inside the cottages
 var spin := 0.0
 
@@ -34,7 +35,7 @@ func build(c: Dictionary) -> void:
 	fence(Vector3(11, 0, -3), Vector3(14, 0, 6))
 	for p in [Vector3(-14, 0, -8), Vector3(-13, 0, -11), Vector3(9.8, 0, 1)]:  # (the east one stands 2 m clear of the fence, which runs through x=12.3 here)
 		hay(p)
-	for p in [Vector3(-3.5, 0, -7.5), Vector3(-2.9, 0, -7.9), Vector3(4.5, 0, 6.8)]:
+	for p in [Vector3(-2.3, 0, -2.5), Vector3(-1.7, 0, -3.0), Vector3(4.5, 0, 6.8)]:  # (not in front of a door)
 		barrel(p)
 	cart(Vector3(3.5, 0, -3.5))
 	market_stall(Vector3(-4.8, 0, 4.6))
@@ -48,31 +49,50 @@ func at_ground(local: Vector3) -> Vector3:
 
 
 func well() -> void:
-	var ring := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 1.1
-	cyl.bottom_radius = 1.15
-	cyl.height = 0.9
-	cyl.radial_segments = 12
-	ring.mesh = cyl
-	ring.material_override = kit.mat("stone")
-	ring.position = Vector3(0, 0.45, 0)
-	add_child(ring)
-	W.add_collider(self, Transform3D(Basis(), ring.position), Vector3(2.2, 0.9, 2.2), "sphere")
-	W.box(self, Vector3(0, 0.88, 0), Vector3(1.6, 0.04, 1.6), Color("#0d1a22"), "sphere")  # dark water
+	# a ring of fitted stones with a capstone rim, dark water deep inside
+	var stone: Material = kit.mat("stone")
+	for k in 14:
+		var a := k * TAU / 14.0
+		var b: MeshInstance3D = kit.block(W, self, Vector3(cos(a) * 1.0, 0.42, sin(a) * 1.0), Vector3(0.5, 0.84, 0.3), "stone", false)
+		b.rotation.y = -a + PI / 2.0
+		var cap: MeshInstance3D = kit.block(W, self, Vector3(cos(a) * 1.0, 0.9, sin(a) * 1.0), Vector3(0.52, 0.12, 0.42), "dark_stone", false)
+		cap.rotation.y = -a + PI / 2.0
+	W.add_collider(self, Transform3D(Basis(), Vector3(0, 0.48, 0)), Vector3(2.4, 0.96, 2.4), "sphere")
+	W.box(self, Vector3(0, 0.35, 0), Vector3(1.55, 0.02, 1.55), Color("#0b1820"), "sphere")  # water, down in the dark
+	W.box(self, Vector3(0, 0.2, 0), Vector3(1.6, 0.3, 1.6), Color("#14100c"), "sphere")
+	# two stout posts with braces, the windlass between them, a crank on one end
 	for side in [-1, 1]:
-		kit.block(W, self, Vector3(side * 1.0, 1.4, 0), Vector3(0.16, 2.0, 0.16), "timber", false)
-	kit.block(W, self, Vector3(0, 2.25, 0), Vector3(2.3, 0.12, 0.12), "timber", false)  # the winch beam
-	var roof := MeshInstance3D.new()
+		kit.block(W, self, Vector3(side * 1.05, 1.55, 0), Vector3(0.2, 2.3, 0.2), "timber", false)
+		for z in [-1, 1]:
+			var brace: MeshInstance3D = kit.block(W, self, Vector3(side * 1.05, 2.25, z * 0.28), Vector3(0.1, 0.7, 0.1), "timber", false)
+			brace.rotation.x = z * 0.6
+	var axle := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.13
+	cyl.bottom_radius = 0.13
+	cyl.height = 2.0
+	cyl.radial_segments = 10
+	axle.mesh = cyl
+	axle.material_override = kit.mat("timber")
+	axle.position = Vector3(0, 2.05, 0)
+	axle.rotation.z = PI / 2.0
+	add_child(axle)
+	W.box(self, Vector3(0, 2.05, 0), Vector3(0.6, 0.3, 0.3), Color("#b8a27a"))  # rope wound on it
+	W.box(self, Vector3(1.22, 2.05, 0.18), Vector3(0.06, 0.06, 0.4), Color("#3a3d42"))  # the crank
+	W.box(self, Vector3(1.32, 2.05, 0.36), Vector3(0.22, 0.06, 0.06), Color("#3a3d42"))
+	W.box(self, Vector3(0, 1.55, 0), Vector3(0.025, 0.9, 0.025), Color("#b8a27a"))  # rope down to the bucket
+	W.box(self, Vector3(0, 1.0, 0), Vector3(0.32, 0.3, 0.32), Color("#7a5530"))  # the bucket, iron-banded
+	W.box(self, Vector3(0, 1.08, 0), Vector3(0.34, 0.04, 0.34), Color("#3a3d42"))
+	var roof := MeshInstance3D.new()  # a little shingled roof
 	var prism := PrismMesh.new()
-	prism.size = Vector3(2.8, 0.9, 1.8)
+	prism.size = Vector3(2.9, 0.95, 1.9)
 	roof.mesh = prism
-	roof.material_override = kit.mat("thatch")
-	roof.position = Vector3(0, 2.75, 0)
+	roof.material_override = kit.mat("planks", Color("#8a6a4a"))
+	roof.position = Vector3(0, 3.15, 0)
 	roof.rotation.y = PI / 2.0
 	add_child(roof)
 	roof.create_convex_collision()
-	W.box(self, Vector3(0.3, 1.6, 0), Vector3(0.3, 0.32, 0.3), Color("#6b4a2b"))  # the bucket
+	kit.block(W, self, Vector3(0, 2.7, 0), Vector3(2.3, 0.14, 0.14), "timber", false)  # tie beam
 
 
 func cottage(offset: Vector3, size: Vector2, index: int) -> void:
@@ -82,6 +102,7 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 	W.face(house, global_position)  # the door faces the well
 	var w := size.x
 	var d := size.y
+	house_nodes.append([house, w, d])
 	var h := 3.0
 	kit.block(W, house, Vector3(0, 0.2, 0), Vector3(w + 0.2, 0.4, d + 0.2), "dark_stone")  # stone footing
 	# hollow walls (you can walk in), with a doorway in the front wall (front is -z: facing the well)
@@ -100,12 +121,25 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 	kit.block(W, house, Vector3(0, 0.425, 0), Vector3(w - 2.0 * t, 0.05, d - 2.0 * t), "planks", false)  # floor
 	kit.block(W, house, Vector3(0, 0.4 + h - 0.05, 0), Vector3(w, 0.1, d), "planks", false)  # ceiling
 	furnish(house, w, d, h, index)
+	# two stone steps up to the door, with a gentle ramp under them you can just walk up
+	kit.block(W, house, Vector3(door_x, 0.1, -d / 2.0 - 1.0), Vector3(1.5, 0.2, 0.55), "dark_stone", false)
+	kit.block(W, house, Vector3(door_x, 0.25, -d / 2.0 - 0.5), Vector3(1.5, 0.3, 0.5), "dark_stone", false)
+	var slope := atan2(0.44, 1.5)  # (it reaches the footing's top edge at full height, so nothing catches your feet)
+	W.add_collider(house, Transform3D(Basis(Vector3.RIGHT, -slope), Vector3(door_x, 0.18, -d / 2.0 - 0.85)), Vector3(1.4, 0.1, 1.6))
 	var beams := []  # the dark timber frame, standing just proud of the plaster
 	for x in [-w / 2.0, w / 2.0]:
 		for z in [-d / 2.0, d / 2.0]:
 			beams.append([Vector3(x, 0.4 + h / 2.0, z), Vector3(0.22, h, 0.22)])
+	var dx := -w / 5.0  # (the doorway: the front beams stop either side of it)
+	var gap := 1.15 / 2.0
 	for y in [0.45, 1.9, 3.35]:
-		beams.append([Vector3(0, y, -d / 2.0 - 0.02), Vector3(w, 0.16, 0.06)])
+		if y < 3.0:
+			var lw := dx - gap + w / 2.0
+			var rw := w / 2.0 - (dx + gap)
+			beams.append([Vector3(-w / 2.0 + lw / 2.0, y, -d / 2.0 - 0.02), Vector3(lw, 0.16, 0.06)])
+			beams.append([Vector3(w / 2.0 - rw / 2.0, y, -d / 2.0 - 0.02), Vector3(rw, 0.16, 0.06)])
+		else:
+			beams.append([Vector3(0, y, -d / 2.0 - 0.02), Vector3(w, 0.16, 0.06)])
 		beams.append([Vector3(0, y, d / 2.0 + 0.02), Vector3(w, 0.16, 0.06)])
 		beams.append([Vector3(-w / 2.0 - 0.02, y, 0), Vector3(0.06, 0.16, d)])
 		beams.append([Vector3(w / 2.0 + 0.02, y, 0), Vector3(0.06, 0.16, d)])
@@ -355,9 +389,6 @@ func tavern_sign(offset: Vector3, name: String) -> void:
 		W.box(post, Vector3(x, 2.85, 0), Vector3(0.03, 0.3, 0.03), Color("#2a2622"))  # chains
 	W.box(post, Vector3(0.6, 2.3, 0), Vector3(1.0, 0.8, 0.06), Color("#2a4a2a"))  # the board
 	W.box(post, Vector3(0.6, 2.3, 0), Vector3(1.06, 0.86, 0.04), Color("#c9a24a"))  # its gilt frame
-	W.box(post, Vector3(0.55, 2.38, 0.045), Vector3(0.3, 0.2, 0.02), Color("#e8c25a"))  # a golden goose: body
-	W.box(post, Vector3(0.75, 2.5, 0.045), Vector3(0.06, 0.22, 0.02), Color("#e8c25a"))  # neck
-	W.box(post, Vector3(0.79, 2.6, 0.045), Vector3(0.1, 0.07, 0.02), Color("#e8c25a"))  # head
 	for side in [-1, 1]:
 		var l := Label3D.new()
 		l.text = name
@@ -365,9 +396,14 @@ func tavern_sign(offset: Vector3, name: String) -> void:
 		l.pixel_size = 0.0028
 		l.modulate = Color("#f2e6c8")
 		l.outline_size = 6
-		l.position = Vector3(0.6, 2.08, side * 0.04)
+		l.position = Vector3(0.6, 2.08, side * 0.05)
 		l.rotation.y = 0.0 if side > 0 else PI
+		l.double_sided = false  # (each face has its own, readable the right way round)
 		post.add_child(l)
+	for side in [-1, 1]:  # the golden goose on both faces
+		W.box(post, Vector3(0.55, 2.38, side * 0.045), Vector3(0.3, 0.2, 0.02), Color("#e8c25a"))
+		W.box(post, Vector3(0.75, 2.5, side * 0.045), Vector3(0.06, 0.22, 0.02), Color("#e8c25a"))
+		W.box(post, Vector3(0.79, 2.6, side * 0.045), Vector3(0.1, 0.07, 0.02), Color("#e8c25a"))
 
 
 ## Inside a cottage: plank floor (in cottage()), a hearth with a fire, and furniture. Cottage 1 is the Gilded Goose

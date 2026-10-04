@@ -3,7 +3,8 @@ extends Node3D
 ## Waystones: tall standing stones with a glowing rune at Thornvale, Highmoor, the Old Mill, the Barrow and the
 ## crossroads. Touch one to attune to it (its rune lights up); E at any attuned stone opens the list and takes you
 ## to any other attuned one. state["waystones"] = names attuned.
-## The campfire at the crossroads: E to rest. Heals you fully; at night you sleep until morning.
+## The campfire at the crossroads: E to sit down by it (you heal while sitting; E stands you up, T sleeps until
+## morning). Between story chapters this is where you sit with Barnaby and tell him what happened (story.gd).
 
 const STONES := [  # name, position (x, z)
 	["The Crossroads", Vector2(7, -7)],
@@ -23,6 +24,10 @@ var fade: ColorRect
 var fire_light: OmniLight3D
 var t := 0.0
 var opened_at := 0  # (the E that opened the list must not also close it)
+var seated := false  # sitting by the campfire
+var seat_pos := Vector3.ZERO
+var seat_yaw := 0.0
+var sat_at := 0
 
 
 func build(c: Dictionary) -> void:
@@ -93,14 +98,46 @@ func build_fire(at: Vector3) -> void:
 
 
 func interactables() -> Array:
-	var out := [{"pos": ground(FIRE), "label": "Rest by the fire", "act": rest, "range": 2.8}]
+	var out := [] if seated else [{"pos": ground(FIRE), "label": "Sit by the fire", "act": sit_down, "range": 3.0}]
 	for s in stones:
 		if attuned(s.name):
 			out.append({"pos": s.pos, "label": "Travel by waystone", "act": open_travel.bind(s.name), "range": 2.6})
 	return out
 
 
-# --- resting -----------------------------------------------------------------------------------------------
+# --- sitting and resting by the fire -------------------------------------------------------------------------
+
+func sit_down() -> void:
+	var fire := ground(FIRE)
+	var from: Vector3 = W.player.global_position - fire
+	from.y = 0.0
+	var spot := fire + (from.normalized() if from.length() > 0.1 else Vector3.BACK) * 1.9
+	seat_pos = Vector3(spot.x, W.ground_y(spot.x, spot.z) + 0.05, spot.z)
+	var to_fire := fire - seat_pos
+	seat_yaw = atan2(-to_fire.x, -to_fire.z)  # facing the flames
+	seated = true
+	sat_at = Time.get_ticks_msec()
+	ctx["seated"] = true
+	W.show_notice("You sit down by the fire.   [E] stand up   [T] sleep until morning", 6.0)
+
+
+func stand_up() -> void:
+	seated = false
+	ctx["seated"] = false
+	W.head.position.y = W.EYE_HEIGHT
+
+
+func _physics_process(delta: float) -> void:
+	if not seated:
+		return
+	W.player.global_position = seat_pos  # (held in place: world.gd's walking runs before this part)
+	W.player.velocity = Vector3.ZERO
+	W.player.rotation.y = lerp_angle(W.player.rotation.y, seat_yaw, minf(delta * 3.0, 1.0)) if Time.get_ticks_msec() - sat_at < 1500 else W.player.rotation.y
+	W.head.position.y = 0.95  # eye height sitting on the grass
+	var rpg = ctx.parts.get("rpg")
+	if rpg and fmod(t, 0.5) < delta and int(rpg.st().hp) < rpg.max_hp():
+		rpg.heal(2)  # the fire's warmth
+
 
 func rest() -> void:
 	var base = ctx.parts.get("base")
@@ -115,9 +152,7 @@ func rest() -> void:
 			ctx.state["time"] = 7.0
 			base.apply_time(0.0)
 		W.show_notice("You rest by the fire until morning, and wake refreshed." if night else "You rest a while by the fire. Fully healed.", 5.0)
-		var story = ctx.parts.get("story")  # (between chapters, resting is part of the story: news may come)
-		if story and story.has_method("interlude_rest"):
-			story.interlude_rest())
+)
 	tw.tween_interval(0.8 if night else 0.3)
 	tw.tween_property(fade, "color:a", 0.0, 1.0)
 
@@ -181,6 +216,13 @@ func travel(to: String) -> void:
 
 
 func key(event: InputEventKey) -> void:
+	if seated and not panel:
+		if event.keycode == KEY_E and Time.get_ticks_msec() - sat_at > 300:
+			stand_up()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_T:
+			rest()
+		return
 	if panel and event.keycode in [KEY_E, KEY_ESCAPE] and Time.get_ticks_msec() - opened_at > 150:
 		close_travel()
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

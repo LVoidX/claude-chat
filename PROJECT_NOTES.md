@@ -211,3 +211,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Interiors: cottages are hollow (doorway, floor, ceiling, hearth, bed, table, shelf; cottage 1 = the Gilded Goose
   tavern with a bar), castle.gd great_hall() is hollow (feast table, throne on a dais, hearth, banners, chandeliers;
   rubble when ruined). Barnaby: smoother walk, [sit] by the campfire (also on his own now and then).
+- 2026-10-04 cleanup: removed the sea, the conch, the parkour tower, the gun (and its knockback) and the ambient
+  wind (deleted parts and commands). Barnaby is no longer a lighthouse keeper: an old soldier and storyteller who
+  keeps the campfire, recoloured (green cloak, staff); he is the main story's giver (story.gd interlude: sit with him
+  at the fire, tell him what happened, he gets a ! when the next chapter is ready).

@@ -73,7 +73,7 @@ func load_chapter() -> void:
 	data_sig = path + str(FileAccess.get_modified_time(path))
 	var number := int(parsed.get("chapter", 1))
 	if number > int(st().chapter) and st().get("finished", false) and not interlude_done():
-		return  # written, but it waits until the interlude (news to the village, a night's rest) is over
+		return  # written, but it waits until Barnaby has heard your tale and told you the news (the interlude)
 	data = parsed
 	if number != int(st().chapter):  # a new chapter begins
 		if number < int(st().chapter) and int(st().chapter) > 0:  # the story was sent back: forget what happened since
@@ -91,7 +91,8 @@ func load_chapter() -> void:
 		var music = ctx.parts.get("music")
 		if music:
 			music.play_sfx.call_deferred("chapter")
-		get_tree().create_timer(7.5).timeout.connect(W.show_notice.bind(str(data.get("intro", "")), 12.0))
+		# the story text no longer fills the top of the screen: it is in the journal (J), under the chapter title
+		get_tree().create_timer(7.5).timeout.connect(W.show_notice.bind("Press J to read the story so far.", 6.0))
 		log_line("\n## Chapter %d: %s\n%s\n" % [number, data.get("title", ""), data.get("intro", "")])
 		writing = false
 
@@ -167,8 +168,8 @@ func complete(id: String) -> void:
 		set_flags(sets)
 	if ends:
 		writing = true
-		st().interlude = {"tell": false, "rest": false}  # something to do while the next chapter is written
-		get_tree().create_timer(6.5).timeout.connect(W.show_notice.bind("Word of what you did will spread. Bring the news to Thornvale, then rest by the fire.", 8.0))
+		st().interlude = {"told": false, "heard": false}  # something to do while the next chapter is written
+		get_tree().create_timer(6.5).timeout.connect(W.show_notice.bind("Barnaby will want to hear about this. Sit with him by the campfire at the crossroads and tell him what happened.", 9.0))
 		W.send({"t": "story_next", "chapter": int(st().chapter), "quest": id})
 	build_beams()
 	if rpg:
@@ -209,12 +210,9 @@ func build_beams() -> void:
 	for q in open_quests():
 		if q.get("kind") in ["reach", "bring"] and q.has("pos"):
 			spots.append([quest_pos(q), q.id])
-	var il: Dictionary = st().get("interlude", {}) if ctx.has("state") else {}
-	if st().get("finished", false) and not il.is_empty():
-		if not il.tell:
-			spots.append([Vector3(VILLAGE_SQUARE.x, W.ground_y(VILLAGE_SQUARE.x, VILLAGE_SQUARE.y), VILLAGE_SQUARE.y), "tell"])
-		elif not il.rest:
-			spots.append([Vector3(CAMPFIRE.x, W.ground_y(CAMPFIRE.x, CAMPFIRE.y), CAMPFIRE.y), "rest"])
+	var il := interlude()
+	if not il.is_empty() and not il.get("told", false):
+		spots.append([Vector3(CAMPFIRE.x, W.ground_y(CAMPFIRE.x, CAMPFIRE.y), CAMPFIRE.y), "tell"])
 	for spot in spots:
 		var node := Node3D.new()
 		node.position = spot[0]
@@ -235,14 +233,7 @@ func _process(delta: float) -> void:
 			if rpg:
 				rpg.refresh_hud()
 	var player: Vector3 = W.player.global_position
-	var il: Dictionary = st().get("interlude", {})
-	if st().get("finished", false) and not il.is_empty() and not il.tell 			and Vector2(player.x - VILLAGE_SQUARE.x, player.z - VILLAGE_SQUARE.y).length() < 10.0:
-		il.tell = true  # the village hears what you did (and the villagers' lines follow the new flags, barks.gd)
-		W.show_notice("The villagers gather round the well to hear your tale. Now rest: the fire at the crossroads.", 7.0)
-		var rpg = ctx.parts.get("rpg")
-		if rpg:
-			rpg.add_xp(25)
-		interlude_step()
+	update_news_mark()
 	for q in open_quests():
 		var kind: String = q.get("kind", "")
 		if not kind in ["reach", "bring"] or not q.has("pos"):
@@ -267,33 +258,76 @@ func tracker_lines() -> Array:
 	for q in open_quests():
 		out.append(q.title + progress_text(q))
 	if st().get("finished", false):
-		var il: Dictionary = st().get("interlude", {})
-		if not il.is_empty() and not interlude_done():
-			out.append(("[done] " if il.tell else "") + "Bring the news to Thornvale")
-			out.append(("[done] " if il.rest else "") + "Rest by the campfire at the crossroads")
-		else:
-			out.append("(no word yet of what comes next: explore, help the villagers...)")
+		var il := interlude()
+		if not il.is_empty() and not il.get("told", false):
+			out.append("Sit by the campfire and tell Barnaby what happened")
+		elif not il.is_empty() and not news_ready():
+			out.append("(Barnaby is pondering what comes next... explore, help the villagers)")
+		elif not il.is_empty():
+			out.append("Barnaby has news: talk to him")
 	return out
 
 
-# --- the interlude between chapters: gives the storyteller time to write, and makes sense in the story -------
+# --- the interlude between chapters: you sit with Barnaby at the campfire and tell him what happened (by voice);
+# meanwhile the storyteller writes the next chapter. When it is ready Barnaby has a gold ! over his head: E (or just
+# talking to him) and he tells you what happens next, and the new chapter begins. Barnaby is the story's teller.
 
-const VILLAGE_SQUARE := Vector2(-44, 2)
 const CAMPFIRE := Vector2(9, 6)  # (travel.gd FIRE)
+var news_mark: Label3D
+
+
+func interlude() -> Dictionary:
+	if not st().get("finished", false):
+		return {}
+	var il: Dictionary = st().get("interlude", {})
+	if il.has("tell") or (il.is_empty() and st().has("interlude")):  # (from an older version: start it the new way)
+		il = {"told": false, "heard": false}
+		st().interlude = il
+	return il
 
 
 func interlude_done() -> bool:
-	var il: Dictionary = st().get("interlude", {})
-	return il.is_empty() or (il.get("tell", false) and il.get("rest", false))
+	var il := interlude()
+	return il.is_empty() or il.get("heard", false)
 
 
-## travel.gd calls this when you rest by the campfire.
-func interlude_rest() -> void:
-	var il: Dictionary = st().get("interlude", {})
-	if not st().get("finished", false) or il.is_empty() or il.rest:
+## Is the next chapter written (and waiting)?
+func news_ready() -> bool:
+	var path := chapter_file()
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	return parsed is Dictionary and int(parsed.get("chapter", 0)) > int(st().chapter)
+
+
+## barnaby.gd calls this whenever Barnaby speaks. Sitting with him at the fire and him answering you = you told him.
+func barnaby_spoke() -> void:
+	var il := interlude()
+	if il.is_empty() or il.get("told", false):
 		return
-	il.rest = true
+	var b = ctx.parts.get("barnaby")
+	var fire := Vector3(CAMPFIRE.x, 0, CAMPFIRE.y)
+	if not ctx.get("seated", false) or not b or Vector2(b.body.position.x - fire.x, b.body.position.z - fire.z).length() > 5.0:
+		return
+	il.told = true
+	var rpg = ctx.parts.get("rpg")
+	if rpg:
+		rpg.add_xp(25)
 	interlude_step()
+
+
+func hear_news() -> void:
+	var il := interlude()
+	if il.is_empty() or not il.get("told", false) or not news_ready():
+		return
+	il.heard = true
+	load_chapter()  # the new chapter begins now
+	build_beams()
+	var rpg = ctx.parts.get("rpg")
+	if rpg:
+		rpg.refresh_hud()
+	var titles := quests().map(func(q): return str(q.title))
+	W.send({"t": "event", "who": "barnaby", "label": "news", "text": ("You have news for the wanderer: tell them, in your own words and briefly, " +
+		"what happens next in the story (Chapter %d, \"%s\": %s). Their choices: %s." % [int(st().chapter), data.get("title", ""),
+		data.get("intro", ""), "; ".join(titles)])})
 
 
 func interlude_step() -> void:
@@ -301,10 +335,7 @@ func interlude_step() -> void:
 	var rpg = ctx.parts.get("rpg")
 	if rpg:
 		rpg.refresh_hud()
-	if interlude_done():
-		load_chapter()  # if the next chapter is written, it begins now
-		if st().get("finished", false):
-			W.show_notice("No word yet of what comes next. Explore, help the villagers, and it will find you.", 7.0)
+
 
 
 func chapter_title() -> String:
@@ -330,3 +361,34 @@ func handle(c: Dictionary) -> bool:
 		_:
 			return false
 	return true
+
+
+## The gold ! over Barnaby when he has news; also what E does next to him then.
+func update_news_mark() -> void:
+	var b = ctx.parts.get("barnaby")
+	var il := interlude()
+	var show: bool = b != null and b.body != null and not il.is_empty() and il.get("told", false) and news_ready()
+	if show and not is_instance_valid(news_mark):
+		news_mark = Label3D.new()
+		news_mark.text = "!"
+		news_mark.font_size = 72
+		news_mark.outline_size = 14
+		news_mark.pixel_size = 0.0013
+		news_mark.fixed_size = true
+		news_mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		news_mark.no_depth_test = true
+		news_mark.modulate = Color("#ffd24d")
+		add_child(news_mark)
+	if is_instance_valid(news_mark):
+		news_mark.visible = show
+		if show:
+			news_mark.global_position = b.body.global_position + Vector3(0, 2.95 + sin(t * 3.0) * 0.06, 0)
+
+
+func interactables() -> Array:
+	var b = ctx.parts.get("barnaby")
+	var il := interlude()
+	if b and b.body and not il.is_empty() and il.get("told", false) and news_ready():
+		return [{"pos": b.body.global_position, "label": "Hear Barnaby's news", "act": hear_news, "range": 3.0}]
+	return []
+

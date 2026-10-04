@@ -50,7 +50,7 @@ func part_reloaded(name: String) -> void:
 func make_plates() -> void:
 	for part in ctx.parts.values():
 		if "npc_id" in part and "body" in part and part.body:
-			var who := {"barnaby": "Barnaby Finch\n[i]old lighthouse keeper[/i]", "marigold": "Marigold Thorne\n[i]herbalist & baker[/i]"}
+			var who := {"barnaby": "Barnaby Finch\n[i]keeper of the campfire[/i]", "marigold": "Marigold Thorne\n[i]herbalist & baker[/i]"}
 			plate(part.body, who.get(part.npc_id, str(part.npc_id).capitalize()), 2.45)
 	var v = ctx.parts.get("villagers")
 	if v and "folk" in v:

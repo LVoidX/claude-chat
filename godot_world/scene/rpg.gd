@@ -415,14 +415,16 @@ func build_smithy() -> void:
 	W.box(smithy, Vector3(0.9, 0.35, -0.2), Vector3(0.5, 0.7, 0.5), Color("#4a3220"), "cube", true)  # anvil block
 	W.box(smithy, Vector3(0.9, 0.8, -0.2), Vector3(0.9, 0.22, 0.34), Color("#3a3d42"))  # anvil
 	W.box(smithy, Vector3(1.4, 0.8, -0.2), Vector3(0.3, 0.12, 0.2), Color("#3a3d42"))  # its horn
-	for i in 3:  # swords on a rack
-		var blade: MeshInstance3D = W.box(smithy, Vector3(2.2, 1.3, -0.9 + i * 0.5), Vector3(0.04, 1.0, 0.1), Color("#c9d1d9"))
+	# a wooden board on the corner post holds the swords (they used to hang in the air)
+	W.box(smithy, Vector3(2.26, 1.3, -0.575), Vector3(0.06, 1.2, 1.85), timber)
+	for i in 3:  # swords on the rack
+		var blade: MeshInstance3D = W.box(smithy, Vector3(2.21, 1.3, -0.9 + i * 0.5), Vector3(0.04, 1.0, 0.1), Color("#c9d1d9"))
 		blade.rotation.x = 0.1
 	# the smith: a stout figure in a leather apron
 	var smith := Node3D.new()
 	smith_node = smith
 	smith.position = Vector3(0.2, 0, 0.9)
-	smith.rotation.y = PI * 0.15
+	smith.rotation.y = PI + 0.15  # his front is +z: turned round to face the road side (-z) where customers come from, standing behind the anvil
 	smithy.add_child(smith)
 	W.box(smith, Vector3(-0.16, 0.42, 0), Vector3(0.22, 0.84, 0.26), Color("#3a2d22"))
 	W.box(smith, Vector3(0.16, 0.42, 0), Vector3(0.22, 0.84, 0.26), Color("#3a2d22"))

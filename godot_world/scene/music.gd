@@ -9,10 +9,11 @@ extends Node3D
 
 const DAY_TRACKS := ["Market_Day.mp3", "The_Bards_Tale.mp3"]
 const NIGHT_TRACKS := ["The_Old_Tower_Inn.mp3"]
-const VOLUME_DB := -15.0
+const VOLUME_DB := -22.0  # was -15: too loud
+const TRACK_TRIM_DB := {"The_Old_Tower_Inn.mp3": -3.0}  # per-track correction for songs mastered louder than the rest
 const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
 const RATE := 22050
-const SFX_DB := {"swing": -11.0, "hit": -3.0, "pickup": -4.0}  # quieter than the jingles
+const SFX_DB := {"swing": -2.0, "hit": -3.0, "pickup": -4.0}  # quieter than the jingles
 
 var ctx: Dictionary
 var W
@@ -28,6 +29,7 @@ func build(c: Dictionary) -> void:
 	var existing = ctx.get("music_player")
 	if is_instance_valid(existing):  # (a reload keeps the one already playing)
 		player = existing
+		player.volume_db = VOLUME_DB + float(TRACK_TRIM_DB.get(ctx.get("music_last", ""), 0.0))  # the song already playing gets the new level at once
 	else:
 		player = AudioStreamPlayer.new()
 		player.name = "Music"
@@ -37,8 +39,8 @@ func build(c: Dictionary) -> void:
 	sfx = AudioStreamPlayer.new()
 	sfx.volume_db = -6.0
 	add_child(sfx)
-	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 2:
-		ctx["jingles_v"] = 2
+	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 3:
+		ctx["jingles_v"] = 3
 		ctx["jingles"] = {"levelup": jingle([[0, 523.3], [0.11, 659.3], [0.22, 784.0], [0.33, 1046.5]], 1.3),
 			"quest": jingle([[0, 392.0], [0.16, 523.3], [0.32, 659.3], [0.32, 392.0], [0.5, 784.0], [0.5, 523.3]], 1.6),
 			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6),
@@ -149,7 +151,7 @@ func next_track() -> void:
 	var stream := AudioStreamMP3.new()
 	stream.data = bytes
 	player.stream = stream
-	player.volume_db = VOLUME_DB
+	player.volume_db = VOLUME_DB + float(TRACK_TRIM_DB.get(file, 0.0))
 	player.play()
 	ctx["music_last"] = file
 

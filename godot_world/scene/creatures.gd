@@ -241,17 +241,24 @@ func build_bandit_camp(at: Vector3, camp: String) -> void:
 	node.position = at
 	add_child(node)
 	var flag_color: Color = {"bandits": Color("#5a1414"), "cleared": Color("#2f4f8a"), "tolled": Color("#7a5a1a")}.get(camp, Color.WHITE)
-	if camp != "cleared":  # tents: two leaning cloth slabs each, plus a ridge pole
+	if camp != "cleared":  # A-frame canvas tents (a prism), a ridge pole on two uprights, a dark flap
 		for spec in [[Vector3(-7, 0, -6), 0.3], [Vector3(7, 0, -5), -0.4], [Vector3(8, 0, 6), 1.2]]:
 			var tent := Node3D.new()
 			tent.position = spec[0]
+			tent.position.y = W.ground_y(at.x + spec[0].x, at.z + spec[0].z) - at.y
 			tent.rotation.y = spec[1]
 			node.add_child(tent)
-			for side in [-1, 1]:
-				var slab: MeshInstance3D = W.box(tent, Vector3(side * 1.0, 1.045, 0), Vector3(0.1, 3.0, 3.4),
-					Color("#7a6a4a") if side < 0 else Color("#6e5f42"))
-				slab.rotation.z = -side * 0.8
-			W.box(tent, Vector3(0, 2.1, 0), Vector3(0.14, 0.14, 3.7), Color("#4a3220"))
+			var cloth := MeshInstance3D.new()
+			var prism := PrismMesh.new()
+			prism.size = Vector3(2.6, 2.1, 3.4)
+			cloth.mesh = prism
+			cloth.material_override = W.mat(Color("#7a6a4a") if camp == "bandits" else Color("#8a7a5a"))
+			cloth.position.y = 1.05
+			tent.add_child(cloth)
+			for z in [-1.75, 1.75]:
+				W.box(tent, Vector3(0, 1.1, z), Vector3(0.1, 2.2, 0.1), Color("#4a3220"))
+			W.box(tent, Vector3(0, 2.15, 0), Vector3(0.12, 0.12, 3.7), Color("#4a3220"))
+			var flap: MeshInstance3D = W.box(tent, Vector3(0, 0.6, 1.71), Vector3(0.8, 1.1, 0.02), Color("#2a2218"))
 	if camp == "bandits":  # a rough stake fence, crates, and a black-red banner
 		for i in 11:
 			var a := PI * 0.15 + i * PI * 1.7 / 10.0

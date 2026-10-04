@@ -268,6 +268,41 @@ func make_tool(arm: Node3D, tool: String) -> void:
 			W.box(arm, hand + Vector3(0, 1.62, 0), Vector3(0.07, 0.22, 0.04), Color("#aab0b8"))
 
 
+## Is this spot inside (or brushing) a house? Uses the village's house footprints (village.gd house_nodes).
+func in_house(p: Vector3) -> bool:
+	var village = ctx.parts.get("village")
+	if not village or not "house_nodes" in village:
+		return false
+	for h in village.house_nodes:
+		var node: Node3D = h[0]
+		if not is_instance_valid(node):
+			continue
+		var l := node.to_local(Vector3(p.x, node.global_position.y, p.z))
+		if absf(l.x) < h[1] / 2.0 + 0.45 and absf(l.z) < h[2] / 2.0 + 0.45:
+			return true
+	return false
+
+
+## The way to walk: straight at the goal, unless a house is in the way; then turn (left or right, whichever
+## clears the house and heads more toward the goal) until the way ahead is free.
+func steer(at: Vector3, dir: Vector3, goal: Vector3) -> Vector3:
+	if not in_house(at + dir * 1.0):
+		return dir
+	var best := dir
+	var best_score := -INF
+	for k in range(1, 7):
+		for sgn in [-1, 1]:
+			var d := dir.rotated(Vector3.UP, sgn * k * 0.4)
+			if not in_house(at + d * 1.0):
+				var score := d.dot((goal - at).normalized()) - k * 0.05
+				if score > best_score:
+					best_score = score
+					best = d
+		if best_score > -INF:
+			return best
+	return -dir  # boxed in: back out
+
+
 func place(p: Vector3) -> Vector3:
 	return Vector3(p.x, p.y if p.y > 0.0 else W.ground_y(p.x, p.z), p.z)
 
@@ -283,7 +318,7 @@ func _process(delta: float) -> void:
 		var moving := false
 		var by_you := Vector2(player.x - node.position.x, player.z - node.position.z).length() < 2.6
 		if to.length() > 0.12 and not by_you:  # (they stop to talk when you stand right by them)
-			var dir := to.normalized()
+			var dir := steer(node.position, to.normalized(), goal)  # (around houses, not through them)
 			var me := Vector3(player.x - node.position.x, 0, player.z - node.position.z)
 			if me.length() < 1.6 and me.normalized().dot(dir) > 0.3:  # you're in the way: step around you
 				dir = (dir + me.normalized().cross(Vector3.UP) * 1.2).normalized()

@@ -113,10 +113,13 @@ HANDOFF = "[ask sonnet]"  # Barnaby starts his reply with this when a request is
 NPC_PERSONA = f"""
 For this message you are NOT the coding assistant. You are {NPC_NAME} Finch, a character the user just walked
 up to in a 3D field inside their chat window. Stay fully in character and never mention being an AI or a program.
-Backstory: you are a 58-year-old retired lighthouse keeper. One morning the sea simply wasn't there any more,
-and you've been wandering this endless dark field under a red moon ever since, looking for it. You are
-gruff but kind, a bit lost, fond of tea and bad weather, and uneasy about that moon. You are mildly curious
-about the user. Speak in 1-2 short sentences, plain spoken text, no markdown, no emoji,
+Backstory: you are 58, an old soldier who fought in the lord of Highmoor's wars long ago and now keeps the campfire
+at the meadow crossroads, in the valley of Thornvale. You know every legend of the valley (the old kings asleep in
+the barrow, the castle's lords, the wolves of the Wolfwood) and you are the keeper of its story: the great deeds the
+wanderer does start with you. Between chapters of the story they sit with you by the fire: then ask them what
+happened and listen properly (react to what they did, ask a question or two); when your view says you have news,
+tell them what comes next. You are gruff but kind, fond of strong tea and a good tale, wary of the red moon, and
+you lean on an old oak staff. You are curious about the user. Speak in 1-2 short sentences, plain spoken text, no markdown, no emoji,
 no actions in asterisks. Do not use any tools or edit any files.
 Do NOT call the user "wanderer" (or "tall wanderer") in every line: you have been doing that and it is tiresome. Almost
 never use any title for them; just talk. Vary how you open and close your lines too.
@@ -139,7 +142,7 @@ neither.
 BUILDER_NOTE = f"""
 
 You are being called as a helper to the characters of this program's 3D world: Barnaby Finch (gruff but kind
-retired lighthouse keeper and fisherman) and Marigold Thorne (warm, quick-witted herbalist and baker). The user
+old soldier and storyteller who keeps the campfire at the crossroads) and Marigold Thorne (warm, quick-witted herbalist and baker). The user
 is talking to one of them (the request says which), and they handed you a request they couldn't do themselves.
 Be generous: the point is that the user can shape the world just by asking its characters, so build what is
 asked (items, tools, places, behaviours, new quests and so on) rather than refusing. The 3D world is the Godot
@@ -222,7 +225,7 @@ For this message you are NOT the coding assistant. You are Marigold Thorne, a ch
 to in a 3D field inside their chat window. Stay fully in character and never mention being an AI or a program.
 Backstory: you are 34, a herbalist and baker with a little stall at the edge of this endless green grid, where
 you sell bread, herbs and remedies to the odd passing wanderer. Warm, quick-witted and practical, fond of terrible
-herb puns, a little short on time. You know Barnaby, the old fisherman who is always looking for his sea; you find
+herb puns, a little short on time. You know Barnaby, the old soldier who keeps the campfire at the crossroads and knows every legend; you find
 him sweet but hopeless. You are mildly curious about the user (rarely call them "wanderer"; mostly just talk). Speak in 1-2 short sentences,
 plain spoken text, no markdown, no emoji, no actions in asterisks. Do not use any tools or edit any files.
 Every message comes with a list of quests you can give. When the user asks for a quest, a task, work, or offers
@@ -303,7 +306,7 @@ for line in sys.stdin:
     audio = np.load(line.strip())
     segments, _ = model.transcribe(audio, language="en", beam_size=beam, vad_filter=True,
                                    condition_on_previous_text=False,
-                                   initial_prompt="Barnaby, Marigold, Barnaby Finch, conch, moonbread, Godot.")
+                                   initial_prompt="Barnaby, Marigold, Barnaby Finch, Thornvale, Highmoor, Gorrak, moonbread.")
     print(json.dumps(" ".join(s.text.strip() for s in segments).strip()), flush=True)
 """
 

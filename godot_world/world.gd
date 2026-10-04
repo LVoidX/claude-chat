@@ -241,7 +241,7 @@ func handle(c: Dictionary) -> void:
 # --- the world's parts (scene/*.gd), reloaded live ---------------------------------------------------
 
 # Parts that are switched off for now (everything that isn't medieval). Delete a name to bring it back.
-const DISABLED_PARTS := ["parkour.gd", "knockback.gd", "sea.gd", "conchpolish.gd"]
+const DISABLED_PARTS := []
 
 
 func part_files() -> Array:

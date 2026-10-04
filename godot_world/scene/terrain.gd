@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 12  # bump to rebuild the cached ground after changing the shape below
+const VERSION := 13  # bump to rebuild the cached ground after changing the shape below
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -259,8 +259,8 @@ func keep_clear(x: float, z: float) -> bool:
 		return true
 	if Vector2(x - MILL.x, z - MILL.z).length() < 10.0:
 		return true
-	if Vector2(x - 40.0, z - 5.0).length() < 18.0 or Vector2(x - 12.0, z - 18.0).length() < 9.0:
-		return true  # the parkour tower, Marigold's stall
+	if Vector2(x - 12.0, z - 18.0).length() < 9.0:
+		return true  # Marigold's stall
 	if Vector2(x + 30.0, z + 28.0).length() < 10.0 or Vector2(x + 54.0, z + 20.0).length() < 5.0 or Vector2(x + 40.0, z - 24.0).length() < 13.0:
 		return true  # the wheat field, the log pile, the sheep's pasture (villagers.gd, animals.gd)
 	for den in [Vector2(80, -32), Vector2(-24, 92), Vector2(-112, -20)]:  # the wolf dens (creatures.gd)

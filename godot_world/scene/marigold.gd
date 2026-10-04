@@ -443,7 +443,7 @@ func bloom_spots() -> Array:
 		var a := rng.randf() * TAU
 		var d := rng.randf_range(9.0, 34.0)
 		var p := Vector2(cos(a) * d, sin(a) * d)
-		if p.distance_to(Vector2(40, 5)) < 18.0 or p.distance_to(Vector2(STALL.x, STALL.z)) < 7.0:
+		if p.distance_to(Vector2(STALL.x, STALL.z)) < 7.0:
 			continue  # not on the parkour tower or in the stall
 		if p.distance_to(Vector2(-16, -22)) < 5.0 or p.distance_to(Vector2(-19, 12)) < 6.0:
 			continue  # nor on the conch rock or the built structures
