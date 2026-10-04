@@ -14,8 +14,6 @@ the bandit camap looks very messy. Just doesnt' look good.
 
 doesn't seem to be a way to "buy the wight's silence" 
 
-the NPCs look like they have seperate questss buti n acatuality it's just the same quest barnaaby has
-
 refugee guards also stuck
 
 findd some kind of way to fix the NPC pathfinding in general. 
