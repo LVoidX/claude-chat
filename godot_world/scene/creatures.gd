@@ -70,7 +70,9 @@ func build(c: Dictionary) -> void:
 			foes[-1]["tame"] = true
 	# The troll's fate is chapter 1 of the story (story/seed.json): slain, paid off with pelts, or still hungry.
 	var fate: String = W.flag("troll")
-	build_camp(at_ground(TROLL_CAMP), fate)
+	var camp: String = W.flag("camp")
+	if camp == "":  # chapter 2 clears the old clutter before laying out its own camp
+		build_camp(at_ground(TROLL_CAMP), fate)
 	if fate == "appeased":  # he keeps the bargain: guards the east road, harmless unless you start it
 		spawn("troll", at_ground(TROLL_ROADSIDE), at_ground(TROLL_ROADSIDE))
 		foes[-1]["tame"] = true
@@ -78,7 +80,6 @@ func build(c: Dictionary) -> void:
 		spawn("troll", at_ground(TROLL_CAMP + Vector3(0, 0, 4)), at_ground(TROLL_CAMP))
 	# Chapter 2: with Gorrak gone, bandits take his camp. "bandits" = they hold it, "cleared" = the valley's watch
 	# post, "tolled" = they stay, paid, and keep the road for the valley.
-	var camp: String = W.flag("camp")
 	if camp != "":
 		build_bandit_camp(at_ground(TROLL_CAMP), camp)
 		var n: int = {"bandits": 5, "tolled": 3}.get(camp, 0)
@@ -235,14 +236,15 @@ func build_camp(at: Vector3, fate := "") -> void:
 	W.box(camp, Vector3(-4, 0.4, -3), Vector3(0.8, 0.8, 0.8), Color("#efe8d6"), "sphere")  # a skull the size of a pumpkin
 
 
-## Chapter 2 on top of the troll camp (which keeps its pike and bones): tents and a flag, whose kind depends on who holds it.
+## Chapter 2 reuses the site of the troll camp, clearing its clutter for an ordered bandit camp.
 func build_bandit_camp(at: Vector3, camp: String) -> void:
 	var node := Node3D.new()
 	node.position = at
 	add_child(node)
 	var flag_color: Color = {"bandits": Color("#5a1414"), "cleared": Color("#2f4f8a"), "tolled": Color("#7a5a1a")}.get(camp, Color.WHITE)
-	if camp != "cleared":  # A-frame canvas tents (a prism), a ridge pole on two uprights, a dark flap
-		for spec in [[Vector3(-7, 0, -6), 0.3], [Vector3(7, 0, -5), -0.4], [Vector3(8, 0, 6), 1.2]]:
+	if camp == "bandits" or camp == "tolled":  # two tents for the raiders, one for the watch
+		var tents := [[Vector3(-6, 0, -4), 0.3], [Vector3(6, 0, -4), -0.4]] if camp == "bandits" else [[Vector3(7, 0, -3), -0.4]]
+		for spec in tents:
 			var tent := Node3D.new()
 			tent.position = spec[0]
 			tent.position.y = W.ground_y(at.x + spec[0].x, at.z + spec[0].z) - at.y
@@ -258,27 +260,61 @@ func build_bandit_camp(at: Vector3, camp: String) -> void:
 			for z in [-1.75, 1.75]:
 				W.box(tent, Vector3(0, 1.1, z), Vector3(0.1, 2.2, 0.1), Color("#4a3220"))
 			W.box(tent, Vector3(0, 2.15, 0), Vector3(0.12, 0.12, 3.7), Color("#4a3220"))
-			var flap: MeshInstance3D = W.box(tent, Vector3(0, 0.6, 1.71), Vector3(0.8, 1.1, 0.02), Color("#2a2218"))
-	if camp == "bandits":  # a rough stake fence, crates, and a black-red banner
-		for i in 11:
-			var a := PI * 0.15 + i * PI * 1.7 / 10.0
-			W.box(node, Vector3(cos(a) * 11.0, 0.9, sin(a) * 11.0), Vector3(0.22, 1.8, 0.22), Color("#4a3220"))
-		for p in [Vector3(-3, 0.4, -7), Vector3(-2, 0.4, -7.2), Vector3(-2.6, 1.2, -7.1)]:
-			W.box(node, p, Vector3(0.8, 0.8, 0.8), Color("#8a6a3a"))
-		W.glow(node, Vector3(-4, 0.2, 5), Vector3(0.8, 0.3, 0.8), Color("#ff6a1a"), 3.0)  # their own cookfire
-		W.light(node, Vector3(-4, 1.4, 5), Color("#ff8a3a"), 2.0, 10.0)
+			W.box(tent, Vector3(0, 0.6, 1.71), Vector3(0.8, 1.1, 0.02), Color("#2a2218"))
+	if camp == "bandits":  # a squared palisade with its gate on the approach side
+		var wood := Color("#503522")
+		for z in range(-10, 11, 2):
+			if absf(z) > 1.0:  # leave a four-metre opening for the gate
+				W.box(node, Vector3(-11, 1.2, z), Vector3(0.34, 2.4, 0.34), wood)
+			W.box(node, Vector3(11, 1.2, z), Vector3(0.34, 2.4, 0.34), wood)
+		for x in range(-9, 10, 2):
+			W.box(node, Vector3(x, 1.2, -10), Vector3(0.34, 2.4, 0.34), wood)
+			W.box(node, Vector3(x, 1.2, 10), Vector3(0.34, 2.4, 0.34), wood)
+		for z in [-2.0, 2.0]:  # heavy gate leaves fit between the flanking posts
+			W.box(node, Vector3(-10.8, 1.1, z * 0.5), Vector3(0.18, 1.8, 2.0), Color("#68482c"))
+			var brace: MeshInstance3D = W.box(node, Vector3(-10.68, 1.1, z * 0.5), Vector3(0.1, 0.12, 1.8), Color("#3d2a1d"))
+			brace.rotation.x = 0.55 * signf(z)
+		# A small rack of supplies sits against the east wall, clear of the tents and fire.
+		for i in 3:
+			var x := 6.0 + float(i % 2) * 1.1
+			var z := 5.5 + float(i / 2) * 1.1
+			W.box(node, Vector3(x, 0.45, z), Vector3(0.9, 0.9, 0.9), Color("#805a32"))
+			W.box(node, Vector3(x, 0.45, z + 0.46), Vector3(0.92, 0.08, 0.04), Color("#4a3220"))
+		# Two banded barrels stand in a neat pair beside the stores.
+		for z in [7.0, 8.6]:
+			var barrel := MeshInstance3D.new()
+			var barrel_mesh := CylinderMesh.new()
+			barrel_mesh.top_radius = 0.32
+			barrel_mesh.bottom_radius = 0.4
+			barrel_mesh.height = 0.9
+			barrel.mesh = barrel_mesh
+			barrel.material_override = W.mat(Color("#704b2c"))
+			barrel.position = Vector3(9.0, 0.45, z)
+			node.add_child(barrel)
+			for y in [-0.25, 0.25]:
+				var band := MeshInstance3D.new()
+				var band_mesh := CylinderMesh.new()
+				band_mesh.top_radius = 0.41
+				band_mesh.bottom_radius = 0.41
+				band_mesh.height = 0.07
+				band.mesh = band_mesh
+				band.material_override = W.mat(Color("#393b3b"))
+				band.position.y = y
+				barrel.add_child(band)
+	# The fire is the shared centre of the occupied camp, in every state.
+	for i in 6:
+		var a := i * TAU / 6.0
+		W.box(node, Vector3(cos(a) * 0.85, 0.15, 2.0 + sin(a) * 0.85), Vector3(0.36, 0.28, 0.36), Color("#5a5650"), "sphere")
+	W.glow(node, Vector3(0, 0.25, 2.0), Vector3(0.75, 0.3, 0.75), Color("#ff6a1a" if camp != "cleared" else "#ffb04a"), 3.2)
+	W.light(node, Vector3(0, 1.4, 2.0), Color("#ff8a3a"), 2.2, 11.0)
 	if camp == "cleared":  # a cairn and a watch fire the valley keeps lit
 		for i in 3:
-			W.box(node, Vector3(-5, 0.35 + i * 0.7, 3), Vector3(2.4 - i * 0.6, 0.7, 2.4 - i * 0.6), Color("#77736c").darkened(i * 0.05), "cube")
-		W.glow(node, Vector3(-5, 2.3, 3), Vector3(0.7, 0.5, 0.7), Color("#ffb04a"), 3.5)
-		W.light(node, Vector3(-5, 3.2, 3), Color("#ffb04a"), 3.0, 18.0)
+			W.box(node, Vector3(-5, 0.35 + i * 0.55, 2), Vector3(2.0 - i * 0.45, 0.7, 1.8 - i * 0.4), Color("#77736c").darkened(i * 0.05), "cube")
 	if camp == "tolled":  # a rope across the road side and a toll chest
 		for x in [-9, -4]:
 			W.box(node, Vector3(x, 0.8, 9), Vector3(0.2, 1.6, 0.2), Color("#4a3220"))
 		W.box(node, Vector3(-6.5, 1.3, 9), Vector3(5.0, 0.06, 0.06), Color("#b09a6a"))
 		W.box(node, Vector3(-6.5, 0.3, 10), Vector3(1.0, 0.6, 0.6), Color("#6a4a2a"))
-		W.glow(node, Vector3(0, 0.25, 0), Vector3(0.9, 0.35, 0.9), Color("#ff6a1a"), 3.5)  # the fire is lit again
-		W.light(node, Vector3(0, 1.4, 0), Color("#ff8a3a"), 2.5, 12.0)
 	W.box(node, Vector3(0, 3.0, -9), Vector3(0.18, 6.0, 0.18), Color("#4a3220"))  # banner pole and cloth
 	W.box(node, Vector3(0.9, 4.9, -9), Vector3(1.6, 1.8, 0.05), flag_color)
 

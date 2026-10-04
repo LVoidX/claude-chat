@@ -13,7 +13,6 @@ How to continue:
 Currently working on (2026-10-05): all six lines in todo.txt are done and removed. The latest fixes are recorded in
 PROJECT_NOTES.md. The active, ignored story/chapter.json was clarified locally for the current Highmoor quest.
 
-Next refinement: tidy the bandit camp in scene/creatures.gd (build_bandit_camp() sits over Gorrak's old build_camp()):
-fewer, well placed tents, a palisade with a gate, a central fire, and orderly crates/barrels. Check all camp flag
-states ("bandits", "cleared", "tolled"). After that, improve the thatch PrismMesh cottage roofs in scene/village.gd.
+Next refinement: improve the thatch PrismMesh cottage roofs in scene/village.gd. The bandit camp has already been
+cleaned up in all three states ("bandits", "cleared", "tolled"); see PROJECT_NOTES.md.
 Test visually with `--path godot_world -- --shot=out.png` and `python tools/check.py`.

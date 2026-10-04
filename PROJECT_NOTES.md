@@ -233,3 +233,6 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   three seconds. Highmoor's rebuilding quest now explains where and how to mine ore, and 15 ore rocks are placed so
   its 12-ore goal is possible without waiting for regrowth. Grass is scattered over walkable hills across the map;
   Elsie's routine uses waypoints outside the cottages.
+- Bandit camp cleanup: when chapter 2 has a camp flag, the old troll-camp clutter is omitted. The hostile state has
+  two tents, an enclosed timber palisade and gate, a central fire, and ordered stores; the cleared and tolled states
+  use simpler layouts appropriate to each outcome.
