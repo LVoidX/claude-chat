@@ -52,7 +52,7 @@ const QUESTS := [
 		"text": "Bring me four good wolf pelts and my brother the tanner will make you armour from them.",
 		"xp": 50, "gold": 0, "items": {"leather": 1}},
 	{"id": "ore", "giver": "smith", "title": "Iron for the Anvil", "level": 2, "kind": "bring", "what": "ore", "n": 5,
-		"text": "My iron's run out. Rust-red ore rocks crop out on the high slopes; press E at one to mine it. Five lumps and I'll forge you a blade.",
+		"text": "My iron's run out. Find the fractured outcrops on the high slopes and chip each exposed seam three times with E. Each seam yields two lumps; bring me five and I'll forge you a blade.",
 		"xp": 70, "gold": 20, "items": {"iron_sword": 1}},
 	{"id": "watch", "giver": "bram", "title": "Supplies for the Watch", "level": 2, "kind": "bring", "what": "potion", "n": 2,
 		"text": "My lads keep the watch day and night and we're short of everything. Two healing potions would see us through. The smith sells them, or the wolves' victims drop them.",

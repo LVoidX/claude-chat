@@ -84,12 +84,28 @@ func add_spot(kind: String, p: Vector3) -> void:
 				var h := 0.12 + i * 0.04
 				W.box(node, o + Vector3(0, h / 2.0, 0), Vector3(0.05, h, 0.05), Color("#efe6d0"))
 				W.box(node, o + Vector3(0, h, 0), Vector3(0.2 - i * 0.03, 0.08, 0.2 - i * 0.03), Color("#7a4a2a"), "sphere")
-		"ore":  # a grey boulder with rust-red veins
-			var rock: MeshInstance3D = W.box(node, Vector3(0, 0.45, 0), Vector3(1.6, 1.1, 1.3), Color("#6e6862"), "sphere", true)
+		"ore":  # a fractured mountain outcrop with iron-rich seams exposed on its face
+			var rock: MeshInstance3D = W.box(node, Vector3(0, 0.43, 0), Vector3(1.35, 0.86, 1.12), Color("#686967"), "sphere", true)
 			rock.rotation.y = 0.4
-			for i in 5:
-				var vein: MeshInstance3D = W.box(node, Vector3(cos(i * 1.3) * 0.62, 0.35 + i * 0.09, sin(i * 1.3) * 0.5), Vector3(0.22, 0.12, 0.22), Color("#b5502a"))
-				vein.rotation = Vector3(i, i * 2.0, 0)
+			var shoulder: MeshInstance3D = W.box(node, Vector3(-0.37, 0.25, 0.16), Vector3(0.68, 0.58, 0.72), Color("#595b5a"), "sphere", true)
+			shoulder.rotation = Vector3(0.16, -0.3, -0.12)
+			var cap: MeshInstance3D = W.box(node, Vector3(0.38, 0.24, -0.2), Vector3(0.58, 0.46, 0.72), Color("#777773"), "sphere", true)
+			cap.rotation = Vector3(-0.18, 0.2, 0.1)
+			for seam in 3:
+				var vein: MeshInstance3D = W.box(node, Vector3(-0.38 + seam * 0.3, 0.48 + seam * 0.035, -0.53), Vector3(0.13, 0.44, 0.025), Color("#a95731" if seam != 1 else "#cf7642"))
+				vein.rotation.z = -0.38 + seam * 0.2
+				W.box(node, vein.position + Vector3(0.02, 0, -0.018), Vector3(0.025, 0.35, 0.012), Color("#d9985c"))
+			var chips := []
+			for strike in 3:
+				var crack := Node3D.new()
+				crack.position = Vector3(-0.3 + strike * 0.3, 0.32 + strike * 0.11, -0.57)
+				node.add_child(crack)
+				W.box(crack, Vector3.ZERO, Vector3(0.045, 0.24, 0.018), Color("#342f2a"))
+				W.box(crack, Vector3(0.05, 0.04, -0.004), Vector3(0.09, 0.025, 0.02), Color("#342f2a"))
+				crack.visible = false
+				chips.append(crack)
+			spots.append({"kind": kind, "node": node, "pos": p, "gone": 0.0, "hits": 0, "chips": chips})
+			return
 	spots.append({"kind": kind, "node": node, "pos": p, "gone": 0.0})
 
 
@@ -178,7 +194,7 @@ func interactables() -> Array:
 			out.append({"pos": c.pos, "label": "Open the chest", "act": open_chest.bind(c), "range": 2.2})
 	for s in spots:
 		if s.kind == "ore" and s.gone <= 0.0:
-			out.append({"pos": s.pos, "label": "Mine the iron ore", "act": mine.bind(s), "range": 2.6})
+			out.append({"pos": s.pos, "label": "Chip the iron seam (%d/3)" % s.hits, "act": mine.bind(s), "range": 2.6})
 	return out
 
 
@@ -186,7 +202,14 @@ func mine(s: Dictionary) -> void:
 	var rpg = ctx.parts.get("rpg")
 	if not rpg or s.gone > 0.0:
 		return
-	rpg.give("ore", 1)
+	s.hits += 1
+	s.chips[s.hits - 1].visible = true
+	rpg.sfx("hit")
+	if s.hits < 3:
+		W.show_notice("You chip the iron seam. (%d/3)" % s.hits)
+		return
+	rpg.give("ore", 2)
+	W.show_notice("The seam breaks free: 2 iron ore.", 3.0)
 	take(s)
 
 

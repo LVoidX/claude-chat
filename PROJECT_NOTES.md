@@ -182,7 +182,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   interactables(). Commands [give item n], [xp n], [heal] (Barnaby and Marigold have them).
 - scene/creatures.gd: wolf dens (E, S, W woods), the barrow with skeletons (NW), Gorrak the troll's camp (E forest).
   hotbar.gd's sword calls creatures.sword_hit(); damage = weapon + level - 1. Loot drops are picked up by walking over.
-- scene/gathering.gd: silverleaf herbs (meadow edge), mushrooms (woods), iron ore rocks (high slopes, E to mine), the
+- scene/gathering.gd: silverleaf herbs (meadow edge), mushrooms (woods), fractured iron outcrops (three E strikes per exposed seam, two ore each), the
   miller's ring near the windmill (only while that quest is active).
 - New quests: add an entry to QUESTS in rpg.gd (kinds kill / bring / find). New items: ITEMS. terrain.keep_clear keeps
   trees out of the camps.
