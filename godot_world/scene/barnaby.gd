@@ -132,11 +132,8 @@ func story_duty() -> void:
 	var fire = fire_pos()
 	if fire == null:
 		return
-	var seat: Vector3 = fire + SEATS[0]
-	if ctx.get("seated", false):  # beside you, a little round the fire
-		var me: Vector3 = ctx.player.position - fire
-		me.y = 0.0
-		seat = fire + me.normalized().rotated(Vector3.UP, 0.85) * 1.9
+	var travel = ctx.parts.get("travel")
+	var seat: Vector3 = travel.log_spot(1 if travel.player_log == 0 else 0) if travel and "LOGS" in travel else fire + SEATS[0]
 	if st().get("mode") != "sit" or Vector2(st().get("sx", 0.0) - seat.x, st().get("sz", 0.0) - seat.z).length() > 0.5:
 		st()["mode"] = "sit"
 		st()["sx"] = seat.x
@@ -148,7 +145,8 @@ func go_sit() -> void:
 	var fire = fire_pos()
 	if fire == null:
 		return
-	var seat: Vector3 = fire + SEATS[randi() % SEATS.size()]
+	var travel = ctx.parts.get("travel")
+	var seat: Vector3 = travel.log_spot(randi() % 2) if travel and "LOGS" in travel else fire + SEATS[randi() % SEATS.size()]
 	st()["mode"] = "sit"
 	st()["sx"] = seat.x
 	st()["sz"] = seat.z
@@ -418,6 +416,9 @@ func handle(c: Dictionary) -> bool:
 ## a forest-green wool cloak and hood, brown travelling breeches. Done on the built boxes, so the model file stays.
 func restyle(node: Node) -> void:
 	for child in node.get_children():
+		if child is MeshInstance3D and child.position.y < -0.79 and child.scale.z > 0.5:  # the over-long boot soles
+			child.scale = Vector3(0.3, child.scale.y, 0.4)
+			child.position.z = -0.06
 		if child is MeshInstance3D and child.material_override is StandardMaterial3D:
 			var m: StandardMaterial3D = child.material_override
 			var c := m.albedo_color

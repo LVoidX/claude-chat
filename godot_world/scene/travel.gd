@@ -14,6 +14,10 @@ const STONES := [  # name, position (x, z)
 	["The Barrow", Vector2(-68, -66)],
 ]
 const FIRE := Vector2(9, 6)
+## Two logs by the fire, close together (so you and Barnaby can talk sitting on them): angle round the fire, radius.
+const LOGS := [[198.0, 2.25], [278.0, 2.25]]
+const LOG_TOP := 0.46  # sitting height
+const HIP := 0.9  # (avatar.gd: the player's hips are this far above their feet)
 
 var ctx: Dictionary
 var W
@@ -92,9 +96,20 @@ func build_fire(at: Vector3) -> void:
 	W.glow(fire, Vector3(0, 0.4, 0), Vector3(0.45, 0.6, 0.45), Color("#ff7a1a"), 4.0, "sphere")
 	W.glow(fire, Vector3(0, 0.75, 0), Vector3(0.2, 0.4, 0.2), Color("#ffd24d"), 4.0, "sphere")
 	fire_light = W.light(fire, Vector3(0, 1.2, 0), Color("#ff8a3a"), 2.0, 10.0)
-	for p in [Vector3(-2.2, 0.22, 0.4), Vector3(2.0, 0.22, -0.8)]:  # logs to sit on
-		var seat: MeshInstance3D = W.box(fire, p, Vector3(1.6, 0.44, 0.44), Color("#5a3d24"), "cube", true)
-		seat.rotation.y = 1.2 if p.x < 0 else -0.4
+	for i in LOGS.size():  # logs to sit on, laid round the fire
+		var c := log_spot(i) - ground(FIRE)
+		var a: float = deg_to_rad(LOGS[i][0])
+		var seat := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.23
+		cyl.bottom_radius = 0.23
+		cyl.height = 1.5
+		cyl.radial_segments = 8
+		seat.mesh = cyl
+		seat.material_override = ctx.parts["kit"].mat("timber") if ctx.parts.has("kit") else W.mat(Color("#5a3d24"))
+		seat.position = c + Vector3(0, 0.23, 0)
+		seat.rotation = Vector3(0, -(a + PI / 2.0), PI / 2.0)  # lying down, along the ring round the fire
+		fire.add_child(seat)
 
 
 func interactables() -> Array:
@@ -107,12 +122,22 @@ func interactables() -> Array:
 
 # --- sitting and resting by the fire -------------------------------------------------------------------------
 
+## Where log i lies (its middle, on the ground).
+func log_spot(i: int) -> Vector3:
+	var a: float = deg_to_rad(LOGS[i][0])
+	var f := ground(FIRE)
+	return f + Vector3(cos(a), 0, sin(a)) * float(LOGS[i][1])
+
+
+var player_log := -1  # the log you sit on (Barnaby takes the other)
+
+
 func sit_down() -> void:
 	var fire := ground(FIRE)
-	var from: Vector3 = W.player.global_position - fire
-	from.y = 0.0
-	var spot := fire + (from.normalized() if from.length() > 0.1 else Vector3.BACK) * 1.9
-	seat_pos = Vector3(spot.x, W.ground_y(spot.x, spot.z) + 0.05, spot.z)
+	var me: Vector3 = W.player.global_position
+	player_log = 0 if me.distance_to(log_spot(0)) <= me.distance_to(log_spot(1)) else 1
+	var spot := log_spot(player_log)
+	seat_pos = Vector3(spot.x, spot.y + LOG_TOP - HIP, spot.z)  # (your feet below the log: hips on it)
 	var to_fire := fire - seat_pos
 	seat_yaw = atan2(-to_fire.x, -to_fire.z)  # facing the flames
 	seated = true
@@ -124,6 +149,8 @@ func sit_down() -> void:
 func stand_up() -> void:
 	seated = false
 	ctx["seated"] = false
+	player_log = -1
+	W.player.global_position = seat_pos + Vector3(0, HIP - LOG_TOP + 0.1, 0)
 	W.head.position.y = W.EYE_HEIGHT
 
 
@@ -133,7 +160,7 @@ func _physics_process(delta: float) -> void:
 	W.player.global_position = seat_pos  # (held in place: world.gd's walking runs before this part)
 	W.player.velocity = Vector3.ZERO
 	W.player.rotation.y = lerp_angle(W.player.rotation.y, seat_yaw, minf(delta * 3.0, 1.0)) if Time.get_ticks_msec() - sat_at < 1500 else W.player.rotation.y
-	W.head.position.y = 0.95  # eye height sitting on the grass
+	W.head.position.y = HIP + 0.72  # eye height sitting on the log
 	var rpg = ctx.parts.get("rpg")
 	if rpg and fmod(t, 0.5) < delta and int(rpg.st().hp) < rpg.max_hp():
 		rpg.heal(2)  # the fire's warmth

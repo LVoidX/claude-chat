@@ -253,8 +253,9 @@ func _process(delta: float) -> void:
 			if rpg and rpg.count(q.what) >= int(q.get("n", 1)):
 				rpg.take(q.what, int(q.get("n", 1)))
 				complete(q.id)
-	for b in beams:
+	for b in beams:  # (a beam guides you there; once you have arrived it fades out of the way)
 		b[0].get_child(0).transparency = 0.55 + sin(t * 2.0) * 0.1
+		b[0].visible = Vector2(player.x - b[0].position.x, player.z - b[0].position.z).length() > 9.0
 
 
 ## Lines for the HUD's quest list and the journal.
