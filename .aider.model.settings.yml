@@ -1,0 +1,4 @@
+- name: ollama_chat/qwen2.5-coder:14b
+  edit_format: diff
+  extra_params:
+    num_ctx: 16384          # how much it can read at once (fits a 12 GB graphics card)

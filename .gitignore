@@ -16,3 +16,7 @@ godot_world/story/chapter.json
 godot_world/story/log.md
 godot_world/story/flags.json
 folk_chat.txt
+# the local AI helper's own history and cache
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache*/

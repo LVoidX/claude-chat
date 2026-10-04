@@ -1,0 +1,12 @@
+# Aider (local AI helper) settings for this project. Start it with local-ai.bat.
+model: ollama_chat/qwen2.5-coder:14b
+read:
+  - CLAUDE.md
+  - LOCAL_AI_RULES.md
+auto-commits: true          # every change is its own git commit: /undo takes it back
+dirty-commits: true
+map-tokens: 1024            # a small map of the code (the model's memory is limited)
+show-model-warnings: false
+check-update: false
+analytics-disable: true
+gitignore: false
