@@ -236,3 +236,5 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Bandit camp cleanup: when chapter 2 has a camp flag, the old troll-camp clutter is omitted. The hostile state has
   two tents, an enclosed timber palisade and gate, a central fire, and ordered stores; the cleared and tolled states
   use simpler layouts appropriate to each outcome.
+- Cottage roofs: the thatch prism has a wider overhang and steeper pitch, finished with timber eaves and a raised
+  ridge cap.

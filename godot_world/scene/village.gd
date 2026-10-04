@@ -152,12 +152,17 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 	# roof: a steep thatched prism over the length of the house, overhanging a little
 	var roof := MeshInstance3D.new()
 	var prism := PrismMesh.new()
-	prism.size = Vector3(w + 1.0, 2.6, d + 0.9)
+	prism.size = Vector3(w + 1.2, 2.8, d + 1.1)
 	roof.mesh = prism
 	roof.material_override = kit.mat("thatch")
-	roof.position = Vector3(0, 0.4 + h + 1.3, 0)
+	roof.position = Vector3(0, 0.4 + h + 1.4, 0)
 	house.add_child(roof)
 	roof.create_convex_collision()  # the sloped roof is solid too (you can stand on it)
+	# Timber eaves finish the overhang, and a thatch ridge caps the two roof slopes.
+	var eave_x := w / 2.0 + 0.67
+	for side in [-1, 1]:
+		kit.block(W, house, Vector3(side * eave_x, 3.32, 0), Vector3(0.14, 0.18, d + 1.3), "timber", false)
+	kit.block(W, house, Vector3(0, roof.position.y + 1.48, 0), Vector3(0.24, 0.16, d + 1.3), "thatch", false)
 	var chimney_x := w / 2.0 - 0.7
 	kit.block(W, house, Vector3(chimney_x, 0.4 + h + 1.4, d / 4.0), Vector3(0.6, 2.8, 0.6), "stone", false)
 	if index % 2 == 0:
@@ -456,4 +461,3 @@ func table(house: Node3D, at: Vector3, wood: Color, dark: Color) -> void:
 	for z in [-0.65, 0.65]:
 		W.box(house, at + Vector3(0, 0.25, z), Vector3(0.4, 0.06, 0.4), wood)
 		W.box(house, at + Vector3(0, 0.12, z), Vector3(0.08, 0.24, 0.08), dark)
-

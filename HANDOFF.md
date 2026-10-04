@@ -13,6 +13,6 @@ How to continue:
 Currently working on (2026-10-05): all six lines in todo.txt are done and removed. The latest fixes are recorded in
 PROJECT_NOTES.md. The active, ignored story/chapter.json was clarified locally for the current Highmoor quest.
 
-Next refinement: improve the thatch PrismMesh cottage roofs in scene/village.gd. The bandit camp has already been
-cleaned up in all three states ("bandits", "cleared", "tolled"); see PROJECT_NOTES.md.
-Test visually with `--path godot_world -- --shot=out.png` and `python tools/check.py`.
+The bandit camp and cottage roof refinements are complete; see PROJECT_NOTES.md. All three camp states were loaded
+in scratch copies, and a rendered village screenshot was inspected. Keep refining when a new request or a clear issue
+comes up. Use `python tools/check.py` after each change.
