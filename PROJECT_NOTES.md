@@ -77,7 +77,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
     0 day) is read by lanterns, torches, windows and fireflies. [sky day/sunset/night/...] sets the time.
 - The user hasn't decided the game's core concept yet (maybe a 3D RimWorld-like). Keep additions generic:
   world, life, systems; don't lock in one game loop.
-  - barnaby.gd: Barnaby Finch (model: models/barnaby.json, 275 textured boxes, textures barnaby_*.png);
+- avatar.gd: first-person body has a stitched green tunic, articulated sleeves/forearms, cuffs and gloves, with the right arm brought forward when the sword is equipped; leg gait and sitting are animated. barnaby.gd: Barnaby Finch (model: models/barnaby.json, 275 textured boxes, textures barnaby_*.png);
     wanders, stops and faces you when near (hands-free listening), commands follow / wander / stay.
 - ctx.state is saved to world_state.json (next to chat.pyw) every few seconds and on exit: keep plain values.
 - Textures: PNGs next to chat.pyw, loaded at runtime with W.tex() (no Godot import step).
