@@ -1,5 +1,3 @@
-barnaby is currently floating in the air near me instead of sitting on a alog
-
 sitting on the log is also a bit messy. try to fix it and make a aplayer model. so I can see my legs and stuff. whaatever looks good
 
 barnaby tried to give me bandit coordinates. doesnt make much sense
