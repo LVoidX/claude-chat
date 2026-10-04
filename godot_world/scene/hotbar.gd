@@ -54,8 +54,9 @@ func make_sword() -> void:
 			old.free()
 	sword = Node3D.new()
 	sword.name = "Sword"
-	sword.position = Vector3(0.36, -0.38, -0.62)
-	sword.rotation_degrees = Vector3(-10, 0, -18)
+	sword.position = Vector3(0.42, -0.38, -0.6)
+	sword.scale = Vector3.ONE * 0.8
+	sword.rotation_degrees = Vector3(-16, 0, 28)
 	# the blade shows the weapon equipped in the RPG (rpg.gd): rusty, plain iron, or the blue Troll-Bane
 	var weapon: String = ctx.state.get("rpg", {}).get("weapon", "iron_sword")
 	var steel: Color = {"rusty_sword": Color("#8a8078"), "steel_sword": Color("#9cc4ff")}.get(weapon, Color("#c9d1d9"))
@@ -227,11 +228,11 @@ func _input(event: InputEvent) -> void:
 ## The swing, in keyed poses: rest, wind up (blade cocked back over the right shoulder), a fast diagonal cut down
 ## across to the left, follow-through, back to rest. t = 0..1 through the swing.
 const POSES := [  # [t, rotation degrees, position]
-	[0.0, Vector3(-18, 0, -7), Vector3(0.34, -0.44, -0.62)],
+	[0.0, Vector3(-16, 0, 28), Vector3(0.42, -0.38, -0.6)],
 	[0.22, Vector3(18, -10, -42), Vector3(0.46, -0.24, -0.5)],
 	[0.42, Vector3(-70, 20, 68), Vector3(-0.05, -0.4, -0.74)],
 	[0.55, Vector3(-82, 28, 78), Vector3(-0.16, -0.48, -0.68)],
-	[1.0, Vector3(-18, 0, -7), Vector3(0.34, -0.44, -0.62)],
+	[1.0, Vector3(-16, 0, 28), Vector3(0.42, -0.38, -0.6)],
 ]
 
 

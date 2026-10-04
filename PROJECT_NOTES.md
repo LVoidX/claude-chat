@@ -227,8 +227,9 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - NPC pathfinding (villagers.gd): a walkability grid (1.5 m cells, probed for anything solid + steep ground, built the
   first physics frame after a rebuild, ~0.16 s) and A* paths with line-of-sight smoothing. New buildings are avoided
   automatically as long as they have colliders.
-- 2026-10-05 fixes: the held sword has a tapered blade, fuller, guard, wrapped grip and pommel, rests near vertical,
-  and its swing sound is louder. Barnaby's [look]
+- 2026-10-05 fixes: the held sword has a tapered blade, fuller, guard, wrapped grip and pommel. Its ready pose is
+  angled from the lower-right toward the upper-left; keep its model geometry unchanged. The repeated swing whoosh
+  is quiet, fixed-pitch, and replaces itself instead of layering. Barnaby's [look]
   context asks for a direct description of the valley without narrating his own actions. Named sky presets blend over
   three seconds. Highmoor's rebuilding quest now explains where and how to mine ore, and 15 ore rocks are placed so
   its 12-ore goal is possible without waiting for regrowth. Grass is scattered over walkable hills across the map;

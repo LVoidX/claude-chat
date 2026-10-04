@@ -13,7 +13,7 @@ const VOLUME_DB := -33.0  # was -15, then -22, then -28: too loud. A constant in
 const TRACK_TRIM_DB := {"The_Old_Tower_Inn.mp3": -3.0}  # per-track correction for songs mastered louder than the rest
 const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
 const RATE := 22050
-const SFX_DB := {"swing": 2.0, "hit": -3.0, "pickup": -4.0}  # the sword's short whoosh should read clearly
+const SFX_DB := {"swing": -10.0, "hit": -3.0, "pickup": -4.0}  # the sword whoosh stays quiet and consistent
 
 var ctx: Dictionary
 var W
@@ -55,7 +55,9 @@ func play_sfx(name: String) -> void:
 	if not sfx or not ctx.jingles.has(name):
 		return
 	var player := sfx
-	if sfx.playing:  # (a hit during a jingle: use a free extra player, so neither cuts off)
+	if name == "swing" and sfx.playing:
+		sfx.stop()  # fast repeated clicks replace the quiet whoosh instead of layering it
+	elif sfx.playing:  # a hit during a jingle uses a free player, so neither cuts off
 		player = null
 		for p in extra:
 			if not p.playing:
@@ -67,7 +69,7 @@ func play_sfx(name: String) -> void:
 			extra.append(player)
 	player.stream = ctx.jingles[name]
 	player.volume_db = sfx.volume_db + float(SFX_DB.get(name, 0.0))
-	player.pitch_scale = randf_range(0.88, 1.12) if name in ["swing", "hit", "hurt"] else 1.0  # (no two alike)
+	player.pitch_scale = randf_range(0.92, 1.08) if name in ["hit", "hurt"] else 1.0
 	player.play()
 
 
