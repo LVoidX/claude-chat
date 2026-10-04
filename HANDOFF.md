@@ -11,7 +11,7 @@ How to continue:
 4. When todo.txt is empty: refine (the user asked e.g. for better-looking village roofs), one commit per change.
 
 Currently working on (2026-10-04): the to-do book has two items left.
-- Sword revamp: the first-person sword is in scene/hotbar.gd (make_sword builds it from boxes; POSES / pose_sword is
+- (Sword revamp: done.)
   the swing; the blade colour follows the equipped weapon in rpg.gd). The user still doesn't like it: give it a better
   shape (tapered blade, fuller, proper crossguard and grip, pommel), maybe hold it lower and angled, and a weightier swing.
 - Bandit camp looks messy: scene/creatures.gd build_bandit_camp() (and build_camp() under it, Gorrak's old camp, which it
