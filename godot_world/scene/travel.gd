@@ -7,7 +7,7 @@ extends Node3D
 
 const STONES := [  # name, position (x, z)
 	["The Crossroads", Vector2(7, -7)],
-	["Thornvale", Vector2(-36, -10)],
+	["Thornvale", Vector2(-30, -6)],  # (by the road into the village)
 	["Highmoor Castle", Vector2(7, -116)],
 	["The Old Mill", Vector2(64, 48)],
 	["The Barrow", Vector2(-68, -66)],

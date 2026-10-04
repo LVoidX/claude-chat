@@ -208,3 +208,6 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Side quests come from villagers now (rpg.gd QUESTS "giver"; gold ! / ? over their heads; the board is gone).
 - Between chapters there is an interlude (story.gd): bring the news to Thornvale, rest by the campfire; the next chapter
   (even if already written) starts only after that, so the storyteller has time and it fits the story.
+- Interiors: cottages are hollow (doorway, floor, ceiling, hearth, bed, table, shelf; cottage 1 = the Gilded Goose
+  tavern with a bar), castle.gd great_hall() is hollow (feast table, throne on a dais, hearth, banners, chandeliers;
+  rubble when ruined). Barnaby: smoother walk, [sit] by the campfire (also on his own now and then).

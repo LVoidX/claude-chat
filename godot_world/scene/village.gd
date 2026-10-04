@@ -16,6 +16,7 @@ var W
 var kit
 var sails: Node3D
 var windows := []  # [light, phase]
+var hearths := []  # [light, phase]: the fires inside the cottages
 var spin := 0.0
 
 
@@ -83,7 +84,22 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 	var d := size.y
 	var h := 3.0
 	kit.block(W, house, Vector3(0, 0.2, 0), Vector3(w + 0.2, 0.4, d + 0.2), "dark_stone")  # stone footing
-	kit.block(W, house, Vector3(0, 0.4 + h / 2.0, 0), Vector3(w, h, d), "plaster")
+	# hollow walls (you can walk in), with a doorway in the front wall (front is -z: facing the well)
+	var t := 0.2  # wall thickness
+	var door_x := -w / 5.0
+	var door_w := 1.15
+	var door_h := 2.2
+	kit.block(W, house, Vector3(0, 0.4 + h / 2.0, d / 2.0 - t / 2.0), Vector3(w, h, t), "plaster")  # back
+	for side in [-1, 1]:
+		kit.block(W, house, Vector3(side * (w / 2.0 - t / 2.0), 0.4 + h / 2.0, 0), Vector3(t, h, d - 2.0 * t), "plaster")
+	var left := door_x - door_w / 2.0 + w / 2.0  # front wall: left of the door, right of it, and over it
+	kit.block(W, house, Vector3(-w / 2.0 + left / 2.0, 0.4 + h / 2.0, -d / 2.0 + t / 2.0), Vector3(left, h, t), "plaster")
+	var right := w / 2.0 - (door_x + door_w / 2.0)
+	kit.block(W, house, Vector3(w / 2.0 - right / 2.0, 0.4 + h / 2.0, -d / 2.0 + t / 2.0), Vector3(right, h, t), "plaster")
+	kit.block(W, house, Vector3(door_x, 0.4 + door_h + (h - door_h) / 2.0, -d / 2.0 + t / 2.0), Vector3(door_w, h - door_h, t), "plaster")
+	kit.block(W, house, Vector3(0, 0.425, 0), Vector3(w - 2.0 * t, 0.05, d - 2.0 * t), "planks", false)  # floor
+	kit.block(W, house, Vector3(0, 0.4 + h - 0.05, 0), Vector3(w, 0.1, d), "planks", false)  # ceiling
+	furnish(house, w, d, h, index)
 	var beams := []  # the dark timber frame, standing just proud of the plaster
 	for x in [-w / 2.0, w / 2.0]:
 		for z in [-d / 2.0, d / 2.0]:
@@ -113,8 +129,12 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 	if index % 2 == 0:
 		smoke(house, Vector3(chimney_x, 0.4 + h + 2.9, d / 4.0))
 	# door (front is -z: facing the well) and windows with shutters, lit from inside
-	kit.block(W, house, Vector3(-w / 5.0, 1.4, -d / 2.0 - 0.04), Vector3(1.0, 2.0, 0.08), "planks", false)
-	W.box(house, Vector3(-w / 5.0 + 0.35, 1.35, -d / 2.0 - 0.09), Vector3(0.08, 0.08, 0.04), Color("#2a2622"))
+	var hinge := Node3D.new()  # the door stands open, swung inward on its hinge
+	hinge.position = Vector3(door_x - door_w / 2.0 + 0.05, 0.4, -d / 2.0 + t)
+	hinge.rotation.y = -1.75
+	house.add_child(hinge)
+	kit.block(W, hinge, Vector3(door_w / 2.0 - 0.05, door_h / 2.0, 0.04), Vector3(door_w - 0.1, door_h - 0.05, 0.07), "planks", false)
+	W.box(hinge, Vector3(door_w - 0.25, 1.0, 0.09), Vector3(0.08, 0.08, 0.04), Color("#2a2622"))
 	for wx in [w / 4.0]:
 		window(house, Vector3(wx, 2.0, -d / 2.0 - 0.03), false)
 	for wz in [-d / 4.0, d / 4.0]:
@@ -123,8 +143,9 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 
 
 func window(house: Node3D, at: Vector3, side_wall: bool) -> void:
-	var size := Vector3(0.06, 0.75, 0.7) if side_wall else Vector3(0.7, 0.75, 0.06)
-	W.glow(house, at, size, Color("#ffbf66"), 2.2)
+	var size := Vector3(0.3, 0.75, 0.7) if side_wall else Vector3(0.7, 0.75, 0.3)  # (right through the wall: lit inside too)
+	var inward := Vector3(-signf(at.x) * 0.12, 0, 0) if side_wall else Vector3(0, 0, -signf(at.z) * 0.12)
+	W.glow(house, at + inward, size, Color("#ffbf66"), 2.2)
 	var shutter := Vector3(0.05, 0.8, 0.3) if side_wall else Vector3(0.3, 0.8, 0.05)
 	for k in [-1, 1]:
 		var off := Vector3(0, 0, k * 0.52) if side_wall else Vector3(k * 0.52, 0, 0)
@@ -292,6 +313,8 @@ func _process(delta: float) -> void:
 	var night: float = ctx.get("night", 1.0)
 	for wl in windows:  # firelight inside, flickering a little (hardly noticeable by day)
 		wl[0].light_energy = 0.9 * (0.85 + 0.12 * sin(spin * 5.0 + wl[1]) + 0.05 * sin(spin * 13.0 + wl[1])) * lerpf(0.1, 1.0, night)
+	for hl in hearths:  # the fires inside
+		hl[0].light_energy = 1.3 + 0.25 * sin(spin * 7.0 + hl[1]) + 0.12 * sin(spin * 17.0 + hl[1])
 
 
 ## A market stall by the well: a striped awning on four posts, a table of produce in baskets.
@@ -345,4 +368,56 @@ func tavern_sign(offset: Vector3, name: String) -> void:
 		l.position = Vector3(0.6, 2.08, side * 0.04)
 		l.rotation.y = 0.0 if side > 0 else PI
 		post.add_child(l)
+
+
+## Inside a cottage: plank floor (in cottage()), a hearth with a fire, and furniture. Cottage 1 is the Gilded Goose
+## tavern: a bar counter, barrels and tables instead of a bed. Front is -z (the door), x is across.
+func furnish(house: Node3D, w: float, d: float, h: float, index: int) -> void:
+	var f := 0.45  # floor height
+	var wood := Color("#6b4a2b")
+	var dark := Color("#4a3220")
+	var hx := w / 2.0 - 0.55  # the hearth, under the chimney
+	var hz := d / 4.0
+	var hearth: MeshInstance3D = kit.block(W, house, Vector3(hx, f + 0.6, hz), Vector3(0.7, 1.2, 1.3), "stone")
+	W.box(house, Vector3(hx - 0.36, f + 0.35, hz), Vector3(0.02, 0.5, 0.7), Color("#1a1410"))  # the opening
+	W.glow(house, Vector3(hx - 0.33, f + 0.2, hz), Vector3(0.12, 0.25, 0.45), Color("#ff7a1a"), 3.5, "sphere")
+	var fire: OmniLight3D = W.light(house, Vector3(hx - 0.9, f + 0.8, hz), Color("#ffa050"), 1.3, 6.0)
+	hearths.append([fire, randf() * TAU])
+	kit.block(W, house, Vector3(hx - 0.05, f + 1.25, hz), Vector3(0.85, 0.08, 1.45), "timber", false)  # mantel
+	W.box(house, Vector3(-0.2, f + 0.01, 0.2), Vector3(1.6, 0.02, 1.1), Color("#8a3a2a"))  # a rug
+	if index == 1:  # the tavern
+		kit.block(W, house, Vector3(0, f + 0.55, d / 2.0 - 1.3), Vector3(w - 1.8, 1.1, 0.5), "planks")  # the bar
+		kit.block(W, house, Vector3(0, f + 1.12, d / 2.0 - 1.3), Vector3(w - 1.7, 0.06, 0.6), "timber", false)
+		for i in 3:  # barrels behind it
+			var b: MeshInstance3D = W.box(house, Vector3(-w / 2.0 + 0.9 + i * 0.75, f + 0.4, d / 2.0 - 0.55), Vector3(0.6, 0.8, 0.6), Color("#7a5532"), "sphere")
+			b.scale = Vector3(0.6, 0.8, 0.6)
+		for tz in [-d / 2.0 + 1.6, -0.2]:
+			table(house, Vector3(-0.6, f, tz), wood, dark)
+	else:
+		var bx := -w / 2.0 + 0.75  # bed in the back corner
+		var bz := d / 2.0 - 1.25
+		kit.block(W, house, Vector3(bx, f + 0.22, bz), Vector3(1.0, 0.44, 2.0), "planks")
+		W.box(house, Vector3(bx, f + 0.48, bz + 0.12), Vector3(0.92, 0.12, 1.7), [Color("#7a2a2a"), Color("#2a4a7a"), Color("#4a6a2a")][index % 3])  # blanket
+		W.box(house, Vector3(bx, f + 0.52, bz + 0.85), Vector3(0.7, 0.14, 0.3), Color("#efe6cc"))  # pillow
+		W.box(house, Vector3(bx, f + 0.75, bz + 1.02), Vector3(1.0, 1.0, 0.08), dark)  # headboard
+		table(house, Vector3(0.2, f, -0.3), wood, dark)
+		var shelf_x := -w / 2.0 + 0.32  # a shelf on the side wall with pots and a candle
+		kit.block(W, house, Vector3(shelf_x, f + 1.5, -0.4), Vector3(0.3, 0.06, 1.2), "timber", false)
+		for k in 3:
+			W.box(house, Vector3(shelf_x, f + 1.64, -0.8 + k * 0.4), Vector3(0.18, 0.22, 0.18), [Color("#a0522d"), Color("#556b2f"), Color("#8b7d6b")][k], "sphere")
+		W.box(house, Vector3(w / 2.0 - 0.5, f + 0.4, -d / 2.0 + 0.6), Vector3(0.55, 0.8, 0.55), Color("#7a5532"), "sphere")  # a barrel by the door
+
+
+## A table with a mug and a candle, and two stools.
+func table(house: Node3D, at: Vector3, wood: Color, dark: Color) -> void:
+	W.box(house, at + Vector3(0, 0.78, 0), Vector3(1.2, 0.06, 0.75), wood, "cube", true)
+	for x in [-0.5, 0.5]:
+		for z in [-0.28, 0.28]:
+			W.box(house, at + Vector3(x, 0.38, z), Vector3(0.07, 0.76, 0.07), dark)
+	W.box(house, at + Vector3(0.25, 0.86, 0.1), Vector3(0.1, 0.12, 0.1), Color("#8a8a8a"))  # a mug
+	W.box(house, at + Vector3(-0.2, 0.87, -0.1), Vector3(0.05, 0.14, 0.05), Color("#f2ead2"))  # a candle
+	W.glow(house, at + Vector3(-0.2, 0.97, -0.1), Vector3(0.04, 0.06, 0.04), Color("#ffcf6a"), 3.0)
+	for z in [-0.65, 0.65]:
+		W.box(house, at + Vector3(0, 0.25, z), Vector3(0.4, 0.06, 0.4), wood)
+		W.box(house, at + Vector3(0, 0.12, z), Vector3(0.08, 0.24, 0.08), dark)
 

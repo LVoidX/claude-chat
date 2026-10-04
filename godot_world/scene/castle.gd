@@ -174,7 +174,7 @@ func torch(at: Vector3) -> void:
 
 func build_keep() -> void:
 	var at := Vector3(0, 0, -5.0)
-	s(at + Vector3(0, 6.0, 0), Vector3(14.0, 12.0, 10.0))  # the great hall
+	great_hall(at)  # hollow: you can walk in through the big door facing the gate
 	battlements(at + Vector3(-7, 0, 5.0), at + Vector3(7, 0, 5.0), 12.0, 0.6)
 	battlements(at + Vector3(-7, 0, -5.0), at + Vector3(7, 0, -5.0), 12.0, 0.6)
 	if not ruined:
@@ -312,3 +312,72 @@ func _process(delta: float) -> void:
 	for b in banners:  # banners stirring in the wind
 		b[0].rotation.y = sin(spin * 1.3 + b[1]) * 0.25
 		b[0].rotation.x = sin(spin * 2.1 + b[1]) * 0.05
+
+
+## The great hall: thick walls round a stone floor, a tall doorway facing the gate (+z), and inside a long feast
+## table with benches, the lord's throne on a dais, a great hearth, banners and candle chandeliers. When the story
+## has ruined the castle it is dark inside: rubble, charred beams, a toppled throne.
+func great_hall(at: Vector3) -> void:
+	var w := 14.0
+	var d := 10.0
+	var h := 12.0
+	var t := 1.0
+	var door_w := 3.0
+	var door_h := 4.5
+	s(at + Vector3(0, h / 2.0, -d / 2.0 + t / 2.0), Vector3(w, h, t))  # back wall
+	for side in [-1, 1]:
+		s(at + Vector3(side * (w / 2.0 - t / 2.0), h / 2.0, 0), Vector3(t, h, d))
+		var piece := (w - door_w) / 2.0  # front wall either side of the door
+		s(at + Vector3(side * (door_w / 2.0 + piece / 2.0), h / 2.0, d / 2.0 - t / 2.0), Vector3(piece, h, t))
+	s(at + Vector3(0, door_h + (h - door_h) / 2.0, d / 2.0 - t / 2.0), Vector3(door_w, h - door_h, t))  # over the door
+	s(at + Vector3(0, 0.05, 0), Vector3(w - 2.0 * t, 0.1, d - 2.0 * t), "dark_stone", false)  # the floor
+	s(at + Vector3(0, h - 0.3, 0), Vector3(w, 0.6, d), "planks")  # the ceiling (the roof sits on it)
+	var inner := at + Vector3(0, 0.1, 0)
+	if ruined:
+		for k in 9:  # rubble and fallen beams, and the throne on its side
+			var r: MeshInstance3D = W.box(self, inner + Vector3(randf_range(-5, 5), 0.3, randf_range(-3, 3)), Vector3(randf_range(0.6, 1.4), randf_range(0.4, 0.8), randf_range(0.6, 1.2)), Color("#5e5a54"), "cube", true)
+			r.rotation.y = randf() * PI
+		for k in 3:
+			var beam: MeshInstance3D = W.box(self, inner + Vector3(-3.0 + k * 3.0, 0.4, randf_range(-2, 2)), Vector3(0.35, 0.35, 5.0), Color("#17120e"))
+			beam.rotation = Vector3(randf_range(-0.3, 0.3), randf() * PI, randf_range(-0.2, 0.2))
+		var throne: MeshInstance3D = W.box(self, inner + Vector3(0, 0.4, -3.2), Vector3(1.2, 0.8, 1.6), Color("#3a2a1a"))
+		throne.rotation.z = PI / 2.0
+		return
+	var red := BANNER
+	var gold := Color("#e8c25a")
+	s(inner + Vector3(0, 0.3, -3.4), Vector3(5.0, 0.6, 2.2), "stone")  # the dais
+	W.box(self, inner + Vector3(0, 0.62, 1.0), Vector3(1.8, 0.02, 7.5), red.darkened(0.15))  # a red runner
+	var throne := inner + Vector3(0, 0.6, -3.6)
+	W.box(self, throne + Vector3(0, 0.45, 0), Vector3(1.1, 0.9, 0.9), Color("#5a3d24"), "cube", true)
+	W.box(self, throne + Vector3(0, 1.6, -0.4), Vector3(1.2, 2.2, 0.2), Color("#5a3d24"))  # tall back
+	W.box(self, throne + Vector3(0, 1.4, -0.29), Vector3(0.8, 1.4, 0.04), red)  # its cushion
+	W.box(self, throne + Vector3(0, 2.75, -0.4), Vector3(0.5, 0.25, 0.22), gold)  # a gilded crest
+	for z in [-1.0, 1.6]:  # the long feast table (two halves) and benches
+		W.box(self, inner + Vector3(0, 0.85, z), Vector3(1.4, 0.1, 2.4), Color("#6b4a2b"), "cube", true)
+		for x in [-0.55, 0.55]:
+			for zz in [-1.0, 1.0]:
+				W.box(self, inner + Vector3(x, 0.42, z + zz), Vector3(0.1, 0.84, 0.1), Color("#4a3220"))
+		for side in [-1, 1]:
+			W.box(self, inner + Vector3(side * 1.15, 0.45, z), Vector3(0.4, 0.08, 2.4), Color("#5a3d24"))
+		for k in 3:  # plates, goblets and a roast
+			W.box(self, inner + Vector3(-0.35 + k * 0.35, 0.92, z - 0.7 + k * 0.7), Vector3(0.25, 0.03, 0.25), Color("#c9c2b0"))
+			W.box(self, inner + Vector3(0.35 - k * 0.3, 0.98, z - 0.4 + k * 0.6), Vector3(0.08, 0.16, 0.08), gold)
+		W.box(self, inner + Vector3(0, 0.98, z), Vector3(0.45, 0.22, 0.3), Color("#8a4a24"), "sphere")
+	var hx := -w / 2.0 + t + 0.6  # the great hearth on the west wall
+	s(inner + Vector3(hx, 1.6, 0), Vector3(1.2, 3.2, 3.0), "stone")
+	W.box(self, inner + Vector3(hx + 0.62, 0.8, 0), Vector3(0.04, 1.4, 1.8), Color("#120e0a"))
+	W.glow(self, inner + Vector3(hx + 0.55, 0.45, 0), Vector3(0.3, 0.6, 1.2), Color("#ff7a1a"), 4.0, "sphere")
+	var hearth_light: OmniLight3D = W.light(self, inner + Vector3(hx + 1.6, 1.5, 0), Color("#ffa050"), 2.5, 10.0)
+	torches.append([hearth_light, randf() * TAU])
+	for x in [-3.5, 0.0, 3.5]:  # banners down the back wall
+		W.box(self, inner + Vector3(x, 6.0, -d / 2.0 + t + 0.03), Vector3(1.4, 4.5, 0.05), red)
+		W.box(self, inner + Vector3(x, 6.6, -d / 2.0 + t + 0.06), Vector3(0.6, 0.6, 0.02), gold)
+	for z in [-1.5, 2.0]:  # chandeliers: an iron ring of candles on a chain
+		var c := inner + Vector3(0, 7.0, z)
+		W.box(self, c + Vector3(0, 2.2, 0), Vector3(0.05, 4.4, 0.05), Color("#2a2622"))
+		W.box(self, c, Vector3(1.6, 0.08, 1.6), Color("#2a2622"))
+		for k in 6:
+			var a := k * TAU / 6.0
+			W.glow(self, c + Vector3(cos(a) * 0.7, 0.2, sin(a) * 0.7), Vector3(0.06, 0.14, 0.06), Color("#ffcf6a"), 3.0)
+		W.light(self, c - Vector3(0, 0.5, 0), Color("#ffcf8a"), 1.6, 12.0)
+
