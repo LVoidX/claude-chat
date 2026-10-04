@@ -200,7 +200,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - landmarks.gd: nameplates over people, crossroads signpost, place names announced on entry (Thornvale Village,
   Highmoor Castle, the Old Mill, the Barrow of the Old Kings, Wolfwood dens, Gorrak's Camp), and the top compass with
   gold markers for story quest targets.
-- gathering.gd: 8 treasure chests (E, refill after 30 min). creatures.gd: enemies topple and sink, sparks on hits.
+- gathering.gd: 8 framed, plank-built treasure chests with iron straps, rivets, hinges and a brass keyhole (E, refill after 30 min). creatures.gd: enemies topple and sink, sparks on hits.
 - music.gd sounds: play_sfx("swing" | "hit" | "hurt" | "pickup" | "coin" | "levelup" | "quest" | "chapter").
 - villagers.gd: hip pivot (body), two-handed hoe/axe strokes, guards in tabards and mail.
 - travel.gd: waystones (touch to attune, E to travel; at the crossroads, Thornvale, Highmoor, the Old Mill, the Barrow) and

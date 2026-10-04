@@ -99,18 +99,38 @@ func add_chest(i: int, p: Vector3) -> void:
 	node.position = p
 	node.rotation.y = float(i) * 1.7
 	add_child(node)
-	var wood := Color("#6b4423")
-	var iron := Color("#3a3d42")
-	W.box(node, Vector3(0, 0.25, 0), Vector3(0.9, 0.5, 0.6), wood, "cube", true)
-	for x in [-0.32, 0.32]:  # iron bands
-		W.box(node, Vector3(x, 0.25, 0), Vector3(0.06, 0.52, 0.62), iron)
+	var wood := Color("#684225")
+	var board := Color("#80552f")
+	var frame := Color("#49301d")
+	var iron := Color("#42464a")
+	# Give the box a framed, plank-built look rather than one plain block.
+	W.box(node, Vector3(0, 0.27, 0), Vector3(0.78, 0.42, 0.54), frame, "cube", true)
+	for x in [-0.25, 0.0, 0.25]:
+		W.box(node, Vector3(x, 0.27, -0.277), Vector3(0.23, 0.34, 0.025), board.lightened(0.04 if x == 0.0 else 0.0))
+		W.box(node, Vector3(x, 0.27, 0.277), Vector3(0.23, 0.34, 0.025), wood)
+	for z in [-0.18, 0.18]:
+		W.box(node, Vector3(-0.402, 0.27, z), Vector3(0.025, 0.34, 0.16), board)
+		W.box(node, Vector3(0.402, 0.27, z), Vector3(0.025, 0.34, 0.16), board)
+	# Iron straps wrap the front, back and top edge; rivets sit proud on the front.
+	for x in [-0.29, 0.29]:
+		W.box(node, Vector3(x, 0.27, -0.297), Vector3(0.055, 0.48, 0.035), iron)
+		W.box(node, Vector3(x, 0.27, 0.297), Vector3(0.055, 0.48, 0.035), iron)
+		W.box(node, Vector3(x, 0.51, 0), Vector3(0.055, 0.03, 0.58), iron)
+		for y in [0.1, 0.44]:
+			W.glow(node, Vector3(x, y, -0.32), Vector3(0.035, 0.035, 0.018), Color("#aaa28d"), 0.15, "sphere")
 	var lid := Node3D.new()  # hinged at the back edge
 	lid.position = Vector3(0, 0.5, 0.3)
 	node.add_child(lid)
-	W.box(lid, Vector3(0, 0.1, -0.3), Vector3(0.92, 0.2, 0.62), wood.lightened(0.05))
-	for x in [-0.32, 0.32]:
-		W.box(lid, Vector3(x, 0.1, -0.3), Vector3(0.06, 0.22, 0.64), iron)
-	W.glow(lid, Vector3(0, 0.0, -0.62), Vector3(0.12, 0.14, 0.04), Color("#ffd24d"), 1.5)  # the lock
+	W.box(lid, Vector3(0, 0.08, -0.3), Vector3(0.82, 0.16, 0.56), frame)
+	for x in [-0.27, -0.09, 0.09, 0.27]:
+		W.box(lid, Vector3(x, 0.18, -0.3), Vector3(0.16, 0.045, 0.53), board if x in [-0.09, 0.27] else wood)
+	for x in [-0.29, 0.29]:
+		W.box(lid, Vector3(x, 0.13, -0.3), Vector3(0.05, 0.2, 0.6), iron)
+		W.box(lid, Vector3(x, 0.26, -0.3), Vector3(0.05, 0.035, 0.6), iron)
+	for x in [-0.18, 0.18]:
+		W.box(lid, Vector3(x, 0.1, 0.0), Vector3(0.07, 0.16, 0.025), iron)  # rear hinges
+	W.box(lid, Vector3(0, 0.0, -0.59), Vector3(0.16, 0.17, 0.06), iron)
+	W.glow(lid, Vector3(0, 0.0, -0.625), Vector3(0.07, 0.08, 0.015), Color("#d8b75c"), 0.15)  # brass keyhole
 	chests.append({"i": i, "node": node, "lid": lid, "pos": p})
 	if is_open(i):
 		lid.rotation.x = 1.9
