@@ -286,7 +286,7 @@ func reload_part(f: String) -> void:
 		if old:
 			parts.erase(old)
 			ctx["parts"].erase(name)
-			old.free()
+			retire_part(old)
 			print("[world] part removed: ", name)
 		return
 	var script := compile_part(f)
@@ -294,7 +294,7 @@ func reload_part(f: String) -> void:
 		printerr("scene/", f, " has an error, so it was not reloaded (the old one keeps running). Details are above.")
 		return
 	if old:
-		old.free()  # (its _exit_tree cleans up what it made outside itself, before the new one builds)
+		retire_part(old)  # (its _exit_tree cleans up what it made outside itself, before the new one builds)
 	var part := Node3D.new()
 	part.name = name
 	part.set_script(script)
@@ -311,6 +311,15 @@ func reload_part(f: String) -> void:
 			other.part_reloaded(name)
 	print("[world] part reloaded: ", name)
 	send({"t": "need_quests"})
+
+
+## Take an old part out of the world now (its _exit_tree runs, so it tidies up first), but delete it only at the end
+## of the frame: freeing it on the spot crashed the engine when a story flag swapped the creatures mid-fight.
+func retire_part(old: Node) -> void:
+	old.process_mode = Node.PROCESS_MODE_DISABLED
+	old.name = String(old.name) + "_old"
+	remove_child(old)
+	old.queue_free()
 
 
 var building := ""  # the part whose build() is running (W.flag notes who reads which flag)

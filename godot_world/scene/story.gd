@@ -72,7 +72,11 @@ func load_chapter() -> void:
 		return
 	data_sig = path + str(FileAccess.get_modified_time(path))
 	var number := int(parsed.get("chapter", 1))
-	if number > int(st().chapter) and st().get("finished", false) and not interlude_done():
+	if number > int(st().chapter) and int(st().chapter) > 0 and not st().get("interlude", {}).get("heard", false):
+		if not st().get("finished", false):  # (the game stopped before the chapter's end was saved: it did end)
+			st().finished = true
+			st().interlude = {"told": false, "heard": false}
+			build_beams.call_deferred()
 		return  # written, but it waits until Barnaby has heard your tale and told you the news (the interlude)
 	data = parsed
 	if number != int(st().chapter):  # a new chapter begins
@@ -164,6 +168,7 @@ func complete(id: String) -> void:
 	var ends: bool = data.get("ends_when", "all") == "any" or open_quests().is_empty()
 	if ends:
 		st().finished = true
+		W.save_state.call_deferred()  # (right away: a story moment must never be lost)
 	if not sets.is_empty():
 		set_flags(sets)
 	if ends:
@@ -308,6 +313,7 @@ func barnaby_spoke() -> void:
 	if not ctx.get("seated", false) or not b or Vector2(b.body.position.x - fire.x, b.body.position.z - fire.z).length() > 5.0:
 		return
 	il.told = true
+	W.save_state.call_deferred()
 	var rpg = ctx.parts.get("rpg")
 	if rpg:
 		rpg.add_xp(25)
@@ -319,6 +325,7 @@ func hear_news() -> void:
 	if il.is_empty() or not il.get("told", false) or not news_ready():
 		return
 	il.heard = true
+	W.save_state.call_deferred()
 	load_chapter()  # the new chapter begins now
 	build_beams()
 	var rpg = ctx.parts.get("rpg")
