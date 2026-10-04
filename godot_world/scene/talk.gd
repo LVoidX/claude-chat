@@ -1,19 +1,20 @@
 extends Node3D
-## Shared talking for characters (Marigold uses it; Barnaby has his own copy of this code in barnaby.gd).
+## Shared talking for the characters (Barnaby and Marigold).
 ## A character part makes one Talker on its body: `talker = ctx.parts["talk"].make(W, body, bubble_y, mouth_pos, mouth_size)`
-## (make(W, body, bubble_y, mouth_pos, mouth_size)) and forwards the chat's commands to it: say_start(text), say_end(), say(text), set_mind("listening"/"thinking"/"").
+## and forwards the chat's commands to it: say_start(text), say_end(), say(text), set_mind("listening"/"thinking"/"").
 ## The Talker draws the pixel-art speech bubble over the head, opens and closes a mouth oval while the voice
 ## reads, and shows a "..." (listening) or "?" (thinking) symbol when the character is not talking.
 
 
-func make(world, parent: Node3D, bubble_y: float, mouth_pos: Vector3, mouth_size: Vector3) -> Node3D:
+func make(world, parent: Node3D, bubble_y: float, mouth_pos: Vector3, mouth_size: Vector3, mouth_color := Color("#4a1218")) -> Node3D:
 	var talker := Talker.new()
 	parent.add_child(talker)
-	talker.setup(world, bubble_y, mouth_pos, mouth_size)
+	talker.setup(world, bubble_y, mouth_pos, mouth_size, mouth_color)
 	return talker
 
 
 class Talker extends Node3D:
+	# the bubble is pixel art: it is drawn tiny (one unit = one big pixel) and scaled up without smoothing
 	const BUBBLE_FONT := 16
 	const BUBBLE_WRAP := 190.0
 	const BUBBLE_PAD := 9
@@ -32,16 +33,18 @@ class Talker extends Node3D:
 	var wrapped := []
 	var shown := -1
 	var bubble_size := Vector2(100, 100)
-	var lines := []  # [start, end, text, (timed by the voice)]
-	var cps := 14.0
+	var lines := []  # [start, end, text, (timed by the voice)] of the sentences being (about to be) said
+	var talk_end := 0.0  # when the last estimated sentence ends
+	const CHARS_PER_SECOND := 15.0  # estimate for say() lines, which the voice doesn't time
+	var cps := 14.0  # letters per second the voice actually reads (learned from finished sentences)
 	var mind_state := ""
 	var mind: Label3D
 	var base_y := 2.0
 
-	func setup(world, bubble_y: float, mouth_pos: Vector3, mouth_size: Vector3) -> void:
+	func setup(world, bubble_y: float, mouth_pos: Vector3, mouth_size: Vector3, mouth_color: Color) -> void:
 		W = world
 		base_y = bubble_y
-		mouth = W.box(get_parent(), mouth_pos, mouth_size, Color("#4a1218"), "sphere")
+		mouth = W.box(get_parent(), mouth_pos, mouth_size, mouth_color, "sphere")
 		mouth.visible = false
 		mouth_y = mouth_pos.y
 		bubble = Node3D.new()
@@ -103,27 +106,28 @@ class Talker extends Node3D:
 			widest = maxf(widest, font.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, BUBBLE_FONT).x)
 		var h := font.get_height(BUBBLE_FONT) * wrapped.size()
 		bubble_size = Vector2(ceilf(widest) + BUBBLE_PAD * 2, ceilf(h) + BUBBLE_PAD * 2 + BUBBLE_TAIL)
-		bubble_size = Vector2(roundf(bubble_size.x / 2.0) * 2.0, bubble_size.y)
+		bubble_size = Vector2(roundf(bubble_size.x / 2.0) * 2.0, bubble_size.y)  # even width, so the tail is centred
 		vp.size = Vector2i(bubble_size)
 		canvas.size = bubble_size
-		sprite.offset = Vector2(0, bubble_size.y / 2.0)
+		sprite.offset = Vector2(0, bubble_size.y / 2.0)  # the tail's tip sits at the bubble's anchor
 
 	func px(r: Rect2, c: Color) -> void:
 		canvas.draw_rect(r, c)
 
 	func draw_bubble() -> void:
 		var w := bubble_size.x
-		var bh := bubble_size.y - BUBBLE_TAIL
+		var bh := bubble_size.y - BUBBLE_TAIL  # height of the box without the tail
+		# a chunky outline with stepped (square) corners, like a pixel-art speech box
 		px(Rect2(2, 0, w - 4, bh), INK)
 		px(Rect2(0, 2, w, bh - 4), INK)
 		px(Rect2(4, 2, w - 8, bh - 4), PAPER)
 		px(Rect2(2, 4, w - 4, bh - 8), PAPER)
 		var cx := w / 2.0
-		for i in 4:
+		for i in 4:  # the tail: a little staircase pointing down
 			px(Rect2(cx - 7 + 2 * i, bh + 2 * i, 14 - 4 * i, 2), INK)
 			if i < 3:
 				px(Rect2(cx - 5 + 2 * i, bh + 2 * i, 10 - 4 * i, 2), PAPER)
-		px(Rect2(cx - 5, bh - 2, 10, 2), PAPER)
+		px(Rect2(cx - 5, bh - 2, 10, 2), PAPER)  # opens the outline where the tail joins
 		var lh := font.get_height(BUBBLE_FONT)
 		var left := shown
 		var y := float(BUBBLE_PAD)
@@ -135,10 +139,13 @@ class Talker extends Node3D:
 			left -= l.length() + 1
 			y += lh
 
+	## Sentence timing straight from the voice: the chat sends say_start when the voice begins a sentence and
+	## say_end when it finishes, so the bubble and mouth follow what is really being spoken.
 	func say_start(t: String) -> void:
 		var now := Time.get_ticks_msec() / 1000.0
 		lines.clear()
 		lines.append([now, now + 60.0, t, true])  # the end is set by say_end (60 s = safety net)
+		talk_end = 0.0
 
 	func say_end() -> void:
 		var now := Time.get_ticks_msec() / 1000.0
@@ -150,9 +157,28 @@ class Talker extends Node3D:
 			cps = lerpf(cps, clampf(n / elapsed, 6.0, 40.0), 0.5)
 		lines[0][1] = now
 
-	func say(t: String) -> void:  # an empty text means the voice was stopped
+	## A whole text without voice timing: cut into sentences, each shown for an estimated time.
+	## An empty text means the voice was stopped.
+	func say(t: String) -> void:
 		if t.strip_edges() == "":
 			lines.clear()
+			talk_end = 0.0
+			return
+		var now := Time.get_ticks_msec() / 1000.0
+		var sentence := ""
+		var pieces := []
+		for i in t.length():
+			sentence += t[i]
+			if t[i] in ".!?" and (i + 1 >= t.length() or t[i + 1] == " "):
+				pieces.append(sentence.strip_edges())
+				sentence = ""
+		if sentence.strip_edges() != "":
+			pieces.append(sentence.strip_edges())
+		for piece in pieces:
+			var start := maxf(now + 0.3, talk_end)
+			var end := start + clampf(piece.length() / CHARS_PER_SECOND, 0.8, 25.0)
+			lines.append([start, end, piece])
+			talk_end = end + 0.15
 
 	func set_mind(state: String) -> void:
 		mind_state = state
@@ -171,7 +197,10 @@ class Talker extends Node3D:
 			var line: Array = lines[0]
 			if text != line[2]:
 				set_text(line[2])
-			var progress := 1.0 if now >= line[1] else clampf((now - line[0]) * cps * 1.7 / maxf(text.length(), 1), 0.0, 1.0)
+			# the letters appear one by one, faster than the voice reads; all shown once the sentence ends
+			var progress := clampf((now - line[0]) * 2.0 / maxf(line[1] - line[0], 0.1), 0.0, 1.0)
+			if line.size() > 3:  # timed by the real voice: type at its learned reading speed
+				progress = 1.0 if now >= line[1] else clampf((now - line[0]) * cps * 1.7 / maxf(text.length(), 1), 0.0, 1.0)
 			var count := ceili(text.length() * progress)
 			if count != shown:
 				shown = count

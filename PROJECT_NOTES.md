@@ -115,7 +115,8 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).
 - Builder hammer (scene/builder.gd): H or [hammer] holds it; click builds 1 m blocks, right click removes, C/wheel colour. Barnaby can [climb] onto placed objects.
-- Barnaby talking: chat.pyw sends cmd=say (who, text) per spoken sentence; barnaby.gd animates a mouth box over the face texture and shows a billboard Label3D chat bubble (timed ~15 chars/s).
+- Talking: both characters use the shared Talker in scene/talk.gd (pixel-art bubble, mouth, "..."/"?" symbol). say_start/say_end
+  time it from the real voice; a plain say (who, text) is split into sentences shown ~15 chars/s.
 - Goblins (scene/goblins.gd, [goblins] / [goblins away]): a ring army, harmless until you hit one, then they fight back
   (state["goblins_angry"]): an attack director lets 1-2 at a time step in, wind up (arms up, red eyes, "!" over the head;
   red "!!" = unblockable) and lunge. Kinds: grunt (3 hp), spear (longer reach), brute (every 5th: 8 hp, light hits don't

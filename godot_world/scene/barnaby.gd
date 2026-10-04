@@ -41,242 +41,16 @@ func build(c: Dictionary) -> void:
 	for pair in [["leg_l", 1], ["leg_r", -1], ["arm_l", -1], ["arm_r", 1]]:
 		if named.has(pair[0]):
 			limbs.append([named[pair[0]], pair[1]])
-	build_talk()
+	# the mouth is a dark oval pressed onto the front of the mustache (its face is at z = -0.22)
+	talker = ctx.parts["talk"].make(W, body, 2.25, Vector3(-0.01, MOUTH_Y, -0.232), Vector3(0.07, 0.02, 0.014), Color("#3a0f12"))
 	var s: Dictionary = ctx.state.get_or_add("barnaby", {"x": 6.0, "z": -6.0, "mode": "wander"})
 	body.position = Vector3(s.x, 0, s.z)
 	target = body.position
 
 
-## --- talking: the mouth opens and closes and a chat bubble shows the sentence being spoken -------------------
-const CHARS_PER_SECOND := 15.0  # about how fast his voice reads
+## Talking (speech bubble, mouth, the "..." / "?" over his head) is the shared Talker from talk.gd.
 const MOUTH_Y := 1.558  # where the lips are (the dark line in the mustache)
-var mouth: MeshInstance3D
-var bubble: Node3D
-var bubble_vp: SubViewport  # the speech bubble is drawn 2D in here and shown on a billboard sprite
-var bubble_canvas: Control
-var bubble_sprite: Sprite3D
-var bubble_text := ""
-var bubble_lines := []  # the sentence cut into lines
-var bubble_shown := -1  # letters shown so far (they appear one by one while he speaks)
-var bubble_size := Vector2(100, 100)
-var bubble_font: SystemFont
-# the bubble is pixel art: it is drawn tiny (one unit = one big pixel) and scaled up without smoothing
-const BUBBLE_FONT := 16
-const BUBBLE_WRAP := 190.0
-const BUBBLE_PAD := 9
-const BUBBLE_TAIL := 8
-const BUBBLE_INK := Color("#2b1d12")
-const BUBBLE_PAPER := Color("#fff3d6")
-var lines := []  # [start, end, text] of the sentences he is (about to be) saying
-var talk_end := 0.0
-
-
-func build_talk() -> void:
-	# a dark oval pressed onto the front of the mustache (its face is at z = -0.22), ahead of the dark bits there
-	mouth = W.box(body, Vector3(-0.01, MOUTH_Y, -0.232), Vector3(0.07, 0.02, 0.014), Color("#3a0f12"), "sphere")
-	mouth.visible = false
-	bubble = Node3D.new()
-	bubble.position = Vector3(0, 2.25, 0)
-	bubble.visible = false
-	body.add_child(bubble)
-	bubble_vp = SubViewport.new()
-	bubble_vp.transparent_bg = true
-	bubble_vp.size = Vector2i(100, 100)
-	bubble_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	bubble.add_child(bubble_vp)
-	bubble_canvas = Control.new()
-	bubble_canvas.draw.connect(draw_bubble)
-	bubble_vp.add_child(bubble_canvas)
-	bubble_sprite = Sprite3D.new()
-	bubble_sprite.texture = bubble_vp.get_texture()
-	bubble_sprite.pixel_size = 0.0065
-	bubble_sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	bubble_sprite.shaded = false
-	bubble_sprite.no_depth_test = true
-	bubble_sprite.render_priority = 5
-	bubble_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	bubble_font = SystemFont.new()
-	bubble_font.font_names = PackedStringArray(["Consolas", "Courier New", "monospace"])
-	bubble_font.font_weight = 700
-	bubble_font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
-	bubble_font.hinting = TextServer.HINTING_NONE
-	bubble_font.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
-	bubble.add_child(bubble_sprite)
-	build_mind()
-
-
-## A symbol above his head: "?" while he thinks, a pulsing "..." while he listens (nothing while he talks).
-var mind_state := ""
-var mind_label: Label3D
-
-
-func build_mind() -> void:
-	mind_label = Label3D.new()
-	mind_label.position = Vector3(0, 2.2, 0)
-	mind_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	mind_label.no_depth_test = true
-	mind_label.render_priority = 6
-	mind_label.shaded = false
-	mind_label.font_size = 160
-	mind_label.pixel_size = 0.004
-	mind_label.outline_size = 36
-	mind_label.outline_modulate = BUBBLE_INK
-	mind_label.font = bubble_font
-	mind_label.visible = false
-	body.add_child(mind_label)
-
-
-func update_mind() -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-	var talking: bool = bubble.visible
-	if mind_state == "" or talking:
-		mind_label.visible = false
-		return
-	mind_label.visible = true
-	if mind_state == "thinking":
-		mind_label.text = "?"
-		mind_label.modulate = Color("#ffd24d")
-		mind_label.position.y = 2.2 + sin(now * 4.0) * 0.06
-		mind_label.rotation.z = sin(now * 3.0) * 0.15
-	else:
-		mind_label.text = ".".repeat(1 + int(now * 3.0) % 3)
-		mind_label.modulate = Color("#4dff88")
-		mind_label.position.y = 2.2
-		mind_label.rotation.z = 0.0
-
-
-func set_bubble_text(text: String) -> void:
-	bubble_text = text
-	bubble_shown = -1
-	bubble_lines.clear()
-	var cur := ""
-	for word in text.split(" ", false):
-		var test: String = word if cur == "" else cur + " " + word
-		if cur != "" and bubble_font.get_string_size(test, HORIZONTAL_ALIGNMENT_LEFT, -1, BUBBLE_FONT).x > BUBBLE_WRAP:
-			bubble_lines.append(cur)
-			cur = word
-		else:
-			cur = test
-	bubble_lines.append(cur)
-	var widest := 0.0
-	for l in bubble_lines:
-		widest = maxf(widest, bubble_font.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, BUBBLE_FONT).x)
-	var h := bubble_font.get_height(BUBBLE_FONT) * bubble_lines.size()
-	bubble_size = Vector2(ceilf(widest) + BUBBLE_PAD * 2, ceilf(h) + BUBBLE_PAD * 2 + BUBBLE_TAIL)
-	bubble_size = Vector2(roundf(bubble_size.x / 2.0) * 2.0, bubble_size.y)  # even width, so the tail is centred
-	bubble_vp.size = Vector2i(bubble_size)
-	bubble_canvas.size = bubble_size
-	bubble_sprite.offset = Vector2(0, bubble_size.y / 2.0)  # the tail's tip sits at the bubble's anchor
-
-
-func show_letters(count: int) -> void:
-	if count != bubble_shown:
-		bubble_shown = count
-		bubble_canvas.queue_redraw()
-
-
-func px(r: Rect2, c: Color) -> void:
-	bubble_canvas.draw_rect(r, c)
-
-
-func draw_bubble() -> void:
-	var w := bubble_size.x
-	var bh := bubble_size.y - BUBBLE_TAIL  # height of the box without the tail
-	# a chunky outline with stepped (square) corners, like a pixel-art speech box
-	px(Rect2(2, 0, w - 4, bh), BUBBLE_INK)
-	px(Rect2(0, 2, w, bh - 4), BUBBLE_INK)
-	px(Rect2(4, 2, w - 8, bh - 4), BUBBLE_PAPER)
-	px(Rect2(2, 4, w - 4, bh - 8), BUBBLE_PAPER)
-	var cx := w / 2.0
-	for i in 4:  # the tail: a little staircase pointing down
-		px(Rect2(cx - 7 + 2 * i, bh + 2 * i, 14 - 4 * i, 2), BUBBLE_INK)
-		if i < 3:
-			px(Rect2(cx - 5 + 2 * i, bh + 2 * i, 10 - 4 * i, 2), BUBBLE_PAPER)
-	px(Rect2(cx - 5, bh - 2, 10, 2), BUBBLE_PAPER)  # opens the outline where the tail joins
-	var lh := bubble_font.get_height(BUBBLE_FONT)
-	var left := bubble_shown
-	var y := float(BUBBLE_PAD)
-	for l in bubble_lines:
-		if left <= 0:
-			break
-		var part: String = l.substr(0, left)
-		bubble_canvas.draw_string(bubble_font, Vector2(BUBBLE_PAD, y + bubble_font.get_ascent(BUBBLE_FONT)), part,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, BUBBLE_FONT, BUBBLE_INK)
-		left -= l.length() + 1
-		y += lh
-
-
-func say(text: String) -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-	if text.strip_edges() == "":  # the voice was stopped
-		lines.clear()
-		talk_end = 0.0
-		return
-	var sentence := ""
-	var pieces := []
-	for i in text.length():
-		sentence += text[i]
-		if text[i] in ".!?" and (i + 1 >= text.length() or text[i + 1] == " "):
-			pieces.append(sentence.strip_edges())
-			sentence = ""
-	if sentence.strip_edges() != "":
-		pieces.append(sentence.strip_edges())
-	for piece in pieces:
-		var start := maxf(now + 0.3, talk_end)
-		var end := start + clampf(piece.length() / CHARS_PER_SECOND, 0.8, 25.0)
-		lines.append([start, end, piece])
-		talk_end = end + 0.15
-
-
-## Sentence timing straight from the voice: the chat sends say_start when his voice begins a sentence and
-## say_end when it finishes, so the bubble and mouth follow what is really being spoken.
-var cps := 14.0  # letters per second his voice actually reads (learned from finished sentences)
-
-
-func say_start(text: String) -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-	lines.clear()
-	lines.append([now, now + 60.0, text, true])  # the end is set by say_end (60 s = safety net)
-	talk_end = 0.0
-
-
-func say_end() -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-	if lines.is_empty() or lines[0].size() < 4:
-		return
-	var elapsed: float = now - lines[0][0]
-	var n: int = lines[0][2].length()
-	if elapsed > 0.6 and n > 8:
-		cps = lerpf(cps, clampf(n / elapsed, 6.0, 40.0), 0.5)
-	lines[0][1] = now
-
-
-func update_talk() -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-	while lines.size() > 1 and lines[1][0] <= now:
-		lines.pop_front()
-	if lines.is_empty() or now < lines[0][0] or now > lines[0][1] + 1.5:
-		if not lines.is_empty() and now > lines[0][1] + 1.5:
-			lines.pop_front()
-		if lines.is_empty() or now < lines[0][0]:
-			mouth.visible = false
-			bubble.visible = false
-			return
-	var line: Array = lines[0]
-	if bubble_text != line[2]:
-		set_bubble_text(line[2])
-	bubble.visible = true
-	# the letters appear one by one, about twice as fast as his voice reads
-	var progress := clampf((now - line[0]) * 2.0 / maxf(line[1] - line[0], 0.1), 0.0, 1.0)
-	if line.size() > 3:  # timed by the real voice: type at his reading speed, all shown once he finishes
-		progress = 1.0 if now >= line[1] else clampf((now - line[0]) * cps * 1.7 / maxf(bubble_text.length(), 1), 0.0, 1.0)
-	show_letters(ceili(bubble_text.length() * progress))
-	var speaking: bool = now <= line[1]
-	mouth.visible = speaking
-	if speaking:
-		var open := absf(sin(now * 13.0)) * (0.55 + 0.45 * sin(now * 4.7 + 1.0))
-		mouth.scale.y = 0.02 + open * 0.035
-		mouth.position.y = MOUTH_Y - open * 0.0175
+var talker: Node3D
 
 
 func st() -> Dictionary:
@@ -458,8 +232,6 @@ func _process(delta: float) -> void:
 		if out != 0.0:
 			limbs[2][0].rotation.x = 0.0
 			limbs[3][0].rotation.x = 0.0
-	update_talk()
-	update_mind()
 	st()["x"] = body.position.x
 	st()["z"] = body.position.z
 
@@ -469,19 +241,19 @@ func handle(c: Dictionary) -> bool:
 		"say_start":  # his voice begins a sentence
 			if c.get("who", "barnaby") != "barnaby":
 				return false
-			say_start(str(c.get("text", "")))
+			talker.say_start(str(c.get("text", "")))
 		"say_end":  # his voice finished the sentence
 			if c.get("who", "barnaby") != "barnaby":
 				return false
-			say_end()
+			talker.say_end()
 		"say":  # sent by the chat for every sentence he speaks aloud
 			if c.get("who", "barnaby") != "barnaby":
 				return false
-			say(str(c.get("text", "")))
+			talker.say(str(c.get("text", "")))
 		"npc_state":  # what he is doing with your words: "listening", "thinking" or ""
 			if c.get("who", "barnaby") != "barnaby":
 				return false
-			mind_state = str(c.get("state", ""))
+			talker.set_mind(str(c.get("state", "")))
 		"follow":
 			st()["mode"] = "follow"
 		"wander":
