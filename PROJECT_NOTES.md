@@ -215,3 +215,6 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   wind (deleted parts and commands). Barnaby is no longer a lighthouse keeper: an old soldier and storyteller who
   keeps the campfire, recoloured (green cloak, staff); he is the main story's giver (story.gd interlude: sit with him
   at the fire, tell him what happened, he gets a ! when the next chapter is ready).
+- Villagers can be talked to by voice like Barnaby: villagers.gd gives each a name/bio and a Talker, reports
+  npc_id "folk:<who>" when you stand next to one; chat.pyw plays them all with ONE Haiku process (kind "npc3",
+  FOLK_PERSONA, the "Folk" column), each message saying who is speaking and what they see. No commands or handoffs.

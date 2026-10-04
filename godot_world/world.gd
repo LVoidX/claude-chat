@@ -402,17 +402,19 @@ func _process(_delta: float) -> void:
 			notice_label.text = ""
 	# whom is the player standing next to? (the chat window listens hands-free while you are)
 	var who := ""
+	var who_name := ""
 	for part in parts:
 		if "npc_id" in part and part.has_method("is_near") and part.is_near():
 			who = part.npc_id
+			who_name = str(part.get("npc_name")) if "npc_name" in part else ""
 			break
 	if who != near_who:
 		near_who = who
-		send({"t": "near", "v": who != "", "who": who})
+		send({"t": "near", "v": who != "", "who": who, "name": who_name})
 	if now > next_sight:  # what each character can see, for their next answer
 		next_sight = now + 1.0
 		for part in parts:
-			if "npc_id" in part and part.has_method("describe"):
+			if "npc_id" in part and str(part.npc_id) != "" and part.has_method("describe"):
 				var text: String = part.describe()
 				if sights.get(part.npc_id, "") != text:
 					sights[part.npc_id] = text

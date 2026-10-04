@@ -58,23 +58,23 @@ func plan_all(village: Vector3, gate: Vector3, wall_y: float, wall_z: float, cas
 
 func base_plan(village: Vector3, gate: Vector3, wall_y: float, wall_z: float, castle: Vector3, pasture: Vector3) -> Array:
 	return [
-		{"name": "the farmer", "tunic": "#6a7d3a", "hat": "straw", "tool": "hoe", "steps": [
+		{"who": "wat", "display": "Wat", "bio": "Wat the farmer: cheerful, sunburnt, forever fighting crows and worrying about the harvest; gossips about everyone", "name": "the farmer", "tunic": "#6a7d3a", "hat": "straw", "tool": "hoe", "steps": [
 			[FIELD + Vector3(-4, 0, -2), "work", 6.0], [FIELD + Vector3(0, 0, -2), "work", 6.0], [FIELD + Vector3(4, 0, 2), "work", 6.0],
 			[FIELD + Vector3(-2, 0, 2), "work", 5.0], [village + Vector3(2, 0, -4), "idle", 5.0]]},
-		{"name": "the woodcutter", "tunic": "#7a3b2a", "hat": "hood", "tool": "axe", "steps": [
+		{"who": "osric", "display": "Osric", "bio": "Osric the woodcutter: big, quiet, few words, knows the Wolfwood better than anyone and respects the wolves", "name": "the woodcutter", "tunic": "#7a3b2a", "hat": "hood", "tool": "axe", "steps": [
 			[LOGS + Vector3(0.9, 0, 0.6), "work", 9.0], [LOGS + Vector3(-1.5, 0, 2.5), "idle", 3.0], [LOGS + Vector3(0.9, 0, 0.6), "work", 7.0],
 			[village + Vector3(-1, 0, -3), "idle", 6.0]]},
-		{"name": "the water carrier", "tunic": "#3d5a7a", "hat": "", "tool": "bucket", "steps": [
+		{"who": "elsie", "display": "Elsie", "bio": "Elsie the water carrier: a quick, sharp-tongued young woman who hears all the village news at the well", "name": "the water carrier", "tunic": "#3d5a7a", "hat": "", "tool": "bucket", "steps": [
 			[village + Vector3(1.6, 0, 0.4), "work", 4.0], [village + Vector3(-5, 0, -7.2), "idle", 3.0], [village + Vector3(1.6, 0, 0.4), "work", 4.0],
 			[village + Vector3(5.5, 0, 6.5), "idle", 3.0], [village + Vector3(-9.5, 0, 2.5), "idle", 3.0]]},
-		{"name": "the shepherd", "tunic": "#8a6a3a", "hat": "straw", "tool": "crook", "steps": [
+		{"who": "tam", "display": "Tam", "bio": "Tam the shepherd: an anxious old man who counts his sheep constantly and hates wolves and trolls", "name": "the shepherd", "tunic": "#8a6a3a", "hat": "straw", "tool": "crook", "steps": [
 			[pasture + Vector3(-9, 0, -3), "idle", 8.0], [pasture + Vector3(-6, 0, 8), "idle", 8.0], [pasture + Vector3(8, 0, 9), "idle", 8.0],
 			[pasture + Vector3(10, 0, -4), "idle", 8.0]]},
-		{"name": "a guard", "tunic": "#9e2230", "hat": "helmet", "tool": "spear", "steps": [
+		{"who": "bram", "display": "Sergeant Bram", "bio": "Sergeant Bram of the Highmoor guard: gruff, proud of his castle, suspicious of strangers until they prove themselves", "name": "a guard", "tunic": "#9e2230", "hat": "helmet", "tool": "spear", "steps": [
 			[gate + Vector3(-3.2, 0, 0.5), "idle", 20.0], [gate + Vector3(-3.2, 0, 4.0), "idle", 6.0]]},
-		{"name": "a guard", "tunic": "#9e2230", "hat": "helmet", "tool": "spear", "steps": [
+		{"who": "hugh", "display": "Hugh", "bio": "Hugh, a young castle guard: bored on duty, eager for any news or adventure", "name": "a guard", "tunic": "#9e2230", "hat": "helmet", "tool": "spear", "steps": [
 			[gate + Vector3(3.2, 0, 0.5), "idle", 18.0], [gate + Vector3(3.2, 0, 4.5), "idle", 5.0]]},
-		{"name": "a guard on the wall", "tunic": "#9e2230", "hat": "helmet", "tool": "spear", "steps": [
+		{"who": "piers", "display": "Piers", "bio": "Piers, a guard who walks the castle wall: chatty, superstitious about the red moon and the barrow", "name": "a guard on the wall", "tunic": "#9e2230", "hat": "helmet", "tool": "spear", "steps": [
 			[Vector3(castle.x - 12.0, wall_y, wall_z), "idle", 4.0], [Vector3(castle.x - 4.0, wall_y, wall_z), "idle", 1.0],
 			[Vector3(castle.x + 4.0, wall_y, wall_z), "idle", 1.0], [Vector3(castle.x + 12.0, wall_y, wall_z), "idle", 4.0],
 			[Vector3(castle.x - 4.0, wall_y, wall_z), "idle", 1.0]]},
@@ -236,7 +236,9 @@ func add_person(p: Dictionary) -> void:
 		if side > 0:
 			tool_arm = arm
 	make_tool(tool_arm, p.tool)
+	var talker: Node3D = ctx.parts["talk"].make(W, node, 2.45, Vector3(0, 1.585, -0.132), Vector3(0.07, 0.02, 0.012)) if ctx.parts.has("talk") else null
 	folk.append({"node": node, "body": body, "tool": p.tool, "offset": rng.randf(), "legs": legs, "arms": arms,
+		"who": p.get("who", ""), "display": p.get("display", p.name), "bio": p.get("bio", ""), "talker": talker,
 		"tool_arm": tool_arm, "steps": p.steps, "step": 0,
 		"wait": randf_range(0.0, float(first[2])), "phase": randf() * TAU, "name": p.name, "work": first[1] == "work",
 		"look": 0.0})
@@ -387,3 +389,70 @@ func seen_from(from: Vector3, _viewer: Node) -> Array:
 	if not near.is_empty():
 		seen.append("villagers going about their work nearby: " + ", ".join(near))
 	return seen
+
+
+# --- talking to the villagers (by voice, like Barnaby): the chat window plays whoever you stand next to ------------
+# world.gd asks is_near() and npc_id like for the characters; the reply's voice and bubble come back as
+# say_start / say_end / say / npc_state with who = "folk:<who>".
+
+const TALK_RANGE := 2.6
+var npc_id := ""  # "folk:wat" while you stand next to Wat, else ""
+var npc_name := ""
+
+
+func near_person() -> Dictionary:
+	var me: Vector3 = ctx.player.position
+	var best := {}
+	var best_d := TALK_RANGE
+	for f in folk:
+		var d := Vector2(me.x - f.node.position.x, me.z - f.node.position.z).length()
+		if d < best_d and f.who != "":
+			best = f
+			best_d = d
+	return best
+
+
+func is_near() -> bool:
+	var f := near_person()
+	npc_id = ("folk:" + f.who) if not f.is_empty() else ""
+	npc_name = f.get("display", "")
+	return not f.is_empty()
+
+
+func person(id: String) -> Dictionary:
+	for f in folk:
+		if "folk:" + f.who == id:
+			return f
+	return {}
+
+
+## Who you are talking to and what they see (sent to the chat window with each line you say to them).
+func describe() -> String:
+	var f := person(npc_id)
+	if f.is_empty():
+		return ""
+	var here: Vector3 = f.node.position
+	var seen := [str(f.bio)]
+	seen.append_array(W.seen_around(here, self))
+	seen.append("the wanderer is %s" % W.where(here, ctx.player.position))
+	return "; ".join(seen)
+
+
+func handle(c: Dictionary) -> bool:
+	var who := str(c.get("who", ""))
+	if not who.begins_with("folk:") or not c.get("cmd", "") in ["say_start", "say_end", "say", "npc_state"]:
+		return false
+	var f := person(who)
+	if f.is_empty() or f.talker == null:
+		return true
+	match c.cmd:
+		"say_start":
+			f.talker.say_start(str(c.get("text", "")))
+		"say_end":
+			f.talker.say_end()
+		"say":
+			f.talker.say(str(c.get("text", "")))
+		"npc_state":
+			f.talker.set_mind(str(c.get("state", "")))
+	return true
+

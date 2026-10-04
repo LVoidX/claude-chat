@@ -54,7 +54,7 @@ HISTORY_KEEP = 400  # transcript entries kept on screen and on disk (older ones 
 PROC_SETUP_VERSION = "\n<!-- setup 2 -->"  # bump when the characters' / builder's claude flags change
 # (a resumed session keeps the system prompt it started with, so a new setup needs a fresh session)
 SESSION_ATTRS = {"main": "session_id", "npc": "npc_session_id", "npc2": "marigold_session_id",
-                 "builder": "builder_session_id"}
+                 "npc3": "folk_session_id", "builder": "builder_session_id"}
 
 
 def session_tokens(sid):
@@ -213,6 +213,32 @@ quest kinds), PROJECT_NOTES.md (what exists and the user's taste), and the scene
    godot_bridge.py or world_state.json. Add a short line about the new flags/changes to PROJECT_NOTES.md.
 When done, reply with one short sentence naming the new chapter. No questions: you are working alone.
 """
+# The villagers (scene/villagers.gd): you talk to any of them by standing next to them, like Barnaby. ONE small
+# Haiku process (kind "npc3", the "Folk" column) plays whichever one you are next to; each message says who.
+FOLK_PERSONA = """
+For this message you are NOT the coding assistant. You play the ordinary people of Thornvale, a medieval village in
+a valley (a farmer, a woodcutter, a water carrier, a shepherd, the castle guards), inside a game the user is playing.
+Each message tells you WHO you are right now and what they can see: answer as that one person, in their own voice
+and manner. The user is the wanderer, a traveller who helps the valley. Stay fully in character, never mention being
+an AI or a game. Speak in 1-2 short sentences, plain spoken text, no markdown, no emoji, no actions in asterisks.
+Do not use any tools. You know the valley's people (Barnaby, the old soldier who keeps the campfire and tells the
+valley's story; Marigold the herbalist and baker; Hob the smith; the lord up at Highmoor Castle) and its gossip
+(what you can see includes how the story has changed the world: talk about it like village news). You cannot change
+the world or give items; if asked for something you can't do, answer as a villager would. Keep each person distinct.
+"""
+FOLK_NAMES = {}  # "folk:wat" -> "Wat" (the world sends the name when you walk up to someone)
+
+
+def npc_name(who):
+    if who in NPCS:
+        return NPCS[who]["name"]
+    return FOLK_NAMES.get(who) or str(who).removeprefix("folk:").capitalize()
+
+
+def npc_kind(who):
+    return "npc3" if str(who).startswith("folk:") else NPCS[who]["kind"]
+
+
 NPCS = {  # the characters you can talk to by walking up to them: who -> display name, process kind
     "barnaby": {"name": "Barnaby", "kind": "npc"},
     "marigold": {"name": "Marigold", "kind": "npc2"},
@@ -378,6 +404,8 @@ class ChatApp:
         self.near_who = ""  # which one: "barnaby" or "marigold"
         self.auto_who = ""  # who the current hands-free recording is meant for
         self.marigold_session_id = None
+        self.folk_session_id = None
+        self.last_folk = ""  # the villager whose thinking / listening symbol was last shown
         self.npc_sights = {}  # who -> the world's description of what they can see, sent with their messages
         self.jobs = []  # things you asked the assistant while it was busy: [{"text", "voice", "title"}], in order
         self.job_now = ""  # short title of what the assistant is working on right now
@@ -440,10 +468,11 @@ class ChatApp:
         panes.columnconfigure(0, weight=3, uniform="pane")
         panes.columnconfigure(2, weight=2, uniform="pane")
         panes.columnconfigure(4, weight=2, uniform="pane")
-        for sep in (1, 3):
+        panes.columnconfigure(6, weight=2, uniform="pane")
+        for sep in (1, 3, 5):
             tk.Frame(panes, bg="#222222", width=1).grid(row=0, column=sep, rowspan=2, sticky="ns")
         logs = []
-        for col, title in ((0, "Claude"), (2, NPCS["barnaby"]["name"]), (4, NPCS["marigold"]["name"])):
+        for col, title in ((0, "Claude"), (2, NPCS["barnaby"]["name"]), (4, NPCS["marigold"]["name"]), (6, "Folk")):
             tk.Label(panes, text=title, font=("Consolas", 11), bg=BG, fg=DIM, anchor="w").grid(
                 row=0, column=col, sticky="we", padx=24, pady=(4, 0))
             log = tk.Text(
@@ -455,8 +484,10 @@ class ChatApp:
             log.grid(row=1, column=col, sticky="nsew")
             logs.append(log)
         # one lane per character, so Barnaby can answer while Marigold is still thinking (and the other way round)
-        self.lanes = {"main": Lane("main", logs[0]), "npc": Lane("npc", logs[1]), "npc2": Lane("npc2", logs[2])}
+        self.lanes = {"main": Lane("main", logs[0]), "npc": Lane("npc", logs[1]), "npc2": Lane("npc2", logs[2]),
+                      "npc3": Lane("npc3", logs[3])}
         self.lanes["npc"].default_who, self.lanes["npc2"].default_who = "barnaby", "marigold"
+        self.lanes["npc3"].default_who = "folk:"  # (whichever villager it was: npc_turn says)
         self.npc_states = {}  # who -> the "listening"/"thinking" state last sent to the world
         self.builder_lock = threading.Lock()  # the Sonnet helper is shared: one lane's request at a time
         self.log = logs[0]
@@ -561,6 +592,8 @@ class ChatApp:
                 self.show_world()
         elif kind == "near":
             self.near_who = message.get("who", "barnaby") if message.get("v") else ""
+            if self.near_who.startswith("folk:") and message.get("name"):
+                FOLK_NAMES[self.near_who] = message.get("name")
             self.near_npc = bool(self.near_who)
         elif kind == "sight":  # what a character can see around them, from the world
             self.npc_sights[message.get("who", "barnaby")] = message.get("text", "")
@@ -577,6 +610,8 @@ class ChatApp:
         """The lane a character talks in: Marigold has her own, Barnaby (and anyone else) the "npc" one."""
         if who == "marigold":
             return self.lanes["npc2"]
+        if str(who).startswith("folk:"):  # the villagers share one lane (and one small process)
+            return self.lanes["npc3"]
         return self.lanes["npc" if who else "main"]
 
     def npc_event(self, text, label=None, who="barnaby", tries=20):
@@ -611,7 +646,7 @@ class ChatApp:
         self.root.withdraw()
         self.showing_chat = False
         if self.claude:  # warm up Barnaby and the Sonnet helper he hands big requests to
-            for kind in ("npc", "npc2", "builder"):
+            for kind in ("npc", "npc2", "npc3", "builder"):
                 threading.Thread(target=self.proc_for, args=(kind,), daemon=True).start()
 
     def show_chat(self):
@@ -721,6 +756,7 @@ class ChatApp:
         self.procs = state.get("procs") or {}  # and the already-running claude processes
         self.npc_session_id = state.get("npc_session_id")
         self.marigold_session_id = state.get("marigold_session_id")
+        self.folk_session_id = state.get("folk_session_id")
         self.builder_session_id = state.get("builder_session_id")
         self.persona_sigs = state.get("persona_sigs") or {}
         self.sent_static = state.get("sent_static") or {}
@@ -741,7 +777,7 @@ class ChatApp:
             lane.speaker = speaker.get(name) if isinstance(speaker, dict) else None
             if lane.speaker:
                 self.check_speaker(lane)
-            key = {"main": "history", "npc": "npc_history", "npc2": "marigold_history"}[name]
+            key = {"main": "history", "npc": "npc_history", "npc2": "marigold_history", "npc3": "folk_history"}[name]
             for text, tag in state.get(key, [])[-HISTORY_KEEP:]:
                 self.write(text, tag, lane)  # the newest part of the transcript
         self.entry.insert(0, state.get("draft", ""))
@@ -772,7 +808,8 @@ class ChatApp:
             "history": self.lanes["main"].history[-HISTORY_KEEP:],
             "npc_history": self.lanes["npc"].history[-HISTORY_KEEP:],
             "marigold_history": self.lanes["npc2"].history[-HISTORY_KEEP:],
-            "model": self.model, "session_id": self.session_id,
+            "folk_history": self.lanes["npc3"].history[-HISTORY_KEEP:],
+            "model": self.model, "session_id": self.session_id, "folk_session_id": self.folk_session_id,
             "npc_session_id": self.npc_session_id, "builder_session_id": self.builder_session_id,
             "marigold_session_id": self.marigold_session_id,
             "persona_sigs": self.persona_sigs, "quests": self.quests, "sent_static": self.sent_static,
@@ -785,7 +822,7 @@ class ChatApp:
         except OSError:
             pass
         # Plain-text copies of the characters' talks, so the assistant can be asked to read them.
-        for lane_name, fname in (("npc", "barnaby_chat.txt"), ("npc2", "marigold_chat.txt")):
+        for lane_name, fname in (("npc", "barnaby_chat.txt"), ("npc2", "marigold_chat.txt"), ("npc3", "folk_chat.txt")):
             try:
                 text = "".join(t for t, _tag in self.lanes[lane_name].history[-HISTORY_KEEP:])
                 with open(os.path.join(HERE, fname), "w", encoding="utf-8") as f:
@@ -835,6 +872,7 @@ class ChatApp:
             "procs": self.procs,
             "npc_session_id": self.npc_session_id,
             "marigold_session_id": self.marigold_session_id,
+            "folk_session_id": self.folk_session_id,
             "near_who": self.near_who,
             "builder_session_id": self.builder_session_id,
             "persona_sigs": self.persona_sigs, "quests": self.quests, "sent_static": self.sent_static,
@@ -845,6 +883,7 @@ class ChatApp:
             "history": self.lanes["main"].history,
             "npc_history": self.lanes["npc"].history,
             "marigold_history": self.lanes["npc2"].history,
+            "folk_history": self.lanes["npc3"].history,
             "jobs": self.jobs,
             "draft": self.entry.get(),
             "fullscreen": bool(self.root.attributes("-fullscreen")),
@@ -1120,7 +1159,7 @@ class ChatApp:
             lane = self.lane_for(self.auto_who or "barnaby")
             line = random.choice(NPC_UNCLEAR)
             lane.npc_turn, lane.muted = self.auto_who or "barnaby", False
-            self.write(f"{NPCS[lane.npc_turn]['name']}: {line}\n\n", None, lane)
+            self.write(f"{npc_name(lane.npc_turn)}: {line}\n\n", None, lane)
             self.enqueue_speech(line, lane)
 
     @staticmethod
@@ -1128,6 +1167,15 @@ class ChatApp:
         """PowerShell lines that pick the voice and speed. The character gets another installed
         voice, a bit slower (if only one voice is installed he sounds like me). Marigold gets a female
         voice, preferring one that isn't the default."""
+        if str(npc).startswith("folk:"):
+            female = npc in ("folk:elsie",)
+            rate = {"folk:wat": 3, "folk:osric": 0, "folk:tam": 1, "folk:bram": 1, "folk:hugh": 4, "folk:piers": 4}.get(npc, 2)
+            return (
+                "$d=$s.Voice.Name;"
+                "$v=$s.GetInstalledVoices()|Where-Object{$_.Enabled -and $_.VoiceInfo.Gender -eq '%s'}"
+                "|Select-Object -First 1;"
+                "if($v){$s.SelectVoice($v.VoiceInfo.Name)};$s.Rate=%d;" % ("Female" if female else "Male", rate)
+            )
         if npc == "marigold":
             return (
                 "$d=$s.Voice.Name;"
@@ -1300,7 +1348,13 @@ class ChatApp:
             if label != self.world_status:
                 self.world_status = label
                 self.world_send(cmd="status", text=label)
-            for who in ("barnaby", "marigold"):  # each character's own symbol above their head
+            folk_now = self.near_who if self.near_who.startswith("folk:") else (
+                self.lanes["npc3"].npc_turn if self.lanes["npc3"].busy else "")
+            if self.last_folk and self.last_folk != folk_now:  # walked away from them: clear their symbol
+                self.world_send(cmd="npc_state", who=self.last_folk, state="")
+                self.npc_states.pop(self.last_folk, None)
+            self.last_folk = folk_now or ""
+            for who in ("barnaby", "marigold") + ((folk_now,) if folk_now else ()):  # each one's symbol over their head
                 lane = self.lane_for(who)
                 mine = self.auto and self.auto_who == who
                 if recording and mine:
@@ -1344,7 +1398,7 @@ class ChatApp:
         text = re.sub(r"```.*?```", " code block. ", text, flags=re.S)
         text = re.sub(r"[`*#_>|]", "", text).strip()
         if npc:
-            text = text.removeprefix(f"{NPCS[npc]['name']}:").strip()  # don't read the name label aloud
+            text = text.removeprefix(f"{npc_name(npc)}:").strip()  # don't read the name label aloud
         if not text:
             return
         if npc:
@@ -1478,6 +1532,7 @@ class ChatApp:
                 return
             self.kill_procs()
             self.session_id = self.npc_session_id = self.builder_session_id = self.marigold_session_id = None
+            self.folk_session_id = None
             for one in self.lanes.values():
                 one.history = []
                 one.log.configure(state="normal")
@@ -1532,16 +1587,17 @@ class ChatApp:
         hands requests to when they're too big for him. Keeping them alive between messages
         skips the multi-second startup each time."""
         name = kind
-        model = {"npc": "haiku", "npc2": "haiku", "builder": "sonnet"}.get(kind, self.model)
+        model = {"npc": "haiku", "npc2": "haiku", "npc3": "haiku", "builder": "sonnet"}.get(kind, self.model)
         # the character processes ("npc" = Barnaby, "npc2" = Marigold) and the helper each have a fixed
         # persona/instructions, which only apply to a conversation when it starts
-        persona = {"npc": NPC_PERSONA, "npc2": MARIGOLD_PERSONA, "builder": SYSTEM_PROMPT + BUILDER_NOTE}.get(kind)
+        persona = {"npc": NPC_PERSONA, "npc2": MARIGOLD_PERSONA, "npc3": FOLK_PERSONA,
+                   "builder": SYSTEM_PROMPT + BUILDER_NOTE}.get(kind)
         if persona:  # the setup version is part of the signature: changing it starts the session fresh
             persona += PROC_SETUP_VERSION
         cmd = [self.claude, "-p", "--model", model,
                "--input-format", "stream-json", "--output-format", "stream-json",
                "--verbose", "--include-partial-messages"]
-        if kind in ("npc", "npc2"):
+        if kind in ("npc", "npc2", "npc3"):
             # The characters only talk, so they get ONLY their persona as the system prompt, no tools, no
             # skills and no connected apps: ~1k tokens of context instead of ~33k of coding-assistant
             # instructions, which makes their first answer quicker and uses far less of the plan.
@@ -1578,13 +1634,15 @@ class ChatApp:
                 self.npc_session_id = None
             elif kind == "npc2":
                 self.marigold_session_id = None
+            elif kind == "npc3":
+                self.folk_session_id = None
             else:
                 self.builder_session_id = None
-        sid = {"npc": self.npc_session_id, "npc2": self.marigold_session_id,
+        sid = {"npc": self.npc_session_id, "npc2": self.marigold_session_id, "npc3": self.folk_session_id,
                "builder": self.builder_session_id}.get(kind, self.session_id)
         if sid:
             cmd += ["--resume", sid]  # carry the conversation over to the new process
-        env = {**os.environ, "MAX_THINKING_TOKENS": "0"} if kind in ("npc", "npc2") else None
+        env = {**os.environ, "MAX_THINKING_TOKENS": "0"} if kind in ("npc", "npc2", "npc3") else None
         proc = subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             text=True, encoding="utf-8", cwd=HERE, env=env,
@@ -1598,7 +1656,7 @@ class ChatApp:
         npc = lane.npc_turn  # False, "barnaby" or "marigold"
         lane.queue = deque()  # characters waiting to be typed out
         if npc:
-            lane.queue.extend(f"{NPCS[npc]['name']}: ")
+            lane.queue.extend(f"{npc_name(npc)}: ")
         lane.stream_done = False
         self.root.after(0, self.pump, lane)
         done = []  # commands already run because the user said one of their trigger phrases
@@ -1660,9 +1718,13 @@ class ChatApp:
                     "words and never hand it to a helper.\n\n"), lane)
                 sent = (f"{sight}{static}Quests you have already given (never repeat these): {given}\n\n"
                         f"The user says: {prompt}{note}")
+            elif npc and str(npc).startswith("folk:"):  # a villager: who they are, what they see, what you said
+                seen = self.npc_sights.get(npc, "")
+                sent = (f"You are now {npc_name(npc)}. About you and what you can see (only mention what is listed): "
+                        f"{seen}\n\nThe user says to {npc_name(npc)}: {prompt}")
             else:
                 sent = prompt
-            kind = NPCS[npc]["kind"] if npc else "main"
+            kind = npc_kind(npc) if npc else "main"
             handoff = self.turn(sent, kind, lane)
             if npc and lane.pending_static and lane.last_turn_ok:  # this conversation now holds that text
                 self.sent_static[kind] = [getattr(self, SESSION_ATTRS[kind]), lane.pending_static]
@@ -1670,16 +1732,19 @@ class ChatApp:
             if lane.cancelled:
                 lane.stream_done = True
                 return
-            if npc and not handoff and REFUSAL.search(lane.last_npc_reply or ""):
+            folk = bool(npc) and str(npc).startswith("folk:")
+            if folk:
+                handoff = False  # villagers only talk (no builder, no quests from them here)
+            elif npc and not handoff and REFUSAL.search(lane.last_npc_reply or ""):
                 handoff = True  # he said "can't help with that" instead of passing it on: pass it on anyway
-            elif (npc and not handoff and not lane.last_acted and not done and not lane.event_turn
+            elif (npc and not folk and not handoff and not lane.last_acted and not done and not lane.event_turn
                   and BUILD_REQUEST.search(prompt)):
                 # They answered a request to build or change something with chat only (no command, no
                 # handoff), e.g. "I'll see what I can do": so nothing would ever happen. Pass it on anyway.
                 self.debug(f"auto handoff for: {prompt!r}")
                 handoff = True
             if handoff and npc:  # [ask sonnet]: Sonnet does the real work, answering as that character
-                who_name = NPCS[npc]["name"]
+                who_name = npc_name(npc)
                 lane.queue.extend(f"\n\n{who_name}: ")
                 self.turn(f'The user said to {who_name}: "{prompt}"', "builder", lane)
             # A quest was just given: now that the dialogue is done, have Sonnet check, silently, that it
@@ -1896,7 +1961,7 @@ class ChatApp:
     def _turn(self, prompt, kind, lane, quiet=False):
         """One question and answer with the given process. Streams the answer into the lane's typing
         queue and voice (unless quiet). Returns True if Barnaby handed the request over to Sonnet."""
-        in_character = kind in ("npc", "npc2", "builder")
+        in_character = kind in ("npc", "npc2", "npc3", "builder")
         streamed, got, result, buf, context = False, [], None, "", 0
         # Barnaby may start with commands like [spawn box blue] or the [ask sonnet] handoff
         head, head_done, handoff, acted = "", kind == "main" or quiet, False, 0
@@ -1981,13 +2046,15 @@ class ChatApp:
                 self.npc_session_id = sid
             elif sid and kind == "npc2":
                 self.marigold_session_id = sid
+            elif sid and kind == "npc3":
+                self.folk_session_id = sid
             elif sid and kind == "builder":
                 self.builder_session_id = sid
             elif sid:
                 self.session_id = sid
             if context > CONTEXT_LIMIT:  # too big to stay fast: the next message starts fresh
                 self.forget_session(kind)
-            if kind in ("npc", "npc2"):
+            if kind in ("npc", "npc2", "npc3"):
                 lane.last_npc_reply = "".join(got)
                 lane.last_acted = acted
             if quiet:
