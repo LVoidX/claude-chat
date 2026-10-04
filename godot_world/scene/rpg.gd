@@ -429,6 +429,11 @@ func build_smithy() -> void:
 	W.box(smith, Vector3(0.45, 1.25, 0), Vector3(0.2, 0.7, 0.22), Color("#d9a07a"))
 	W.box(smith, Vector3(0, 1.85, 0), Vector3(0.42, 0.44, 0.42), Color("#d9a07a"))  # head
 	W.box(smith, Vector3(0, 1.7, 0.2), Vector3(0.4, 0.22, 0.06), Color("#3b2414"))  # beard
+	for side in [-1, 1]:  # his face: eyes, bushy brows, a big nose (he faces +z)
+		W.box(smith, Vector3(side * 0.09, 1.9, 0.212), Vector3(0.06, 0.05, 0.01), Color("#1a1410"))
+		W.box(smith, Vector3(side * 0.09, 1.96, 0.214), Vector3(0.11, 0.035, 0.02), Color("#2a1a10"))
+	W.box(smith, Vector3(0, 1.84, 0.225), Vector3(0.07, 0.09, 0.05), Color("#c48a66"))
+	W.box(smith, Vector3(0, 1.79, 0.214), Vector3(0.18, 0.04, 0.02), Color("#3b2414"))  # moustache
 	W.box(smith, Vector3(0, 2.08, 0), Vector3(0.44, 0.08, 0.44), Color("#2a1a10"))  # hair
 	var sign := Label3D.new()
 	sign.text = "SMITH"
@@ -761,6 +766,11 @@ func fill_shop(body: VBoxContainer) -> void:
 func buy(item: String) -> void:
 	if take("gold", int(ITEMS[item].price)):
 		give(item, 1, true)
+		var info: Dictionary = ITEMS[item]  # better than what you have on? put it on straight away
+		var current: String = st().weapon if info.kind == "weapon" else st().armor
+		var key := "dmg" if info.kind == "weapon" else "def"
+		if info.kind in ["weapon", "armor"] and int(info.get(key, 0)) > (int(ITEMS[current].get(key, 0)) if current in ITEMS else 0):
+			use(item)
 		W.show_notice("Bought: " + ITEMS[item].name)
 		refresh_panel()
 

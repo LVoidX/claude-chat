@@ -12,6 +12,7 @@ const NIGHT_TRACKS := ["The_Old_Tower_Inn.mp3"]
 const VOLUME_DB := -15.0
 const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
 const RATE := 22050
+const SFX_DB := {"swing": -11.0, "hit": -3.0, "pickup": -4.0}  # quieter than the jingles
 
 var ctx: Dictionary
 var W
@@ -36,11 +37,12 @@ func build(c: Dictionary) -> void:
 	sfx = AudioStreamPlayer.new()
 	sfx.volume_db = -6.0
 	add_child(sfx)
-	if not ctx.has("jingles") or not ctx.jingles.has("coin"):
+	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 2:
+		ctx["jingles_v"] = 2
 		ctx["jingles"] = {"levelup": jingle([[0, 523.3], [0.11, 659.3], [0.22, 784.0], [0.33, 1046.5]], 1.3),
 			"quest": jingle([[0, 392.0], [0.16, 523.3], [0.32, 659.3], [0.32, 392.0], [0.5, 784.0], [0.5, 523.3]], 1.6),
 			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6),
-			"swing": noise_burst(0.2, 0.55, 0.02, 0.09),  # a whoosh of air
+			"swing": noise_burst(0.16, 0.25, 0.03, 0.05),  # a soft whoosh of air (it was too hissy)
 			"hit": thud(110.0, 0.16, 0.7),  # the blade lands
 			"hurt": thud(70.0, 0.25, 1.0),  # you take a hit: deeper, with a crunch
 			"pickup": jingle([[0, 880.0], [0.07, 1318.5]], 0.35),
@@ -62,6 +64,8 @@ func play_sfx(name: String) -> void:
 			add_child(player)
 			extra.append(player)
 	player.stream = ctx.jingles[name]
+	player.volume_db = sfx.volume_db + float(SFX_DB.get(name, 0.0))
+	player.pitch_scale = randf_range(0.88, 1.12) if name in ["swing", "hit", "hurt"] else 1.0  # (no two alike)
 	player.play()
 
 

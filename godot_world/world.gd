@@ -24,6 +24,7 @@ const STAND_HEIGHT := 1.9  # capsule height standing / crouching (Ctrl)
 const CROUCH_HEIGHT := 1.1
 const CROUCH_EYE := 1.0
 var player_shape: CollisionShape3D
+var push := Vector3.ZERO  # sideways shove from blasts (rockets), added to walking and fading out
 var crouch_amount := 0.0  # 0 = standing .. 1 = fully crouched (eases)
 const QUIET_COMMANDS := ["quests", "say", "say_start", "say_end", "npc_state"]  # too frequent to log
 const COMPASS := ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
@@ -751,14 +752,17 @@ func _physics_process(delta: float) -> void:
 		player.velocity = fly_dir * fly_speed + Vector3(0, up * fly_speed, 0)
 		player.move_and_slide()
 		return
-	player.velocity.x = dir.x * speed
-	player.velocity.z = dir.z * speed
+	player.velocity.x = dir.x * speed + push.x  # (walking sets the speed every frame, so a blast's sideways shove lives in push)
+	player.velocity.z = dir.z * speed + push.z
 	if player.is_on_floor():
 		if playing and Input.is_physical_key_pressed(KEY_SPACE):
 			player.velocity.y = setting("JUMP_SPEED", 6.6)
 	else:
 		player.velocity.y -= GRAVITY * delta
 	player.move_and_slide()
+	push *= exp(-delta * (4.0 if player.is_on_floor() else 1.0))  # slides to a stop quickly on the ground, carries in the air
+	if player.is_on_wall():
+		push = Vector3.ZERO
 	if player.position.y < -50:  # fell off the world
 		recenter()
 

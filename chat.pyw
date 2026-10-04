@@ -1311,6 +1311,13 @@ class ChatApp:
                     self.npc_states[who] = state
                     self.world_send(cmd="npc_state", who=who, state=state)
         # Standing next to a character: listen without any button; walk away: stop.
+        main_lane = self.lanes["main"]
+        if (near_lane and not self.listening and not near_lane.busy and self.speaking(main_lane)
+                and not any(self.speaking(l) for l in self.lanes.values() if l is not main_lane)):
+            # You walked up to someone while I'm reading an answer aloud: I go quiet (the text keeps coming in
+            # the chat) so they can listen to you, instead of waiting until I'm done.
+            self.debug(f"muting the assistant's voice to listen near {self.near_who}")
+            self.stop_speaking(main_lane)
         if (near_lane and not self.listening and not near_lane.busy and not self.speaking()
                 and self.claude):
             self.debug(f"start hands-free listening near {self.near_who}")

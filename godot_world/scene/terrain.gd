@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 10  # bump to rebuild the cached ground after changing the shape below
+const VERSION := 11  # bump to rebuild the cached ground after changing the shape below
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -464,6 +464,22 @@ func add_grass() -> void:
 			if road_distance(x, z) < ROAD_WIDTH * 0.8 or Vector2(x - 12.0, z - 18.0).length() < 4.5:
 				continue
 			spots.append(Vector3(x, height_at(x, z), z))
+		var extra := 0  # the castle hill and the road up to it get grass too (it used to stop at the meadow)
+		while extra < 22000:
+			var x := rng.randf_range(-48.0, 48.0)
+			var z := rng.randf_range(-182.0, -66.0)
+			var dc := Vector2(x - CASTLE.x, z - CASTLE.z).length()
+			if absf(x - CASTLE.x) < 17.5 and absf(z - CASTLE.z) < 17.5:
+				continue  # not inside the walls
+			if dc > 46.0 and absf(x) > 22.0:
+				continue  # (keep to the hill and a band along the road)
+			if road_distance(x, z) < ROAD_WIDTH * 0.8:
+				continue
+			var h := height_at(x, z)
+			if absf(height_at(x + 1.0, z) - h) > 0.8 or absf(height_at(x, z + 1.0) - h) > 0.8:
+				continue  # too steep
+			spots.append(Vector3(x, h, z))
+			extra += 1
 		mm.instance_count = spots.size()
 		for i in spots.size():
 			var s := rng.randf_range(0.55, 1.2)

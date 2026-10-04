@@ -93,7 +93,7 @@ func make_sword() -> void:
 	sword.rotation_degrees = Vector3(-10, 0, -18)
 	# the blade shows the weapon equipped in the RPG (rpg.gd): rusty, plain iron, or the blue Troll-Bane
 	var weapon: String = ctx.state.get("rpg", {}).get("weapon", "iron_sword")
-	var steel: Color = {"rusty_sword": Color("#9a6a48"), "steel_sword": Color("#9cc4ff")}.get(weapon, Color("#c9d1d9"))
+	var steel: Color = {"rusty_sword": Color("#8a8078"), "steel_sword": Color("#9cc4ff")}.get(weapon, Color("#c9d1d9"))
 	W.box(sword, Vector3(0, 0.34, 0), Vector3(0.055, 0.62, 0.014), steel)  # blade
 	W.box(sword, Vector3(0, 0.34, 0), Vector3(0.02, 0.6, 0.02), steel.darkened(0.25))  # blade ridge
 	W.box(sword, Vector3(0, 0.68, 0), Vector3(0.04, 0.05, 0.012), steel)  # tip
@@ -149,7 +149,50 @@ func make_bar() -> void:
 		name_label.add_theme_color_override("font_outline_color", Color.BLACK)
 		name_label.add_theme_constant_override("outline_size", 4)
 		panel.add_child(name_label)
+		if SLOTS[i] in ICONS:  # a pixel-art picture instead of the word
+			var pic := TextureRect.new()
+			pic.texture = icon(SLOTS[i])
+			pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			pic.position = Vector2(7, 7)
+			pic.size = Vector2(SLOT_SIZE - 14, SLOT_SIZE - 14)
+			pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			panel.add_child(pic)
+			panel.move_child(pic, 0)
+			name_label.visible = false
+			panel.tooltip_text = SLOTS[i]
 		slot_panels.append(panel)
+
+
+## Hotbar pictures, 16 x 16 pixels: each letter is a colour from PALETTE ("." = clear).
+const PALETTE := {"w": "#7a5230", "W": "#a8754a", "s": "#c9d1d9", "S": "#ffffff", "d": "#5b6168", "g": "#e8c25a",
+	"r": "#c0392b", "o": "#ff9a3a", "y": "#ffe08a", "b": "#5a3a1c", "p": "#efe2bc", "k": "#2a1a0c", "l": "#8a96a3"}
+const ICONS := {
+	"Hammer": ["................", "...ddddddd......", "..dllllllld.....", "..dllllllld.....", "...ddddddd......",
+		"......ww........", "......wW........", "......wW........", "......wW........", "......wW........",
+		"......wW........", "......wW........", "......wW........", "......bb........", "................", "................"],
+	"Sword": ["..............S.", ".............sS.", "............sSs.", "...........sSs..", "..........sSs...",
+		".........sSs....", "........sSs.....", "...g...sSs......", "....g.sSs.......", ".....gSs........",
+		"....wgg.........", "...ww.g.........", "..ww...g........", ".gg.............", ".gg.............", "................"],
+	"Rocket": ["................", "...........rr...", "..........rssr..", ".........rssssr.", "........ssssss..",
+		".......sssssr...", "......sssssr....", ".....dsssss.....", "....ddsssr......", "...rddsss.......",
+		"..rr.ddd........", ".yo...d.........", "yoo.............", "yo..............", "................", "................"],
+	"Todo": ["................", "..bbbbbbbbbbbb..", "..bppppppppppb..", "..bpkkkkkkkkpb..", "..bppppppppppb..",
+		"..bpkkkkkkkppb..", "..bppppppppppb..", "..bpkkkkkkkkpb..", "..bppppppppppb..", "..bpkkkkkpppb..",
+		"..bppppppppppb..", "..bppppppprppb..", "..bppppppprppb..", "..bbbbbbbbbbbb..", "................", "................"],
+}
+
+
+func icon(name: String) -> ImageTexture:
+	var rows: Array = ICONS[name]
+	var img := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	for y in 16:
+		var row: String = rows[y]
+		for x in 16:
+			var ch := row[x] if x < row.length() else "."
+			img.set_pixel(x, y, Color(PALETTE[ch]) if ch in PALETTE else Color(0, 0, 0, 0))
+	return ImageTexture.create_from_image(img)
 
 
 var _styles := {}  # selected? -> StyleBoxFlat, made once
@@ -254,10 +297,50 @@ func tracer(a: Vector3, b: Vector3) -> void:
 	tracers.append([node, 0.0])
 
 
+## The swing, in keyed poses: rest, wind up (blade cocked back over the right shoulder), a fast diagonal cut down
+## across to the left, follow-through, back to rest. t = 0..1 through the swing.
+const POSES := [  # [t, rotation degrees, position]
+	[0.0, Vector3(-10, 0, -18), Vector3(0.36, -0.38, -0.62)],
+	[0.22, Vector3(18, -10, -42), Vector3(0.46, -0.24, -0.5)],
+	[0.42, Vector3(-70, 20, 68), Vector3(-0.05, -0.4, -0.74)],
+	[0.55, Vector3(-82, 28, 78), Vector3(-0.16, -0.48, -0.68)],
+	[1.0, Vector3(-10, 0, -18), Vector3(0.36, -0.38, -0.62)],
+]
+
+
+func pose_sword(t: float) -> void:
+	for i in POSES.size() - 1:
+		var a: Array = POSES[i]
+		var b: Array = POSES[i + 1]
+		if t <= float(b[0]):
+			var k := (t - float(a[0])) / (float(b[0]) - float(a[0]))
+			k = ease(k, 0.4) if i == 1 else smoothstep(0.0, 1.0, k)  # the cut itself is fast, the rest eases
+			sword.rotation_degrees = (a[1] as Vector3).lerp(b[1], k)
+			sword.position = (a[2] as Vector3).lerp(b[2], k)
+			return
+
+
+## A brief pale arc where the blade cut through the air.
+func slash_trail() -> void:
+	var trail := Node3D.new()
+	W.camera.add_child(trail)
+	for i in 7:
+		var k := float(i) / 6.0
+		var a := lerpf(-0.9, 0.9, k)
+		var bit: MeshInstance3D = W.glow(trail, Vector3(sin(a) * 0.55, cos(a) * 0.32 - 0.12 - k * 0.2, -0.8), Vector3(0.16, 0.025, 0.01), Color("#f4f0ff"), 1.2)
+		bit.rotation.z = -a * 0.9 - 0.4
+		bit.transparency = 0.35 + k * 0.4
+	var tw := create_tween()
+	tw.tween_interval(0.06)
+	tw.tween_property(trail, "scale", Vector3(1.15, 0.6, 1.0), 0.12)
+	tw.tween_callback(trail.queue_free)
+
+
 func attack() -> void:
-	if swing > 0.35:
+	if swing > 0.25:
 		return
 	swing = 1.0
+	get_tree().create_timer(0.14).timeout.connect(slash_trail)  # (when the blade sweeps through)
 	var music = ctx.parts.get("music")
 	if music:
 		music.play_sfx("swing")
@@ -293,11 +376,8 @@ func _process(delta: float) -> void:
 	if crosshair:
 		crosshair.visible = gun_held() and W.camera.current
 	last_hammer = hammer_held()
-	swing = maxf(swing - delta * 3.5, 0.0)
-	var t := 1.0 - swing  # 0 at the start of a swing, 1 at the end
-	var arc := sin(t * PI) if swing > 0.0 else 0.0
-	sword.rotation_degrees = Vector3(-10 - arc * 70, arc * 25, -18 + arc * 55)
-	sword.position = Vector3(0.36 - arc * 0.2, -0.38 + arc * 0.08, -0.62 - arc * 0.12)
+	swing = maxf(swing - delta * 2.6, 0.0)
+	pose_sword(1.0 - swing if swing > 0.0 else 1.0)
 	# right mouse held: blocking. The blade comes across in front of you, flat (rpg.gd takes 75% off each hit)
 	blocking = held() and swing <= 0.0 and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	guard = move_toward(guard, 1.0 if blocking else 0.0, delta * 9.0)

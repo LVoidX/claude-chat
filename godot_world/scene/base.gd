@@ -114,7 +114,7 @@ func build(c: Dictionary) -> void:
 		ctx.state["night_set"] = true  # (one-time: the user asked for night; later changes stick)
 	apply_time(0.0)
 	for spec in ctx.state.get("placed", []):  # things placed on request survive reloads
-		if SHOW_PLACED:
+		if SHOW_PLACED or spec.get("shape", "") == "tree":
 			make_placed(spec)
 
 
@@ -209,7 +209,14 @@ func make_placed(spec: Dictionary) -> void:
 	var node := Node3D.new()
 	node.position = Vector3(spec.x, W.ground_y(spec.x, spec.z), spec.z)
 	add_child(node)
-	if shape in ["sphere", "ball"]:
+	if shape == "tree":  # a trunk with a few overlapping leaf blobs, like the oaks in the woods
+		var leaf := Color("#3e6b2e")
+		W.box(node, Vector3(0, 1.3, 0), Vector3(0.5, 2.6, 0.5), Color("#53392a"), "cube", true)
+		W.box(node, Vector3(0, 3.4, 0), Vector3(3.6, 3.2, 3.6), leaf, "sphere")
+		W.box(node, Vector3(0.9, 3.0, 0.3), Vector3(2.5, 2.2, 2.5), leaf.darkened(0.12), "sphere")
+		W.box(node, Vector3(-0.8, 3.1, -0.4), Vector3(2.6, 2.3, 2.6), leaf.lightened(0.08), "sphere")
+		W.box(node, Vector3(0.1, 4.3, -0.2), Vector3(2.4, 2.0, 2.4), leaf.darkened(0.05), "sphere")
+	elif shape in ["sphere", "ball"]:
 		W.box(node, Vector3(0, 0.6, 0), Vector3.ONE * 1.2, color, "sphere", true)
 	elif shape == "pillar":
 		W.box(node, Vector3(0, 2, 0), Vector3(1, 4, 1), color, "cube", true)
@@ -251,7 +258,8 @@ func handle(c: Dictionary) -> bool:
 			var spot: Vector3 = p.position - p.transform.basis.z * 3
 			var spec := {"shape": c.get("shape", "box"), "color": c.get("color", "white"), "x": spot.x, "z": spot.z}
 			ctx.state.get_or_add("placed", []).append(spec)
-			make_placed(spec)
+			if SHOW_PLACED or spec.shape == "tree":
+				make_placed(spec)
 		"remove":  # the placed object nearest the player
 			var placed: Array = ctx.state.get("placed", [])
 			if placed.is_empty():

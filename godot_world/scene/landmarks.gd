@@ -84,26 +84,43 @@ func build_signpost(at: Vector3) -> void:
 	post.position = Vector3(at.x, W.ground_y(at.x, at.z), at.z)
 	add_child(post)
 	var wood := Color("#5a3d24")
-	W.box(post, Vector3(0, 1.4, 0), Vector3(0.18, 2.8, 0.18), wood, "cube", true)
-	W.box(post, Vector3(0, 2.86, 0), Vector3(0.26, 0.12, 0.26), wood.darkened(0.2))
+	var stone: Material = ctx.parts["kit"].mat("stone") if ctx.parts.has("kit") else W.mat(Color("#77736c"))
+	for k in 3:  # a little cairn of stones at the foot
+		var b: MeshInstance3D = W.box(post, Vector3(0, 0.12 + k * 0.1, 0), Vector3(0.75 - k * 0.2, 0.22, 0.75 - k * 0.2), Color.WHITE, "cube", k == 0)
+		b.material_override = stone
+		b.rotation.y = k * 0.5
+	W.box(post, Vector3(0, 1.6, 0), Vector3(0.2, 3.2, 0.2), wood, "cube", true)
+	var cap: MeshInstance3D = W.box(post, Vector3(0, 3.3, 0), Vector3(0.34, 0.34, 0.34), wood.darkened(0.25))
+	cap.rotation = Vector3(PI / 4.0, PI / 4.0, 0)  # a pointed wooden finial
 	# arrows: direction (x, z), height, name
-	for arm in [[Vector2(-1, 0), 2.5, "Thornvale"], [Vector2(0, -1), 2.15, "Highmoor Castle"], [Vector2(1, 0.75), 1.8, "The Old Mill"]]:
+	for arm in [[Vector2(-1, 0), 2.75, "Thornvale"], [Vector2(0, -1), 2.3, "Highmoor Castle"], [Vector2(1, 0.75), 1.85, "The Old Mill"]]:
 		var dir: Vector2 = arm[0].normalized()
 		var board := Node3D.new()
 		board.position = Vector3(0, arm[1], 0)
 		board.rotation.y = atan2(-dir.x, -dir.y) + PI / 2.0  # the board's +x points down the road
 		post.add_child(board)
-		W.box(board, Vector3(0.75, 0, 0), Vector3(1.3, 0.26, 0.06), Color("#8a6440"))
-		var tip: MeshInstance3D = W.box(board, Vector3(1.45, 0, 0), Vector3(0.2, 0.2, 0.06), Color("#8a6440"))
-		tip.rotation.z = PI / 4.0
-		for side in [-1, 1]:  # painted names on both faces
+		var plank := Color("#a07548")
+		W.box(board, Vector3(0.9, 0, 0), Vector3(1.6, 0.36, 0.08), plank)
+		for y in [-0.17, 0.17]:  # darker trim along the edges
+			W.box(board, Vector3(0.9, y, 0), Vector3(1.6, 0.04, 0.09), plank.darkened(0.35))
+		var tip := MeshInstance3D.new()  # the arrow head: a wedge
+		var prism := PrismMesh.new()
+		prism.size = Vector3(0.36, 0.3, 0.08)
+		tip.mesh = prism
+		tip.material_override = W.mat(plank)
+		tip.position = Vector3(1.85, 0, 0)
+		tip.rotation.z = -PI / 2.0
+		board.add_child(tip)
+		W.box(board, Vector3(0.12, 0, 0), Vector3(0.05, 0.05, 0.12), Color("#2a2622"))  # the nail
+		for side in [-1, 1]:  # names carved on both faces
 			var l := Label3D.new()
 			l.text = arm[2]
-			l.font_size = 40
-			l.pixel_size = 0.0032
-			l.modulate = Color("#2a1a0c")
-			l.outline_size = 0
-			l.position = Vector3(0.75, 0, side * 0.035)
+			l.font_size = 64
+			l.pixel_size = 0.0028
+			l.modulate = Color("#2a1608")
+			l.outline_size = 4
+			l.outline_modulate = Color("#c89a64")
+			l.position = Vector3(0.95, -0.005, side * 0.045)
 			l.rotation.y = 0.0 if side > 0 else PI
 			board.add_child(l)
 

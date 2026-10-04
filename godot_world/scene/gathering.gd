@@ -113,7 +113,7 @@ func add_chest(i: int, p: Vector3) -> void:
 	W.glow(lid, Vector3(0, 0.0, -0.62), Vector3(0.12, 0.14, 0.04), Color("#ffd24d"), 1.5)  # the lock
 	chests.append({"i": i, "node": node, "lid": lid, "pos": p})
 	if is_open(i):
-		lid.rotation.x = -1.9
+		lid.rotation.x = 1.9
 
 
 func is_open(i: int) -> bool:
@@ -127,7 +127,7 @@ func open_chest(c: Dictionary) -> void:
 		return
 	ctx.state.get_or_add("chests", {})[str(c.i)] = Time.get_unix_time_from_system()
 	var tw := create_tween()
-	tw.tween_property(c.lid, "rotation:x", -1.9, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(c.lid, "rotation:x", 1.9, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var rng := RandomNumberGenerator.new()
 	var gold := rng.randi_range(15, 60)
 	var got := ["%d gold" % gold]
@@ -178,7 +178,7 @@ func take(s: Dictionary) -> void:
 func _process(delta: float) -> void:
 	t += delta
 	for c in chests:  # refilled: the lid shuts again
-		if c.lid.rotation.x < -0.1 and not is_open(c.i) and fmod(t, 1.0) < delta:
+		if c.lid.rotation.x > 0.1 and not is_open(c.i) and fmod(t, 1.0) < delta:
 			c.lid.rotation.x = 0.0
 	var rpg = ctx.parts.get("rpg")
 	if not rpg:

@@ -123,8 +123,9 @@ func explode(pos: Vector3) -> void:
 	if d < BLAST:
 		var power := (1.0 - d / BLAST) * 34.0  # was 16
 		var away := to_player.normalized()
-		# strong in both directions: sideways is boosted most, with a solid lift on top
-		W.player.velocity += Vector3(away.x * power * 2.2, away.y * power * 1.0 + power * 0.5, away.z * power * 2.2)
+		# a lot of horizontal push (W.push: walking overwrites the player's own x/z velocity every frame) plus some lift
+		W.push += Vector3(away.x * power * 1.5, 0.0, away.z * power * 1.5)
+		W.player.velocity.y += maxf(away.y, 0.0) * power * 0.5 + power * 0.3
 	# shove the characters (never hurts)
 	var kb = ctx.parts.get("knockback")
 	if kb:

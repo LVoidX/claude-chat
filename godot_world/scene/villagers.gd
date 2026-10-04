@@ -203,21 +203,23 @@ func add_person(p: Dictionary) -> void:
 	W.box(head, Vector3.ZERO, Vector3(0.26, 0.28, 0.26), skin)
 	for side in [-1, 1]:
 		W.box(head, Vector3(side * 0.06, 0.03, -0.131), Vector3(0.04, 0.04, 0.01), Color("#1a1410"))  # eyes
-	W.box(head, Vector3(0, -0.02, -0.14), Vector3(0.04, 0.06, 0.03), skin.darkened(0.08))  # nose
+	if p.hat != "helmet":  # (a helmet's nose guard covers it)
+		W.box(head, Vector3(0, -0.02, -0.14), Vector3(0.04, 0.06, 0.03), skin.darkened(0.08))  # nose
 	var hair := Color(["#3a2618", "#6b4423", "#1e1a16", "#a07040", "#8a8580"][rng.randi() % 5])
 	if beard:
 		W.box(head, Vector3(0, -0.12, -0.11), Vector3(0.24, 0.12, 0.08), hair)
 		W.box(head, Vector3(0, -0.07, -0.135), Vector3(0.14, 0.03, 0.02), hair)  # moustache
 	match p.hat:
 		"straw":
-			W.box(head, Vector3(0, 0.17, 0), Vector3(0.5, 0.04, 0.5), Color("#c9a85a"))
-			W.box(head, Vector3(0, 0.25, 0), Vector3(0.26, 0.14, 0.26), Color("#c9a85a"))
+			W.box(head, Vector3(0, 0.13, 0), Vector3(0.5, 0.04, 0.5), Color("#c9a85a"))  # brim, resting on the head
+			W.box(head, Vector3(0, 0.2, 0), Vector3(0.28, 0.12, 0.28), Color("#c9a85a"))
+			W.box(head, Vector3(0, 0.16, 0), Vector3(0.285, 0.03, 0.285), Color("#7a3a2a"))  # a band
 		"hood":
 			W.box(head, Vector3(0, 0.05, 0.03), Vector3(0.3, 0.36, 0.3), tunic.darkened(0.15))
 			W.box(head, Vector3(0, 0.02, -0.12), Vector3(0.22, 0.24, 0.04), skin)  # the face shows through
 		"helmet":
 			W.box(head, Vector3(0, 0.13, 0), Vector3(0.3, 0.12, 0.3), Color("#8d939a"))
-			W.box(head, Vector3(0, 0.05, -0.14), Vector3(0.04, 0.16, 0.03), Color("#8d939a"))  # nose guard
+			W.box(head, Vector3(0, 0.03, -0.15), Vector3(0.045, 0.17, 0.035), Color("#8d939a"))  # nose guard
 			W.box(body, Vector3(0, 1.2 - HIP, -0.135), Vector3(0.2, 0.2, 0.01), Color("#e8c25a"))  # a badge on the tabard
 		_:
 			W.box(head, Vector3(0, 0.12, 0.02), Vector3(0.28, 0.1, 0.28), hair)
