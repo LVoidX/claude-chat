@@ -71,6 +71,7 @@ func load_chapter() -> void:
 		printerr("story: ", path, " is not valid JSON, keeping the old chapter")
 		return
 	data_sig = path + str(FileAccess.get_modified_time(path))
+	tidy_text(parsed)
 	var number := int(parsed.get("chapter", 1))
 	if number > int(st().chapter) and int(st().chapter) > 0 and not st().get("interlude", {}).get("heard", false):
 		if not st().get("finished", false):  # (the game stopped before the chapter's end was saved: it did end)
@@ -99,6 +100,20 @@ func load_chapter() -> void:
 		get_tree().create_timer(7.5).timeout.connect(W.show_notice.bind("Press J to read the story so far.", 6.0))
 		log_line("\n## Chapter %d: %s\n%s\n" % [number, data.get("title", ""), data.get("intro", "")])
 		writing = false
+
+
+## The storyteller sometimes writes map coordinates into what the player reads ("at (0, -132)"): take them out.
+## Places should be named and given by direction; the quest's own "pos" still drives the marker and the compass.
+func tidy_text(d: Dictionary) -> void:
+	var re := RegEx.new()
+	re.compile(r"\s*(at |near |by )?\(\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*\)")
+	for key in ["intro"]:
+		if d.has(key):
+			d[key] = re.sub(str(d[key]), "", true)
+	for q in d.get("quests", []):
+		for key in ["text", "title", "outcome"]:
+			if q.has(key):
+				q[key] = re.sub(str(q[key]), "", true)
 
 
 func quests() -> Array:
