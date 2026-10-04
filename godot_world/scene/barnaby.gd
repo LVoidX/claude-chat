@@ -32,6 +32,11 @@ var heli_time := 0.0
 var look_time := 0.0
 var look_yaw := 0.0
 var lift := 0.0  # height he is standing above the ground (on top of an object)
+var stride := 0.0  # 0..1: how far into walking he is (eases in and out, so steps don't snap)
+var step_rate := 0.0  # how fast he is going right now (sets how fast his legs move)
+var sit_amount := 0.0  # 0..1 easing into / out of sitting
+const SEATS := [Vector3(-2.2, 0.0, 0.4), Vector3(2.0, 0.0, -0.8)]  # the logs by the campfire (travel.gd FIRE + these)
+const SIT_SECONDS := Vector2(35.0, 70.0)
 
 
 func build(c: Dictionary) -> void:
@@ -84,8 +89,38 @@ func walk_to(goal: Vector3, speed: float, stop: float, delta: float) -> bool:
 	if dist <= stop + 0.1:  # (a margin, so rounding can't keep him "not there yet")
 		return false
 	body.position += d / dist * minf(dist - stop, speed * delta)
-	W.face(body, goal)
+	turn_to(goal, delta)
+	step_rate = speed
 	return true
+
+
+## Turn smoothly toward a spot (instead of snapping round).
+func turn_to(goal: Vector3, delta: float, rate := 7.0) -> void:
+	var d := goal - body.global_position
+	if absf(d.x) + absf(d.z) > 0.01:
+		body.rotation.y = lerp_angle(body.rotation.y, atan2(-d.x, -d.z), minf(delta * rate, 1.0))
+	body.rotation.x = 0.0
+	body.rotation.z = 0.0
+
+
+## The campfire (travel.gd), or null if it isn't in this world.
+func fire_pos() -> Variant:
+	var travel = ctx.parts.get("travel")
+	if not travel:
+		return null
+	var f: Vector2 = travel.FIRE
+	return Vector3(f.x, 0, f.y)
+
+
+func go_sit() -> void:
+	var fire = fire_pos()
+	if fire == null:
+		return
+	var seat: Vector3 = fire + SEATS[randi() % SEATS.size()]
+	st()["mode"] = "sit"
+	st()["sx"] = seat.x
+	st()["sz"] = seat.z
+	st()["sit_left"] = randf_range(SIT_SECONDS.x, SIT_SECONDS.y)
 
 
 func _process(delta: float) -> void:
@@ -179,13 +214,28 @@ func _process(delta: float) -> void:
 			if atop_time > ATOP_SECONDS:  # had enough of the view: hop down and roam again
 				st()["mode"] = "wander"
 				target = body.position
+		"sit":  # walk to a log by the campfire, sit facing the flames a while, then stroll on
+			var seat := Vector3(st().sx, 0, st().sz)
+			moving = walk_to(seat, SPEED, 0.0, delta)
+			if not moving:
+				var fire = fire_pos()
+				if fire != null:
+					turn_to(fire, delta, 4.0)
+				st()["sit_left"] = float(st().get("sit_left", 40.0)) - delta
+				if st().sit_left <= 0.0:
+					st()["mode"] = "wander"
+					target = body.position + Vector3(randf_range(-6, 6), 0, randf_range(-6, 6))
 		_:  # wander, but stop and face you when you are close
 			if is_near():
-				W.face(body, player)
+				turn_to(player, delta, 5.0)
 			else:
 				moving = walk_to(target, SPEED, 0.0, delta)
-				if not moving:  # pick somewhere new to stroll to
-					target = Vector3(randf_range(-WANDER, WANDER), 0, randf_range(-WANDER, WANDER))
+				if not moving:  # pick somewhere new to stroll to; now and then (more at night) a sit by the fire
+					var night := float(ctx.get("night", 0.0)) > 0.5
+					if fire_pos() != null and randf() < (0.45 if night else 0.18):
+						go_sit()
+					else:
+						target = Vector3(randf_range(-WANDER, WANDER), 0, randf_range(-WANDER, WANDER))
 	var lift_goal: float = st().get("top", 0.0) if st().get("mode") == "atop" else 0.0
 	if st().get("mode") == "heli":
 		lift_goal = 2.5
@@ -201,10 +251,27 @@ func _process(delta: float) -> void:
 	elif body.rotation.x != 0.0:  # a throw cut short by another command: back on his feet
 		body.rotation.x = 0.0
 	body.position.y += 0.021 + W.ground_y(body.position.x, body.position.z)  # (boot soles reach 2 cm below his feet)
-	phase += delta * 8 if moving else 0.0
-	var swing := sin(phase) * deg_to_rad(30) if moving else 0.0
-	for pair in limbs:
-		pair[0].rotation.x = swing * pair[1]
+	# Walking: the stride eases in and out, the legs keep pace with his speed, his body bobs on each step and
+	# rocks a little side to side, and the arms swing less than the legs (an old sailor's rolling gait).
+	stride = move_toward(stride, 1.0 if moving else 0.0, delta * 5.0)
+	phase += delta * clampf(step_rate, 1.0, 4.5) * 5.2 * stride
+	var swing := sin(phase) * deg_to_rad(28) * stride
+	for i in limbs.size():
+		var pair: Array = limbs[i]
+		pair[0].rotation.x = swing * pair[1] * (0.7 if i >= 2 else 1.0)
+	var sitting: bool = st().get("mode") == "sit" and not moving
+	sit_amount = move_toward(sit_amount, 1.0 if sitting else 0.0, delta * 2.5)
+	if sit_amount > 0.0 and limbs.size() == 4:  # sitting on the log: legs forward, hands on his knees, lower down
+		limbs[0][0].rotation.x = lerpf(limbs[0][0].rotation.x, deg_to_rad(85), sit_amount)
+		limbs[1][0].rotation.x = lerpf(limbs[1][0].rotation.x, deg_to_rad(85), sit_amount)
+		limbs[2][0].rotation.x = lerpf(limbs[2][0].rotation.x, deg_to_rad(40), sit_amount)
+		limbs[3][0].rotation.x = lerpf(limbs[3][0].rotation.x, deg_to_rad(40), sit_amount)
+		body.position.y -= 0.36 * sit_amount
+	if stride > 0.0 and st().get("mode") != "heli":
+		body.position.y += absf(sin(phase)) * 0.045 * stride  # the bob of each step
+		body.rotation.z = sin(phase) * 0.035 * stride  # the roll
+		body.rotation.x = -0.05 * stride  # leaning into the walk
+	step_rate = 0.0
 	if limbs.size() == 4:  # arms straight out sideways while he is a helicopter
 		var out := deg_to_rad(90) if st().get("mode") == "heli" else 0.0
 		limbs[2][0].rotation.z = -out
@@ -232,6 +299,8 @@ func handle(c: Dictionary) -> bool:
 					talker.set_mind(str(c.get("state", "")))
 		"follow":
 			st()["mode"] = "follow"
+		"sit":  # [sit]: go and sit by the campfire
+			go_sit()
 		"wander":
 			st()["mode"] = "wander"
 			target = body.position

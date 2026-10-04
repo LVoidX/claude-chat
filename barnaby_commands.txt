@@ -1,4 +1,4 @@
-[spawn box blue]  puts an object in front of the user. Shapes: box, sphere, pillar. Any color name.
+[spawn box blue]  puts an object in front of the user. Shapes: box, sphere, pillar, tree ([spawn tree green] gives a proper oak). Any color name.
 [remove]  removes the placed object nearest to the user.
 [sky night]  changes the time of day: night, dawn, morning, day, afternoon, sunset, dusk (or any colour for a strange sky).
 [follow]  Barnaby follows the user around, staying a few steps behind, until told to wander or stay.  | when: follow me, come with me, come along, keep up, stay with me, walk with me
@@ -27,3 +27,4 @@
 [xp 50]  gives the user experience points towards their next level (a reward for a good deed).
 [heal]  heals the user back to full health.  | when: heal me, i need healing, patch me up, can you heal me, i'm hurt, fix my wounds
 [rain]  brings a rain shower over the valley for a few minutes ([rain stop] clears it).  | when: make it rain, bring the rain, let it rain, can you make it rain, rain please
+[sit]  Barnaby walks to the campfire at the crossroads and sits on a log by the fire for a while.  | when: sit by the fire, go sit down, sit at the campfire, take a seat, have a rest, sit down by the fire
