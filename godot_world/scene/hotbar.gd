@@ -1,10 +1,10 @@
 extends Node3D
-## The hotbar (bottom of the screen, keys 1-3) and the sword. Slot 1 = the builder's hammer (builder.gd),
-## slot 2 = the sword (slot 3 is the rocket, rocket.gd). Pressing a slot's key takes that item in hand; pressing it again puts it away.
+## The hotbar (bottom of the screen, keys 1-2) and the sword. Slot 1 = the sword; slot 2 = the rocket (rocket.gd).
+## Pressing a slot's key takes that item in hand; pressing it again puts it away.
 ## Sword: left click swings it and hurts goblins (goblins.gd) in front of you. Given with [sword] or [hotbar].
 ## state["hotbar"] = the bar has been given, state["sword_held"] = the sword is in hand.
 
-const SLOTS := ["Hammer", "Sword", "Rocket", "","", "", "", "", "Todo"]  # slot 9 is the to-do book (todo.gd)
+const SLOTS := ["Sword", "Rocket", "", "", "", "", "", "", "Todo"]  # slot 9 is the to-do book (todo.gd)
 const SLOT_SIZE := 58
 const REACH := 3.0  # how far the sword reaches
 const ARC := 0.35  # dot product with your forward direction: anything in front of you within about 70 degrees
@@ -15,7 +15,6 @@ var layer: CanvasLayer
 var slot_panels := []
 var sword: Node3D
 var swing := 0.0
-var last_hammer := false
 var blocking := false  # right mouse with the sword out (see _process)
 var guard := 0.0  # 0..1, how far the sword is raised into the block
 
@@ -24,10 +23,11 @@ func build(c: Dictionary) -> void:
 	ctx = c
 	W = ctx["world"]
 	ctx.state["hotbar"] = true  # the bar is always there now, no need to be given it
+	ctx.state["blocks"] = []  # old builder-hammer structures are no longer part of the world
+	ctx.state.erase("hammer")
 	make_sword()
 	sword.visible = held()
 	make_bar()
-	last_hammer = hammer_held()
 
 
 func _exit_tree() -> void:
@@ -38,10 +38,6 @@ func _exit_tree() -> void:
 
 func held() -> bool:
 	return ctx.state.get("sword_held", false)
-
-
-func hammer_held() -> bool:
-	return ctx.state.get("hammer", false)
 
 
 func has_bar() -> bool:
@@ -145,9 +141,6 @@ func make_bar() -> void:
 const PALETTE := {"w": "#7a5230", "W": "#a8754a", "s": "#c9d1d9", "S": "#ffffff", "d": "#5b6168", "g": "#e8c25a",
 	"r": "#c0392b", "o": "#ff9a3a", "y": "#ffe08a", "b": "#5a3a1c", "p": "#efe2bc", "k": "#2a1a0c", "l": "#8a96a3"}
 const ICONS := {
-	"Hammer": ["................", "...ddddddd......", "..dllllllld.....", "..dllllllld.....", "...ddddddd......",
-		"......ww........", "......wW........", "......wW........", "......wW........", "......wW........",
-		"......wW........", "......wW........", "......wW........", "......bb........", "................", "................"],
 	"Sword": ["..............S.", ".............sS.", "............sSs.", "...........sSs..", "..........sSs...",
 		".........sSs....", "........sSs.....", "...g...sSs......", "....g.sSs.......", ".....gSs........",
 		"....wgg.........", "...ww.g.........", "..ww...g........", ".gg.............", ".gg.............", "................"],
@@ -187,28 +180,27 @@ func style(selected: bool) -> StyleBoxFlat:
 	return _styles[selected]
 
 
-func select(slot: int) -> void:  # 0 = hammer, 1 = sword (3 = the rocket: rocket.gd)
-	var builder = ctx.parts.get("builder")
-	var was_hammer := hammer_held()
+func select(slot: int) -> void:  # 0 = sword, 1 = rocket
 	var was_sword := held()
+	var rocket = ctx.parts.get("rocket")
+	if slot == 1 and (rocket == null or not rocket.owned()):
+		return  # the empty launcher slot does not put away the sword
+	var was_rocket: bool = rocket != null and rocket.held()
 	ctx.state["sword_held"] = false
+	if rocket and was_rocket:
+		rocket.set_held(false)
 	if slot == 0:
-		if builder:
-			builder.set_held(not was_hammer)
-	else:
-		if builder and was_hammer:
-			builder.set_held(false)
-		if slot == 1:
-			ctx.state["sword_held"] = not was_sword
+		ctx.state["sword_held"] = not was_sword
+	elif slot == 1 and rocket and rocket.owned():
+		rocket.set_held(not was_rocket)
 	sword.visible = held()
-	last_hammer = hammer_held()
 
 
-func give(slot := 1) -> void:
+func give(slot := 0) -> void:
 	ctx.state["hotbar"] = true
 	ctx.state["sword_held"] = false  # (so selecting the slot puts that item in hand rather than away)
 	select(slot)
-	W.show_notice("Hotbar: 1 hammer, 2 sword. Left click uses what you hold.", 6.0)
+	W.show_notice("Hotbar: 1 sword, 2 rocket. Left click uses what you hold.", 6.0)
 
 
 func key(event: InputEventKey) -> void:
@@ -284,10 +276,6 @@ func attack() -> void:
 func _process(delta: float) -> void:
 	if not sword:
 		return
-	if hammer_held() and held():  # H (builder) took the hammer in hand: the sword goes away
-		ctx.state["sword_held"] = false
-		sword.visible = false
-	last_hammer = hammer_held()
 	swing = maxf(swing - delta * 2.6, 0.0)
 	pose_sword(1.0 - swing if swing > 0.0 else 1.0)
 	# right mouse held: blocking. The blade comes across in front of you, flat (rpg.gd takes 75% off each hit)
@@ -301,22 +289,22 @@ func _process(delta: float) -> void:
 		if bar:
 			bar.visible = has_bar() and W.camera.current
 			var rocket = ctx.parts.get("rocket")
-			var has_rocket: bool = rocket != null and rocket.owned()  # slot 3 is empty until you were given the launcher
-			var pic3 = slot_panels[2].get_node_or_null("Pic")
-			if pic3:
-				pic3.visible = has_rocket
+			var has_rocket: bool = rocket != null and rocket.owned()  # slot 2 is empty until you were given the launcher
+			var pic2 = slot_panels[1].get_node_or_null("Pic")
+			if pic2:
+				pic2.visible = has_rocket
 			else:
-				slot_panels[2].get_node("Name").text = SLOTS[2] if has_rocket else ""
-			slot_panels[2].tooltip_text = SLOTS[2] if has_rocket else ""
+				slot_panels[1].get_node("Name").text = SLOTS[1] if has_rocket else ""
+			slot_panels[1].tooltip_text = SLOTS[1] if has_rocket else ""
 			for i in slot_panels.size():
-				var on: bool = (i == 0 and hammer_held()) or (i == 1 and held()) or (i == 2 and has_rocket and rocket.held())
+				var on: bool = (i == 0 and held()) or (i == 1 and has_rocket and rocket.held())
 				slot_panels[i].add_theme_stylebox_override("panel", style(on))
 
 
 func seen_from(_from: Vector3, _viewer: Node) -> Array:
 	var seen := []
 	if has_bar():
-		seen.append("the wanderer has a hotbar (1 hammer, 2 sword)%s" % (
+		seen.append("the wanderer has a hotbar (1 sword, 2 rocket)%s" % (
 			", the sword drawn" if held() else ""))
 	return seen
 

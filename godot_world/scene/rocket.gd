@@ -1,5 +1,5 @@
 extends Node3D
-## Rocket launcher, slot 3 (key 3 or [rocket]): left click fires a rocket that flies straight and
+## Rocket launcher, slot 2 (key 2 or [rocket]): left click fires a rocket that flies straight and
 ## explodes on whatever it touches (or after 4 s). The blast shoves you (rocket jump!), Barnaby and
 ## Marigold (knockback.gd, never hurts) and leaves a fireball. state["rocket_held"] = in hand.
 
@@ -49,7 +49,7 @@ func held() -> bool:
 	return ctx.state.get("rocket_held", false)
 
 
-## You only have the launcher after being given it with [rocket]; until then slot 3 is empty and key 3 does nothing.
+## You only have the launcher after being given it with [rocket]; until then slot 2 is empty and key 2 does nothing.
 func owned() -> bool:
 	return ctx.state.get("rocket_owned", false)
 
@@ -65,15 +65,7 @@ func set_held(on: bool) -> void:
 		if hb:
 			hb.sword.visible = false
 			hb.gun.visible = false
-		var builder = ctx.parts.get("builder")
-		if builder and ctx.state.get("hammer", false):
-			builder.set_held(false)
 	launcher.visible = on
-
-
-func key(event: InputEventKey) -> void:
-	if event.keycode == KEY_3:
-		set_held(not held())
 
 
 func handle(c: Dictionary) -> bool:
@@ -154,8 +146,8 @@ func _process(delta: float) -> void:
 		return  # (a reload frees the old launcher while this old part may still tick once)
 	cooldown = maxf(cooldown - delta, 0.0)
 	recoil = maxf(recoil - delta * 4.0, 0.0)
-	if held() and (ctx.state.get("hammer", false) or ctx.state.get("sword_held", false)):
-		set_held(false)  # the hammer or sword took the hand
+	if held() and ctx.state.get("sword_held", false):
+		set_held(false)  # the sword took the hand
 	launcher.position = Vector3(0.3, -0.26, -0.55 + recoil * 0.1)
 	launcher.rotation_degrees = Vector3(recoil * 8.0, 0, 0)
 	var space: PhysicsDirectSpaceState3D = W.get_world_3d().direct_space_state

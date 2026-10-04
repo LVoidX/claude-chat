@@ -152,11 +152,11 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 ## Ideas mentioned but not done
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).
-- Builder hammer (scene/builder.gd): H or [hammer] holds it; click builds 1 m blocks, right click removes, C/wheel colour. Barnaby can [climb] onto placed objects.
-- Goblins (scene/goblins.gd, [goblins] / [goblins away]): harmless ring army, 3 sword hits each. Hotbar + sword in scene/hotbar.gd ([sword] gives; keys 1 hammer, 2 sword).
+- Goblins (scene/goblins.gd, [goblins] / [goblins away]): harmless ring army, 3 sword hits each. Hotbar + sword in scene/hotbar.gd ([sword] gives; key 1 sword, key 2 rocket when owned).
 
 - barnaby_chat.txt / marigold_chat.txt: plain-text copies of the characters talks, written by save_state(). When the user says "read Barnaby", read barnaby_chat.txt (Marigold: marigold_chat.txt).
-- scene/rocket.gd: [rocket] launcher on slot 3 (key 3), rockets explode and shove the user/characters (rocket jump).
+- scene/rocket.gd: [rocket] launcher on slot 2 (key 2), rockets explode and shove the user/characters (rocket jump).
+- Builder hammer and placed block structures removed; the hotbar is now key 1 sword, key 2 rocket (when owned), key 9 to-do book. Barnaby's [climb] still targets other placed objects.
 
 ## Story flags
 - troll: slain | appeased (ch.1). camp: bandits | cleared | tolled (ch.2): bandits (kind "bandit", creatures.gd) hold Gorrak's camp (96, 12); build_bandit_camp() draws tents/flag per state; "tolled" bandits are tame.

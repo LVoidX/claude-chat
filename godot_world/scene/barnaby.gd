@@ -373,33 +373,6 @@ func handle(c: Dictionary) -> bool:
 					best = Vector2(spec.x, spec.z)
 					var shape: String = spec.get("shape", "box")
 					best_top = 4.0 if shape == "pillar" else (1.2 if shape in ["sphere", "ball"] else 1.0)
-			var names: Array = ctx.parts["builder"].COLOR_NAMES if ctx.parts.has("builder") else []
-			var lone := false
-			for w in ["single", "lone", "one", "solo", "alone", "lonely"]:
-				lone = lone or w in args
-			for b in ctx.state.get("blocks", []):  # blocks built with the hammer count too
-				var bx: float = float(b[0]) + 0.5
-				var bz: float = float(b[2]) + 0.5
-				var d := Vector2(bx - body.position.x, bz - body.position.z).length()
-				var same := []  # the blocks of that colour on that level: he stands in the middle of them
-				for o in ctx.state.get("blocks", []):
-					if int(o[1]) == int(b[1]) and int(o[3]) == int(b[3]) and absf(float(o[0]) - float(b[0])) <= 3.0 \
-							and absf(float(o[2]) - float(b[2])) <= 3.0:
-						same.append(Vector2(float(o[0]) + 0.5, float(o[2]) + 0.5))
-				if names.size() > 0 and str(names[int(b[3]) % names.size()]) in args:
-					d -= 10000.0
-					if lone:  # "the single one": a block of that colour with no same-coloured neighbours
-						d -= 5000.0 if same.size() == 1 else 0.0
-					else:  # otherwise the highest ones win
-						d -= 100.0 * float(b[1])
-				if d < best_d:
-					best_d = d
-					best = Vector2(bx, bz)
-					best_top = float(b[1]) + 1.0
-					var sum := Vector2.ZERO
-					for v in same:
-						sum += v
-					best = sum / same.size()
 			if best == null:
 				return true
 			st()["cx"] = best.x
