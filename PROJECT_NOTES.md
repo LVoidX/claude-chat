@@ -116,4 +116,12 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).
 - Builder hammer (scene/builder.gd): H or [hammer] holds it; click builds 1 m blocks, right click removes, C/wheel colour. Barnaby can [climb] onto placed objects.
 - Barnaby talking: chat.pyw sends cmd=say (who, text) per spoken sentence; barnaby.gd animates a mouth box over the face texture and shows a billboard Label3D chat bubble (timed ~15 chars/s).
-- Goblins (scene/goblins.gd, [goblins] / [goblins away]): harmless ring army, 3 sword hits each. Hotbar + sword in scene/hotbar.gd ([sword] gives; keys 1 hammer, 2 sword).
+- Goblins (scene/goblins.gd, [goblins] / [goblins away]): a ring army, harmless until you hit one, then they fight back
+  (state["goblins_angry"]): an attack director lets 1-2 at a time step in, wind up (arms up, red eyes, "!" over the head;
+  red "!!" = unblockable) and lunge. Kinds: grunt (3 hp), spear (longer reach), brute (every 5th: 8 hp, light hits don't
+  stop its wind-up). Hotbar + sword + gun in scene/hotbar.gd ([sword] gives; keys 1 hammer, 2 sword, 3 gun): 3-hit sword
+  combo (third = heavy), gun has 6 shots then auto-reloads.
+- scene/combat.gd: the player's side of fights: health (state["player_hp"], regenerates after 4 s), right click with the
+  sword blocks (costs guard, 3 blocks break it), a block pressed <0.2 s before the hit parries (goblin stunned, next hit x3).
+  At 0 hp you faint to the middle and the goblins calm down. Also screen shake, hitstop (Engine.time_scale), red flash and
+  sounds generated in code (AudioStreamWAV, no files).
