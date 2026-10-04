@@ -12,8 +12,6 @@ I still don't like the way the sword is done very much. try to revamp it.
 
 the bandit camap looks very messy. Just doesnt' look good. 
 
-doesn't seem to be a way to "buy the wight's silence" 
-
 refugee guards also stuck
 
 findd some kind of way to fix the NPC pathfinding in general. 
