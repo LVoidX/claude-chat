@@ -740,11 +740,16 @@ func _process(delta: float) -> void:
 func peaceful(f: Dictionary) -> bool:
 	if f.get("tame", false):
 		return true
-	if f.kind == "troll":
-		var story = ctx.parts.get("story")
-		var rpg = ctx.parts.get("rpg")
-		if story and rpg and story.built() and story.open_quests().any(func(q): return q.id == "pay_gorrak") and rpg.count("pelt") >= 4:
-			return true
+	# Any story bargain: while you carry what an open "bring" quest asks for, whoever guards that place lets you
+	# come and pay (the troll's pelts, the wight's tithe, a warband's gold...).
+	var story = ctx.parts.get("story")
+	var rpg = ctx.parts.get("rpg")
+	if story and rpg and story.built():
+		for q in story.open_quests():
+			if q.get("kind") == "bring" and q.has("pos") and rpg.count(str(q.what)) >= int(q.get("n", 1)):
+				var p: Vector3 = story.quest_pos(q)
+				if Vector2(f.node.position.x - p.x, f.node.position.z - p.z).length() < 30.0:
+					return true
 	return false
 
 

@@ -199,7 +199,9 @@ quest kinds), PROJECT_NOTES.md (what exists and the user's taste), and the scene
    happened: "start_sets": {"castle": "burnt"}).
 4. Quest kinds: kill (existing or new creature kind), reach (a place), bring (items to a place; rpg.gd ITEMS lists
    them, and you may add items), event (custom: a part calls ctx.parts["story"].complete("quest_id"), e.g. from an
-   E action: a part's interactables() returns [{"pos", "label", "act": Callable, "range"}]). Make every quest truly
+   E action: a part's interactables() returns [{"pos", "label", "act": Callable, "range"}]). For a bargain (bring goods
+   or gold to someone hostile), the creatures near that place leave the player alone while they carry it, and an
+   E prompt appears there: just make the place reachable. Make every quest truly
    doable with what exists or what you build now; fair for the player's level (state in world_state.json, "rpg").
    Give rewards that fit (xp 100-400, some gold or items).
 5. Places (x, z; north is -z): meadow centre (0, 0), flat, radius 58; castle (0, -140) on a hilltop (y 17), gate

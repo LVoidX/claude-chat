@@ -39,24 +39,27 @@ const ITEMS := {
 ## of an item handed to the giver,
 ## "find" wants the item found once. Rewards: xp, gold, items.
 const QUESTS := [
-	{"id": "wolves", "giver": "the shepherd", "title": "Wolf Trouble", "level": 1, "kind": "kill", "what": "wolf", "n": 5,
+	{"id": "wolves", "giver": "tam", "title": "Wolf Trouble", "level": 1, "kind": "kill", "what": "wolf", "n": 5,
 		"text": "I've lost three lambs this week. Wolves prowl the woods around the meadow. Thin the packs for me?",
 		"xp": 70, "gold": 30, "items": {"potion": 2}},
-	{"id": "herbs", "giver": "the water carrier", "title": "The Healer's Errand", "level": 1, "kind": "bring", "what": "herb", "n": 6,
+	{"id": "herbs", "giver": "elsie", "title": "The Healer's Errand", "level": 1, "kind": "bring", "what": "herb", "n": 6,
 		"text": "The healer's run out of silverleaf. It grows wild at the edges of the meadow, glowing faintly green. Six sprigs, if you can.",
 		"xp": 40, "gold": 15, "items": {"potion": 3}},
-	{"id": "ring", "giver": "the farmer", "title": "The Miller's Ring", "level": 1, "kind": "find", "what": "ring", "n": 1,
+	{"id": "ring", "giver": "wat", "title": "The Miller's Ring", "level": 1, "kind": "find", "what": "ring", "n": 1,
 		"text": "Old Edric the miller lost his wedding ring up by the windmill on the eastern hill. Keep an eye out for a glint in the grass.",
 		"xp": 45, "gold": 35, "items": {}},
-	{"id": "pelts", "giver": "the shepherd", "title": "A Warm Winter", "level": 2, "kind": "bring", "what": "pelt", "n": 4,
+	{"id": "pelts", "giver": "tam", "title": "A Warm Winter", "level": 2, "kind": "bring", "what": "pelt", "n": 4,
 		"text": "Bring me four good wolf pelts and my brother the tanner will make you armour from them.",
 		"xp": 50, "gold": 0, "items": {"leather": 1}},
 	{"id": "ore", "giver": "smith", "title": "Iron for the Anvil", "level": 2, "kind": "bring", "what": "ore", "n": 5,
 		"text": "My iron's run out. Rust-red ore rocks crop out on the high slopes; press E at one to mine it. Five lumps and I'll forge you a blade.",
 		"xp": 70, "gold": 20, "items": {"iron_sword": 1}},
-	{"id": "barrow", "giver": "a guard", "title": "The Restless Dead", "level": 3, "kind": "kill", "what": "skeleton", "n": 6,
-		"text": "Something has stirred the old barrow in the north-western woods. The dead walk there. The lord wants them put back to rest.",
-		"xp": 140, "gold": 60, "items": {"potion": 2}},
+	{"id": "watch", "giver": "bram", "title": "Supplies for the Watch", "level": 2, "kind": "bring", "what": "potion", "n": 2,
+		"text": "My lads keep the watch day and night and we're short of everything. Two healing potions would see us through. The smith sells them, or the wolves' victims drop them.",
+		"xp": 90, "gold": 45, "items": {}},
+	{"id": "mushrooms", "giver": "osric", "title": "Mushrooms for Supper", "level": 1, "kind": "bring", "what": "mushroom", "n": 4,
+		"text": "Woodcaps. Brown, under the trees, deeper in the woods. Four of them and I'll share my stew. And some coin.",
+		"xp": 45, "gold": 20, "items": {"potion": 1}},
 ]
 
 ## What the smith sells (and he buys everything that has a price, for half of it).
@@ -757,11 +760,11 @@ func fill_board(body: VBoxContainer) -> void:
 
 ## --- quest givers ---------------------------------------------------------------------------------------
 
-const GIVER_TITLES := {"the shepherd": "Shepherd", "the water carrier": "Water Carrier", "the farmer": "Farmer",
-	"smith": "Hob the Smith", "a guard": "Castle Guard"}
-const GREETINGS := {"the shepherd": "\"Ah, a strong arm. Just what I need.\"", "the water carrier": "\"Mind the bucket! Oh, it's you.\"",
-	"the farmer": "\"Hard work, this. Got a moment, friend?\"", "smith": "\"Need steel? Or here to help for once?\"",
-	"a guard": "\"Halt. ...Oh, you're the one they talk about.\""}
+const GIVER_TITLES := {"tam": "Tam the Shepherd", "elsie": "Elsie the Water Carrier", "wat": "Wat the Farmer",
+	"osric": "Osric the Woodcutter", "smith": "Hob the Smith", "bram": "Sergeant Bram"}
+const GREETINGS := {"tam": "\"Ah, a strong arm. Just what I need.\"", "elsie": "\"Mind the bucket! Oh, it's you.\"",
+	"wat": "\"Hard work, this. Got a moment, friend?\"", "smith": "\"Need steel? Or here to help for once?\"",
+	"bram": "\"Halt. ...Oh, you're the one they talk about.\"", "osric": "\"Hm. You.\""}
 var marks := {}  # giver -> Label3D: the ! or ? over their head
 
 
@@ -776,7 +779,7 @@ func giver_node(g: String) -> Node3D:
 	var v = ctx.parts.get("villagers")
 	if v and "folk" in v:
 		for f in v.folk:
-			if f.name == g:
+			if f.get("who", "") == g or f.name == g:
 				return f.node
 	return null
 
@@ -809,7 +812,7 @@ func givers_to_talk_to() -> Array:
 		seen[g] = true
 		var node := giver_node(g)
 		if node and giver_state(g) != "":
-			out.append({"pos": node.global_position, "label": "Talk to the " + giver_title(g), "act": open_panel.bind("giver:" + g), "range": 2.8})
+			out.append({"pos": node.global_position, "label": "Quests from " + giver_title(g), "act": open_panel.bind("giver:" + g), "range": 2.8})
 	return out
 
 
@@ -820,9 +823,9 @@ func update_marks() -> void:
 			continue
 		if not g in marks or not is_instance_valid(marks[g]):
 			var l := Label3D.new()
-			l.font_size = 72
-			l.outline_size = 14
-			l.pixel_size = 0.0013
+			l.font_size = 48
+			l.outline_size = 10
+			l.pixel_size = 0.0008
 			l.fixed_size = true
 			l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			l.no_depth_test = true

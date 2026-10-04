@@ -378,9 +378,9 @@ func update_news_mark() -> void:
 	if show and not is_instance_valid(news_mark):
 		news_mark = Label3D.new()
 		news_mark.text = "!"
-		news_mark.font_size = 72
-		news_mark.outline_size = 14
-		news_mark.pixel_size = 0.0013
+		news_mark.font_size = 48
+		news_mark.outline_size = 10
+		news_mark.pixel_size = 0.0008
 		news_mark.fixed_size = true
 		news_mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		news_mark.no_depth_test = true
@@ -393,9 +393,25 @@ func update_news_mark() -> void:
 
 
 func interactables() -> Array:
+	var out := []
 	var b = ctx.parts.get("barnaby")
 	var il := interlude()
 	if b and b.body and not il.is_empty() and il.get("told", false) and news_ready():
-		return [{"pos": b.body.global_position, "label": "Hear Barnaby's news", "act": hear_news, "range": 3.0}]
-	return []
+		out.append({"pos": b.body.global_position, "label": "Hear Barnaby's news", "act": hear_news, "range": 3.0})
+	var rpg = ctx.parts.get("rpg")
+	for q in open_quests():  # a bargain: hand it over right there with E (walking in with it also does it)
+		if q.get("kind") == "bring" and q.has("pos") and rpg:
+			var n := int(q.get("n", 1))
+			var what: String = rpg.ITEMS[q.what].name.to_lower() if q.what in rpg.ITEMS else str(q.what)
+			if rpg.count(q.what) >= n:
+				out.append({"pos": quest_pos(q), "label": "Hand over %d %s (%s)" % [n, what, q.title], "act": pay.bind(q.id), "range": float(q.get("radius", 4.0)) + 3.0})
+	return out
+
+
+func pay(id: String) -> void:
+	var rpg = ctx.parts.get("rpg")
+	for q in open_quests():
+		if q.id == id and rpg and rpg.count(q.what) >= int(q.get("n", 1)):
+			rpg.take(q.what, int(q.get("n", 1)))
+			complete(id)
 
