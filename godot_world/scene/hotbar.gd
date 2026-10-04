@@ -98,6 +98,7 @@ func make_bar() -> void:
 		panel.add_child(number)
 		var name_label := Label.new()
 		name_label.text = SLOTS[i]
+		name_label.name = "Name"
 		name_label.size = Vector2(SLOT_SIZE, SLOT_SIZE)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -108,6 +109,7 @@ func make_bar() -> void:
 		panel.add_child(name_label)
 		if SLOTS[i] in ICONS:  # a pixel-art picture instead of the word
 			var pic := TextureRect.new()
+			pic.name = "Pic"
 			pic.texture = icon(SLOTS[i])
 			pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -281,8 +283,16 @@ func _process(delta: float) -> void:
 		var bar: Control = layer.get_node_or_null("Bar")
 		if bar:
 			bar.visible = has_bar() and W.camera.current
+			var rocket = ctx.parts.get("rocket")
+			var has_rocket: bool = rocket != null and rocket.owned()  # slot 3 is empty until you were given the launcher
+			var pic3 = slot_panels[2].get_node_or_null("Pic")
+			if pic3:
+				pic3.visible = has_rocket
+			else:
+				slot_panels[2].get_node("Name").text = SLOTS[2] if has_rocket else ""
+			slot_panels[2].tooltip_text = SLOTS[2] if has_rocket else ""
 			for i in slot_panels.size():
-				var on: bool = (i == 0 and hammer_held()) or (i == 1 and held())
+				var on: bool = (i == 0 and hammer_held()) or (i == 1 and held()) or (i == 2 and has_rocket and rocket.held())
 				slot_panels[i].add_theme_stylebox_override("panel", style(on))
 
 

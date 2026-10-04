@@ -93,6 +93,14 @@ func build(c: Dictionary) -> void:
 	ctx = c
 	W = ctx["world"]
 	var s: Dictionary = ctx.state.get_or_add("rpg", {})
+	if int(s.get("reset_v", 0)) < 2:  # one-time reset (2026-10-04, asked for); bump to repeat
+		if int(s.get("reset_v", 0)) < 1:  # level, xp and gold
+			s["level"] = 1
+			s["xp"] = 0
+			s["gold"] = 10
+			s.erase("hp")
+		s["weapon"] = "rusty_sword"  # the starting sword again (any better swords stay in the inventory)
+		s["reset_v"] = 2
 	for key in ["level", "xp", "gold"]:
 		if not s.has(key):
 			s[key] = {"level": 1, "xp": 0, "gold": 10}[key]
@@ -130,7 +138,7 @@ func defense() -> int:
 	return int(ITEMS[armor].get("def", 0)) if armor in ITEMS else 0
 
 
-const TEMP_SWORD_DAMAGE := 30  # temporary, asked for by the user: every sword hit does this; set to 0 to go back to normal
+const TEMP_SWORD_DAMAGE := 0  # was a temporary 30 for every hit; 0 = normal damage (weapon + level - 1)
 
 
 func strike_damage() -> int:

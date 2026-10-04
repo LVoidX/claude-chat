@@ -9,7 +9,7 @@ extends Node3D
 
 const DAY_TRACKS := ["Market_Day.mp3", "The_Bards_Tale.mp3"]
 const NIGHT_TRACKS := ["The_Old_Tower_Inn.mp3"]
-const VOLUME_DB := -22.0  # was -15: too loud
+const VOLUME_DB := -33.0  # was -15, then -22, then -28: too loud. A constant in the file, so it stays after a restart
 const TRACK_TRIM_DB := {"The_Old_Tower_Inn.mp3": -3.0}  # per-track correction for songs mastered louder than the rest
 const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
 const RATE := 22050

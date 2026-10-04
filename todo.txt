@@ -1,0 +1,25 @@
+bottom of barnabies shoes r a bit large]
+
+barnaby is currently floating in the air near me instead of sitting on a alog
+
+sitting on the log is also a bit messy. try to fix it and make a aplayer model. so I can see my legs and stuff. whaatever looks good
+
+barnaby tried to give me bandit coordinates. doesnt make much sense
+
+water carrier is currently walking into a wall
+
+I still don't like the way the sword is done very much. try to revamp it. 
+
+the bandit camap looks very messy. Just doesnt' look good. 
+
+killing the 5 baandits firsst time completely crashed my game and reopened it. doesn't seem quite right. yeah so once agaain. finishing chaapter 3 just crashed my game. then reloaded and skipped talking to barnaby
+
+doesn't seem to be a way to "buy the wight's silence" 
+
+the exclamation quest markers are way too large
+
+the NPCs look like they have seperate questss buti n acatuality it's just the same quest barnaaby has
+
+refugee guards also stuck
+
+findd some kind of way to fix the NPC pathfinding in general. 

@@ -169,6 +169,10 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Ch.3 after the reset (2026-10-04): reuses the barrow flag (start_sets barrow=stirring; kill wight -> sealed, bring 6 bones -> laid, bring 150 gold -> bargain), framed as the tolled bandits having looted the barrow. barks.gd has an extra stirring line.
 
+- Ch.3 after camp=cleared (2026-10-04): again the barrow flag (start_sets stirring; kill wight -> sealed, 6 bones -> laid, 150 gold -> bargain), framed as blood on the east road waking the dead. No new code needed.
+
+- Ch.4 after barrow=sealed (2026-10-04): reuses the castle flag (start_sets burnt; kill 8 raiders -> ruin, 250 gold at the gate -> tolled). No new code needed.
+
 ## RPG layer (2026-10-03)
 - scene/rpg.gd: level/xp/health/gold, inventory (I), quest journal (J), quest board by the village road (E), the smith's
   shop across the road (E: buy, sell for half), Q drinks a potion, death = wake at the well minus 10% gold. State in

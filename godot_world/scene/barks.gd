@@ -15,7 +15,7 @@ const FLAG_LINES := {
 	"bandits=routed": ["The bandit camp is ash. Well done.", "Merchants are coming back up the east road."],
 	"bandits=bribed": ["Those bandits wave at me now. I don't like it.", "Paid off, are they? For how long..."],
 	"barrow=stirring": ["Green lights at the old barrow at night... stay away from there.", "My grandmother said the dead kings would wake. She was right.",
-		"Those paid bandits looted the barrow, they say. The dead want their gold back."],
+		"So much blood on the east road, and the old kings felt it in their sleep."],
 	"barrow=laid": ["The barrow is quiet again. Candles and flowers. You did that.", "I slept well last night, first time in weeks."],
 	"barrow=sealed": ["They walled up the barrow. Good. Leave it shut.", "Blue wards on the barrow door. Gives me shivers."],
 	"barrow=bargain": ["A bargain with the dead? You're braver than me. Or madder."],

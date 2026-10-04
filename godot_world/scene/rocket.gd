@@ -34,6 +34,8 @@ func build(c: Dictionary) -> void:
 	W.box(launcher, Vector3(0, -0.12, 0.05), Vector3(0.04, 0.13, 0.05), Color("#6b4a2f"))  # grip under the tube
 	W.box(launcher, Vector3(0, 0.0675, -0.1), Vector3(0.03, 0.025, 0.08), Color("#1b1e22"))  # sight on top
 	W.glow(launcher, Vector3(0, 0, -0.34), Vector3(0.07, 0.07, 0.012), Color("#ff7a2d"), 2.0)  # warhead tip showing in the muzzle
+	if not owned():
+		ctx.state["rocket_held"] = false  # (it was in hand before the launcher became something you are given)
 	launcher.visible = held()
 	W.camera.add_child(launcher)
 
@@ -47,7 +49,14 @@ func held() -> bool:
 	return ctx.state.get("rocket_held", false)
 
 
+## You only have the launcher after being given it with [rocket]; until then slot 3 is empty and key 3 does nothing.
+func owned() -> bool:
+	return ctx.state.get("rocket_owned", false)
+
+
 func set_held(on: bool) -> void:
+	if on and not owned():
+		return
 	ctx.state["rocket_held"] = on
 	if on:  # one thing in hand at a time
 		ctx.state["sword_held"] = false
@@ -70,6 +79,7 @@ func key(event: InputEventKey) -> void:
 func handle(c: Dictionary) -> bool:
 	match c.get("cmd", ""):
 		"rocket":
+			ctx.state["rocket_owned"] = true
 			set_held(true)
 			W.show_notice("Rocket launcher in hand: left click fires. Fire at your feet to rocket-jump.", 6.0)
 		"unrocket":
