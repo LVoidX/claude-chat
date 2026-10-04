@@ -74,6 +74,9 @@ func load_chapter() -> void:
 	data_sig = path + str(FileAccess.get_modified_time(path))
 	var number := int(data.get("chapter", 1))
 	if number != int(st().chapter):  # a new chapter begins
+		if number < int(st().chapter) and int(st().chapter) > 0:  # the story was sent back: forget what happened since
+			st().flags = {}
+			set_flags({})
 		st().chapter = number
 		st().done = []
 		st().kills = {}
@@ -175,7 +178,10 @@ func set_flags(sets: Dictionary) -> void:
 	var f := FileAccess.open(W.project_file("godot_world/story/flags.json"), FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(st().flags, "  "))
-	W.load_parts.call_deferred()
+	if W.has_method("refresh_flags"):  # only the parts that build by these flags are rebuilt
+		W.refresh_flags.call_deferred(sets.keys())
+	else:
+		W.load_parts.call_deferred()
 
 
 func log_line(text: String) -> void:

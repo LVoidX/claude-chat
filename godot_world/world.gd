@@ -47,6 +47,7 @@ var notice_until := 0.0
 var ctx := {}
 var parts: Array = []  # the part nodes built from scene/*.gd, in file name order
 var parts_sig := ""
+var part_mtimes := {}  # part file -> when it was saved (so only the saved part is swapped)
 var next_parts_check := 0.0
 var was_fullscreen := false
 var near_who := ""  # the character the player is standing next to ("" = nobody)
@@ -251,25 +252,95 @@ func part_files() -> Array:
 	return files
 
 
-func parts_signature() -> String:
-	var sig := ""
+## When each part file was last saved: {file: time}. Models count as one entry (a model change rebuilds all).
+func part_times() -> Dictionary:
+	var times := {}
 	for f in part_files():
-		sig += "%s:%d;" % [f, FileAccess.get_modified_time(PARTS_DIR.path_join(f))]
+		times[f] = FileAccess.get_modified_time(PARTS_DIR.path_join(f))
+	var models := ""
 	for f in DirAccess.get_files_at(MODELS_DIR):
-		sig += "%s:%d;" % [f, FileAccess.get_modified_time(MODELS_DIR.path_join(f))]
-	return sig
+		models += "%s:%d;" % [f, FileAccess.get_modified_time(MODELS_DIR.path_join(f))]
+	times["<models>"] = models
+	return times
 
 
-## (Re)build every part. All files are checked first: if one has an error, the old world keeps running.
+func parts_signature() -> String:  # (kept for the handover check)
+	return str(part_times())
+
+
+func compile_part(f: String) -> GDScript:
+	var script := GDScript.new()
+	script.source_code = FileAccess.get_file_as_string(PARTS_DIR.path_join(f))
+	script.take_over_path(PARTS_DIR.path_join(f))  # so errors name the file (a plain resource_path breaks reloads)
+	return script if script.reload() == OK else null
+
+
+## Swap ONE part for a fresh build of its file (or add a new part, or remove a deleted one). Every other part keeps
+## running untouched: no world reset, no freeze. If the file has an error, the old part stays.
+func reload_part(f: String) -> void:
+	var name := f.get_basename()
+	var old: Node = ctx["parts"].get(name)
+	var index := parts.find(old) if old else -1
+	if not FileAccess.file_exists(PARTS_DIR.path_join(f)) or f in DISABLED_PARTS:
+		if old:
+			parts.erase(old)
+			ctx["parts"].erase(name)
+			old.free()
+			print("[world] part removed: ", name)
+		return
+	var script := compile_part(f)
+	if script == null:
+		printerr("scene/", f, " has an error, so it was not reloaded (the old one keeps running). Details are above.")
+		return
+	if old:
+		old.free()  # (its _exit_tree cleans up what it made outside itself, before the new one builds)
+	var part := Node3D.new()
+	part.name = name
+	part.set_script(script)
+	add_child(part)
+	if index >= 0:
+		parts[index] = part
+		move_child(part, index)  # same place in the order (parts run in file-name order)
+	else:
+		parts.append(part)
+	ctx["parts"][name] = part
+	build_part(part)
+	for other in parts:  # parts that keep hold of another part's nodes can catch up
+		if other != part and other.has_method("part_reloaded"):
+			other.part_reloaded(name)
+	print("[world] part reloaded: ", name)
+	send({"t": "need_quests"})
+
+
+var building := ""  # the part whose build() is running (W.flag notes who reads which flag)
+var flag_users := {}  # flag name -> {part name: true}: the parts to rebuild when that flag changes
+
+
+func build_part(part: Node) -> void:
+	if part.has_method("build"):
+		building = part.name
+		part.build(ctx)
+		building = ""
+
+
+## Story flags changed: rebuild only the parts that read those flags while building (see flag()).
+func refresh_flags(names: Array) -> void:
+	var who := {}
+	for n in names:
+		for part_name in flag_users.get(n, {}):
+			who[part_name] = true
+	for part_name in who:
+		reload_part(part_name + ".gd")
+
+
+## (Re)build every part (at start, after an engine swap, or when a model changes). All files are checked first:
+## if one has an error, the old world keeps running. Saving a single part only swaps that part (reload_part).
 func load_parts(first := false) -> void:
 	var scripts := []
 	for f in part_files():
-		var script := GDScript.new()
-		script.source_code = FileAccess.get_file_as_string(PARTS_DIR.path_join(f))
-		script.take_over_path(PARTS_DIR.path_join(f))  # so errors name the file (a plain resource_path breaks reloads)
-		var err := script.reload()
-		if err != OK:
-			printerr("scene/", f, " has an error (", error_string(err), "), so nothing was reloaded. Details are above.")
+		var script := compile_part(f)
+		if script == null:
+			printerr("scene/", f, " has an error (", "parse error", "), so nothing was reloaded. Details are above.")
 			return
 		scripts.append([f.get_basename(), script])
 	for part in parts:
@@ -278,6 +349,7 @@ func load_parts(first := false) -> void:
 	_meshes.clear()
 	_materials.clear()
 	_textures.clear()
+	flag_users.clear()
 	ctx["parts"] = {}
 	for entry in scripts:
 		var part := Node3D.new()
@@ -287,8 +359,8 @@ func load_parts(first := false) -> void:
 		parts.append(part)
 		ctx["parts"][entry[0]] = part
 	for part in parts:
-		if part.has_method("build"):
-			part.build(ctx)
+		build_part(part)
+	part_mtimes = part_times()
 	sights.clear()
 	if not first:
 		print("[world] parts reloaded")
@@ -307,10 +379,22 @@ func _process(_delta: float) -> void:
 			engine_mtime = engine_time
 			reload_engine()
 			return
-		var sig := parts_signature()
-		if sig != parts_sig:
-			parts_sig = sig
-			load_parts()
+		var times := part_times()
+		if times != part_mtimes:
+			if times.get("<models>") != part_mtimes.get("<models>"):
+				load_parts()  # a model changed: the parts using it rebuild (all, simplest)
+			else:
+				var changed := []
+				for f in times:
+					if times[f] != part_mtimes.get(f):
+						changed.append(f)
+				for f in part_mtimes:
+					if not times.has(f):
+						changed.append(f)  # deleted
+				part_mtimes = times
+				for f in changed:
+					reload_part(f)
+			part_mtimes = times
 	if notice_label.text != "":  # fades out over its last half second
 		notice_label.modulate.a = clampf((notice_until - now) / 0.5, 0.0, 1.0)
 		if now > notice_until:
@@ -563,6 +647,8 @@ func quest_done(id: String) -> void:
 ## A story flag: what the main story has done to the world ("" = never happened). Parts build by it, e.g.
 ## if W.flag("castle") == "burnt": build the ruin instead. Set by scene/story.gd when story quests finish.
 func flag(name: String) -> String:
+	if building != "":  # a part reads this flag while building: rebuild it when the flag changes
+		flag_users.get_or_add(name, {})[building] = true
 	return str(ctx.get("state", {}).get("story", {}).get("flags", {}).get(name, ""))
 
 
@@ -688,6 +774,10 @@ func _input(event: InputEvent) -> void:
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not ctx.get("ui_open", false):
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED  # click to grab the mouse again
 	elif event is InputEventKey and event.pressed and not event.echo:
+		var typing = ctx.get("typing")  # a part with a text box open (the to-do book): only it gets the keys
+		if typing and is_instance_valid(typing):
+			typing.key(event)
+			return
 		match event.keycode:  # by key name (WASD movement uses the physical key position instead)
 			KEY_TAB:
 				go_to_chat()

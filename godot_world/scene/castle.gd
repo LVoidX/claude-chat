@@ -17,12 +17,20 @@ var kit
 var torches := []  # [light, phase]
 var banners := []  # [node, phase]
 var spin := 0.0
+# Chapter 4 (flag "castle"): "burnt" = raiders torched it and hold it, "ruin" = they were driven out and it stands
+# charred and empty, "tolled" = they were paid and squat in the ruin under a black banner.
+var state := ""
+var ruined := false  # any of the three: no roof, dark windows, soot
+var fires := []  # [light, phase, energy]
+var smoke := []  # [node, phase, speed]
 
 
 func build(c: Dictionary) -> void:
 	ctx = c
 	W = ctx["world"]
 	kit = ctx.parts["kit"]
+	state = W.flag("castle")
+	ruined = state in ["burnt", "ruin", "tolled"]
 	var terrain = ctx.parts["terrain"]
 	position = Vector3(terrain.CASTLE.x, terrain.CASTLE_TOP - SINK, terrain.CASTLE.z)  # sunk so the wall bottoms are buried, not level with the ground
 	build_walls()
@@ -30,6 +38,10 @@ func build(c: Dictionary) -> void:
 		tower(Vector3(corner.x * HALF, 0, corner.y * HALF), 2.8, 12.0)
 	build_gatehouse()
 	build_keep()
+	if ruined:
+		build_ruin()
+	elif state == "rebuilt":
+		build_rebuilt()
 
 
 func s(pos: Vector3, size: Vector3, kind := "stone", collide := true) -> MeshInstance3D:
@@ -77,35 +89,44 @@ func tower(at: Vector3, radius: float, height: float) -> void:
 	body.position = at + Vector3(0, height / 2.0, 0)
 	add_child(body)
 	W.add_collider(self, Transform3D(Basis(), body.position), Vector3(radius * 2, height, radius * 2))
-	var roof := MeshInstance3D.new()
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.0
-	cone.bottom_radius = radius * 1.3
-	cone.height = radius * 2.2
-	cone.radial_segments = 14
-	roof.mesh = cone
-	roof.material_override = kit.mat("slate")
-	roof.position = at + Vector3(0, height + radius * 1.1, 0)
-	add_child(roof)
+	if not ruined:
+		var roof := MeshInstance3D.new()
+		var cone := CylinderMesh.new()
+		cone.top_radius = 0.0
+		cone.bottom_radius = radius * 1.3
+		cone.height = radius * 2.2
+		cone.radial_segments = 14
+		roof.mesh = cone
+		roof.material_override = kit.mat("slate")
+		roof.position = at + Vector3(0, height + radius * 1.1, 0)
+		add_child(roof)
+	else:  # the roof burned away: a few charred rafters stick up
+		for k in 5:
+			var rafter: MeshInstance3D = W.box(self, at + Vector3(cos(k * 1.3) * radius * 0.5, height + 1.0, sin(k * 1.3) * radius * 0.5),
+				Vector3(0.18, 2.2 + k * 0.3, 0.18), Color("#17120e"))
+			rafter.rotation = Vector3(0.25 * cos(k * 2.0), 0, 0.25 * sin(k * 2.0))
 	for k in 8:  # a ring of slit windows, a few of them lit
 		var a := k * TAU / 8.0
 		var p := at + Vector3(cos(a) * radius * 1.01, height * 0.62, sin(a) * radius * 1.01)
-		if k % 3 == 0:
+		if k % 3 == 0 and not ruined:
 			var win: MeshInstance3D = W.glow(self, p, Vector3(0.22, 0.8, 0.22), Color("#ffc46b"), 2.4)
 			win.rotation.y = -a
 		else:
 			var dark: MeshInstance3D = W.box(self, p, Vector3(0.2, 0.8, 0.2), Color("#141210"))
 			dark.rotation.y = -a
-	banner(at + Vector3(0, height + radius * 2.2, 0), 1.6)
+	if not ruined:
+		banner(at + Vector3(0, height + radius * 2.2, 0), 1.6)
+	elif state == "tolled":
+		banner(at + Vector3(0, height + 1.0, 0), 1.6, Color("#161414"))
 
 
-func banner(top: Vector3, length: float) -> void:
+func banner(top: Vector3, length: float, color := BANNER) -> void:
 	W.box(self, top + Vector3(0, 0.9, 0), Vector3(0.06, 1.8, 0.06), Color("#3b2a1e"))  # pole
 	var flag := Node3D.new()
 	flag.position = top + Vector3(0, 1.65, 0)
 	add_child(flag)
-	W.box(flag, Vector3(length / 2.0, -0.35, 0), Vector3(length, 0.7, 0.03), BANNER)
-	W.box(flag, Vector3(length / 2.0, -0.35, 0), Vector3(0.28, 0.28, 0.035), Color("#e8c25a"))  # a golden emblem
+	W.box(flag, Vector3(length / 2.0, -0.35, 0), Vector3(length, 0.7, 0.03), color)
+	W.box(flag, Vector3(length / 2.0, -0.35, 0), Vector3(0.28, 0.28, 0.035), Color("#e8c25a") if color == BANNER else Color("#a82a2a"))  # a golden emblem (raiders: red)
 	banners.append([flag, randf() * TAU])
 
 
@@ -143,6 +164,8 @@ func hanging_banner(top: Vector3) -> void:
 
 
 func torch(at: Vector3) -> void:
+	if state in ["burnt", "ruin"]:  # the torches went out with the guards
+		return
 	W.box(self, at - Vector3(0, 0.25, 0), Vector3(0.1, 0.5, 0.1), Color("#3b2a1e"))
 	W.glow(self, at + Vector3(0, 0.08, 0), Vector3(0.16, 0.22, 0.16), Color("#ff9a3a"), 4.0, "sphere")
 	var l: OmniLight3D = W.light(self, at + Vector3(0, 0.3, 0.4), Color("#ff9a45"), 2.2, 11.0)
@@ -154,21 +177,35 @@ func build_keep() -> void:
 	s(at + Vector3(0, 6.0, 0), Vector3(14.0, 12.0, 10.0))  # the great hall
 	battlements(at + Vector3(-7, 0, 5.0), at + Vector3(7, 0, 5.0), 12.0, 0.6)
 	battlements(at + Vector3(-7, 0, -5.0), at + Vector3(7, 0, -5.0), 12.0, 0.6)
-	var roof := MeshInstance3D.new()  # a steep slate roof over the hall (a prism)
-	var prism := PrismMesh.new()
-	prism.size = Vector3(10.0, 5.0, 13.0)
-	roof.mesh = prism
-	roof.material_override = kit.mat("slate")
-	roof.position = at + Vector3(0, 14.5, 0)
-	roof.rotation.y = PI / 2.0
-	add_child(roof)
+	if not ruined:
+		var roof := MeshInstance3D.new()  # a steep slate roof over the hall (a prism)
+		var prism := PrismMesh.new()
+		prism.size = Vector3(10.0, 5.0, 13.0)
+		roof.mesh = prism
+		roof.material_override = kit.mat("slate")
+		roof.position = at + Vector3(0, 14.5, 0)
+		roof.rotation.y = PI / 2.0
+		add_child(roof)
+	else:  # the roof has fallen in: bare charred roof beams over the hall
+		for k in 6:
+			W.box(self, at + Vector3(-5.0 + k * 2.0, 12.9, 0), Vector3(0.3, 0.3, 10.4), Color("#17120e"))
+		for k in 3:
+			var rib: MeshInstance3D = W.box(self, at + Vector3(-4.0 + k * 4.0, 14.0, 0.3), Vector3(0.28, 3.0, 0.28), Color("#120e0a"))
+			rib.rotation.z = 0.2 - k * 0.2
 	s(at + Vector3(4.5, 11.0, -1.0), Vector3(5.0, 22.0, 5.0))  # the tall tower at one end
 	battlements(at + Vector3(2.0, 0, 1.5), at + Vector3(7.0, 0, 1.5), 22.0, 0.5)
-	banner(at + Vector3(4.5, 22.0, -1.0), 2.4)
+	if not ruined:
+		banner(at + Vector3(4.5, 22.0, -1.0), 2.4)
+	elif state == "tolled":
+		banner(at + Vector3(4.5, 22.0, -1.0), 2.4, Color("#161414"))
 	for row in 2:  # rows of tall windows facing the gate, most of them lit
 		for k in 5:
 			var p := at + Vector3(-5.0 + k * 2.5, 4.0 + row * 4.0, 5.06)
-			if (k + row) % 4 != 3:
+			if state == "burnt" and (k + row) % 2 == 0:  # fire raging behind the windows
+				W.glow(self, p, Vector3(0.7, 1.5, 0.1), Color("#ff5a1a"), 3.5)
+			elif ruined:
+				W.box(self, p, Vector3(0.7, 1.5, 0.1), Color("#0a0806"))
+			elif (k + row) % 4 != 3:
 				W.glow(self, p, Vector3(0.7, 1.5, 0.1), Color("#ffc46b"), 2.0)
 			else:
 				W.box(self, p, Vector3(0.7, 1.5, 0.1), Color("#141210"))
@@ -177,9 +214,99 @@ func build_keep() -> void:
 	torch(at + Vector3(1.8, 2.6, 5.3))
 
 
+## Chapter 4: what the raid left. Soot up the walls, rubble in the yard, and fire and smoke by how far gone it is.
+func build_ruin() -> void:
+	var soot := Color("#0e0b09")
+	for k in 5:  # black streaks above the keep's windows
+		s(Vector3(-5.0 + k * 2.5, 10.8, 0.15), Vector3(1.1, 2.6 + (k % 2) * 1.2, 0.04), "dark_stone", false)
+	s(Vector3(0, 3.0, 0.2), Vector3(2.8, 3.6, 0.04), "dark_stone", false)  # the scorched great door
+	for side in [-1, 1]:  # soot over the gatehouse
+		s(Vector3(side * (GATE_W / 2.0 + 1.6), 6.5, HALF + 1.84), Vector3(2.6, 5.0, 0.04), "dark_stone", false)
+	for x in [-10.0, 9.0]:
+		s(Vector3(x, 5.0, HALF + 0.84), Vector3(5.0, 4.0, 0.04), "dark_stone", false)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	for spot in [Vector3(-11, 0, 4), Vector3(11, 0, 5), Vector3(-11, 0, 11), Vector3(11, 0, 11), Vector3(-12, 0, -7), Vector3(12, 0, -7), Vector3(0, 0, 8.5)]:
+		for i in 6:  # a heap of fallen stone and burnt timber
+			var p: Vector3 = spot + Vector3(rng.randf_range(-1.6, 1.6), 0.0, rng.randf_range(-1.2, 1.2))
+			var size := Vector3(rng.randf_range(0.4, 1.3), rng.randf_range(0.3, 0.8), rng.randf_range(0.4, 1.3))
+			var chunk: MeshInstance3D = W.box(self, Vector3(p.x, SINK + 0.1 + size.y / 2.0, p.z), size, soot if i % 2 == 0 else Color("#5a5650"))
+			chunk.rotation.y = rng.randf() * TAU
+	for k in 4:  # burnt beams lying across the yard
+		var beam: MeshInstance3D = W.box(self, Vector3(-6 + k * 4.5, SINK + 0.4, 5.0 + (k % 2) * 4.0), Vector3(0.35, 0.35, 3.2), Color("#17120e"))
+		beam.rotation.y = 0.7 * k - 0.5
+	match state:
+		"burnt":  # still burning: flames in the yard, in the windows and on the roofless towers, thick smoke
+			for p in [Vector3(-8, 0.5, 6), Vector3(8, 0.5, 8), Vector3(-9, 0.5, -6), Vector3(9, 0.5, -6)]:
+				fire(p, 1.3)
+			fire(Vector3(HALF, 12.2, HALF), 1.0)
+			fire(Vector3(-HALF, 12.2, -HALF), 1.0)
+			fire(Vector3(0, 12.5, -5), 1.6)
+			for p in [Vector3(0, 12, -5), Vector3(HALF, 12, HALF), Vector3(-HALF, 12, -HALF), Vector3(-8, 1, 6)]:
+				smoke_column(p, 14.0)
+		"ruin":  # cold and empty: a few embers and one thin thread of smoke
+			fire(Vector3(-9, 0.4, -6), 0.5)
+			smoke_column(Vector3(0, 12, -5), 7.0)
+		"tolled":  # the raiders' cooking fires in the yard under their black banner
+			for p in [Vector3(-6, 0.4, 7), Vector3(6, 0.4, 9), Vector3(0, 0.4, 4)]:
+				fire(p, 0.8)
+			smoke_column(Vector3(0, 0.5, 5), 9.0)
+
+
+## Chapter 5 ("rebuilt"): Highmoor raised anew. Pale new stone patches, fresh timber hoardings along the south wall,
+## a new iron-bound gate door, and the valley's blue pennants on the corner towers beside the old red banners.
+func build_rebuilt() -> void:
+	var timber := Color("#b98a52")
+	for x in [-11.0, -6.0, 6.0, 11.0]:  # hoardings: timber galleries standing out over the south wall top
+		W.box(self, Vector3(x, WALL_H + 1.3, HALF + 0.3), Vector3(4.2, 0.18, 1.4), timber)
+		W.box(self, Vector3(x, WALL_H + 2.1, HALF + 1.0), Vector3(4.2, 1.5, 0.14), timber.darkened(0.08))
+		for dx in [-1.9, 1.9]:
+			W.box(self, Vector3(x + dx, WALL_H + 0.9, HALF + 0.3), Vector3(0.18, 0.9, 0.18), timber.darkened(0.2))
+	for k in 4:  # new pale stone patches where the fire had bitten
+		s(Vector3(-9.0 + k * 6.0, 3.0 + (k % 2) * 1.5, HALF + 0.86), Vector3(2.4, 1.8, 0.04), "plaster", false)
+	W.box(self, Vector3(0, 1.8, -5.0 + 5.14), Vector3(2.6, 3.6, 0.1), timber.darkened(0.25))  # the new great door
+	for y in [0.8, 2.6]:
+		W.box(self, Vector3(0, y, -5.0 + 5.21), Vector3(2.6, 0.14, 0.06), Color("#26231f"))  # iron bands
+	for side in [-1, 1]:  # blue pennants on the gatehouse towers
+		banner(Vector3(side * (GATE_W / 2.0 + 1.6), 10.0, HALF - 0.8), 1.4, Color("#2f4f8a"))
+
+
+func fire(at: Vector3, size: float) -> void:
+	W.glow(self, at, Vector3(0.9, 0.5, 0.9) * size, Color("#ff6a1a"), 3.5)
+	W.glow(self, at + Vector3(0, 0.45 * size, 0), Vector3(0.5, 0.7, 0.5) * size, Color("#ffb040"), 3.0)
+	var l: OmniLight3D = W.light(self, at + Vector3(0, 1.2 * size, 0), Color("#ff7a30"), 2.6 * size, 14.0 * size)
+	fires.append([l, randf() * TAU, 2.6 * size])
+
+
+## A column of grey puffs that rise, swell and fade, then start again from the bottom.
+func smoke_column(base: Vector3, height: float) -> void:
+	for i in 7:
+		var puff := MeshInstance3D.new()
+		var ball := SphereMesh.new()
+		ball.radius = 0.9
+		ball.height = 1.8
+		puff.mesh = ball
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.12, 0.11, 0.1, 0.5)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		puff.material_override = m
+		puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		puff.position = base
+		add_child(puff)
+		smoke.append([puff, i / 7.0, base, height, m])
+
+
 func _process(delta: float) -> void:
 	spin += delta
 	var night: float = ctx.get("night", 1.0)
+	for f in fires:  # flames flicker, and are brighter than the daylight
+		f[0].light_energy = f[2] * (0.85 + 0.15 * sin(spin * 11.0 + f[1]) + 0.1 * sin(spin * 27.0 + f[1]))
+	for sm in smoke:
+		var life: float = fmod(spin * 0.08 + sm[1], 1.0)
+		sm[0].position = sm[2] + Vector3(life * 3.0 + sin(spin + sm[1] * 6.0) * 0.4, life * sm[3], 0.0)
+		sm[0].scale = Vector3.ONE * (0.6 + life * 2.4)
+		sm[4].albedo_color.a = 0.5 * (1.0 - life) * smoothstep(0.0, 0.1, life)
 	for t in torches:
 		t[0].light_energy = 2.2 * (0.8 + 0.12 * sin(spin * 9.0 + t[1]) + 0.08 * sin(spin * 23.0 + t[1])) * lerpf(0.2, 1.0, night)
 	for b in banners:  # banners stirring in the wind

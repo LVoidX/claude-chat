@@ -89,8 +89,8 @@ just edit {os.path.basename(SCRIPT)} and say what you changed. Keep the file
 valid Python; a broken file is not loaded and the user sees an error instead.
 The 3D world the user can walk around in is a Godot 4.7 game in godot_world/ (GDScript), started by chat.pyw.
 Everything IN the world is in godot_world/scene/, one file per part (base.gd = ground, sky, light and placed
-objects; barnaby.gd = Barnaby; add new files for new things). Saving any part, or a model in
-godot_world/models/, rebuilds the world live with no restart; if a file has an error nothing is swapped, the
+objects; barnaby.gd = Barnaby; add new files for new things). Saving a part swaps ONLY that part, live (the
+rest of the world keeps running untouched); a model in godot_world/models/ rebuilds all parts; if a file has an error nothing is swapped, the
 old world keeps running and the error goes to claude-world.log (read it after an edit to check). Read the
 comments at the top of scene/base.gd first: they explain ctx, the helpers in world.gd and the hooks a part
 can have. godot_world/world.gd is the engine side (player, HUD, link to the chat, helpers); it also reloads live

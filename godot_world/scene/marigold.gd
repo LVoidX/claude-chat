@@ -113,6 +113,14 @@ func build_stall() -> void:
 		bx(awning, Vector3(-2.07 + i * 0.46, 0, 0), Vector3(0.46, 0.07, 3.0), "#b3323d" if i % 2 == 0 else "#f1e6d0")
 		bx(awning, Vector3(-2.07 + i * 0.46, -0.16, -1.5), Vector3(0.46, 0.26, 0.04), "#b3323d" if i % 2 == 0 else "#f1e6d0")
 		bx(awning, Vector3(-2.07 + i * 0.46, -0.32, -1.5), Vector3(0.3, 0.12, 0.04), "#b3323d" if i % 2 == 0 else "#f1e6d0", "sphere")
+	# the awning is solid too (one slab over the whole roof, tilted with it): you bump your head, rockets hit it
+	var roof_body := StaticBody3D.new()
+	var roof_shape := CollisionShape3D.new()
+	var roof_box := BoxShape3D.new()
+	roof_box.size = Vector3(4.6, 0.07, 3.0)
+	roof_shape.shape = roof_box
+	roof_body.add_child(roof_shape)
+	awning.add_child(roof_body)
 	# a wooden sign hung under the awning, text on both faces
 	solid(stall, Vector3(0, 2.2, -1.25), Vector3(2.5, 0.46, 0.06), plank)
 	bx(stall, Vector3(-1.15, 2.4, -1.25), Vector3(0.025, 0.2, 0.025), dark)

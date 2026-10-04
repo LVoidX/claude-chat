@@ -19,7 +19,14 @@ const KINDS := {
 	# Chapter 3: the barrow lord, woken by all the blood spilled on the east road. He does not come back once beaten.
 	"wight": {"name": "Barrow Wight", "hp": 120, "dmg": 11, "speed": 3.8, "aggro": 15.0, "reach": 2.3, "cooldown": 2.0,
 		"xp": 260, "gold": [40, 40], "loot": [["bone", 1.0], ["potion", 1.0]], "respawn": 99999.0, "bar_y": 2.7},
+	# Chapter 4: the Ashen Host, raiders from beyond the mountains who burned Highmoor Castle. They do not come back once beaten.
+	"raider": {"name": "Ashen Raider", "hp": 42, "dmg": 9, "speed": 4.4, "aggro": 14.0, "reach": 2.0, "cooldown": 1.6,
+		"xp": 55, "gold": [8, 24], "loot": [["potion", 0.25], ["ore", 0.2]], "respawn": 99999.0, "bar_y": 2.25},
+	# Chapter 5: Varga, captain of the Ashen Host, who sits on the paid-for castle and tolls the north road.
+	"captain": {"name": "Varga, Ashen Captain", "hp": 150, "dmg": 13, "speed": 4.0, "aggro": 15.0, "reach": 2.4, "cooldown": 1.9,
+		"xp": 300, "gold": [90, 90], "loot": [["potion", 1.0], ["ore", 1.0]], "respawn": 99999.0, "bar_y": 2.6},
 }
+const CASTLE_YARD := Vector3(0, 0, -132)  # the courtyard south of the keep, where the raiders camp
 const DENS := [Vector3(80, 0, -32), Vector3(-24, 0, 92), Vector3(-112, 0, -20)]  # three wolves each
 const BARROW := Vector3(-80, 0, -80)  # the old burial mound, six skeletons
 const TROLL_CAMP := Vector3(96, 0, 12)
@@ -81,6 +88,24 @@ func build(c: Dictionary) -> void:
 			spawn("bandit", at_ground(p), at_ground(TROLL_CAMP))
 			if camp == "tolled":
 				foes[-1]["tame"] = true
+	# Chapter 4 (flag "castle"): "burnt" = raiders hold the burning castle, "ruin" = they are driven out and it stands
+	# empty, "tolled" = they were paid and stay (tame) in the ruin.
+	var keep: String = W.flag("castle")
+	var raiders: int = {"burnt": 8, "tolled": 4}.get(keep, 0)
+	for i in raiders:
+		var p := CASTLE_YARD + Vector3(-9.0 + (i % 4) * 6.0, 0, -2.0 + (i / 4) * 5.0)
+		spawn("raider", at_ground(p), at_ground(CASTLE_YARD))
+		if keep == "tolled":
+			foes[-1]["tame"] = true
+	# Chapter 5 (flag "host"): "camped" = Varga and his toll camp on the north road before the castle gate. "broken" and
+	# "gone" leave nothing here (the castle flag says what became of the castle itself).
+	if W.flag("host") == "camped":
+		var toll := Vector3(0, 0, -106)
+		build_toll_camp(at_ground(toll))
+		for i in 3:  # toll-takers at the barrier (tame: they only fight if you start it)
+			spawn("raider", at_ground(toll + Vector3(-5.0 + i * 5.0, 0, -3.0)), at_ground(toll))
+			foes[-1]["tame"] = true
+		spawn("captain", at_ground(CASTLE_YARD + Vector3(0, 0, 4)), at_ground(CASTLE_YARD))
 
 
 func at_ground(p: Vector3) -> Vector3:
@@ -251,6 +276,34 @@ func build_bandit_camp(at: Vector3, camp: String) -> void:
 	W.box(node, Vector3(0.9, 4.9, -9), Vector3(1.6, 1.8, 0.05), flag_color)
 
 
+## Chapter 5: the Host's toll camp on the north road below the castle: a barrier across the road, tents, a fire and a black banner.
+func build_toll_camp(at: Vector3) -> void:
+	var node := Node3D.new()
+	node.position = at
+	add_child(node)
+	for x in [-7.0, 7.0]:  # barrier posts and a spiked bar across the road
+		W.box(node, Vector3(x, 1.0, 0), Vector3(0.3, 2.0, 0.3), Color("#3b2a1e"))
+	W.box(node, Vector3(0, 1.3, 0), Vector3(14.0, 0.18, 0.18), Color("#4a3220"))
+	for i in 7:
+		var spike: MeshInstance3D = W.box(node, Vector3(-6.0 + i * 2.0, 1.75, 0), Vector3(0.08, 0.7, 0.08), Color("#26231f"))
+		spike.rotation.z = 0.2
+	for spec in [[Vector3(-12, 0, -6), 0.4], [Vector3(12, 0, -7), -0.5]]:  # dark tents
+		var tent := Node3D.new()
+		tent.position = spec[0]
+		tent.rotation.y = spec[1]
+		node.add_child(tent)
+		for side in [-1, 1]:
+			var slab: MeshInstance3D = W.box(tent, Vector3(side * 1.0, 1.045, 0), Vector3(0.1, 3.0, 3.4),
+				Color("#2a2624") if side < 0 else Color("#322c28"))
+			slab.rotation.z = -side * 0.8
+		W.box(tent, Vector3(0, 2.1, 0), Vector3(0.14, 0.14, 3.7), Color("#17120e"))
+	W.glow(node, Vector3(0, 0.25, -6), Vector3(0.9, 0.35, 0.9), Color("#ff6a1a"), 3.5)  # their fire
+	W.light(node, Vector3(0, 1.4, -6), Color("#ff8a3a"), 2.5, 12.0)
+	W.box(node, Vector3(9.5, 3.0, 2), Vector3(0.18, 6.0, 0.18), Color("#3b2a1e"))  # black banner with a red ash-flame
+	W.box(node, Vector3(10.4, 5.0, 2), Vector3(1.6, 1.8, 0.05), Color("#161414"))
+	W.box(node, Vector3(10.4, 5.0, 2.04), Vector3(0.4, 0.7, 0.02), Color("#a82a2a"))
+
+
 # --- making creatures ------------------------------------------------------------------------------------
 
 func spawn(kind: String, at: Vector3, home: Vector3) -> void:
@@ -374,6 +427,47 @@ func model_bandit(node: Node3D) -> Dictionary:
 	W.box(blade, Vector3(0, 0, -0.35), Vector3(0.05, 0.03, 0.65), Color("#b8bcc4"))
 	W.box(blade, Vector3(0, 0, -0.02), Vector3(0.2, 0.04, 0.04), Color("#5a4030"))
 	return {"body": body, "head": head, "legs": legs, "arms": arms}
+
+
+## An Ashen Raider: soot-black leathers, an iron helm with a red crest, a heavy cleaver.
+func model_raider(node: Node3D) -> Dictionary:
+	var cloth := Color("#2a2624").lerp(Color("#3a2a24"), randf())
+	var body := Node3D.new()
+	node.add_child(body)
+	var legs := []
+	for side in [-1, 1]:
+		var leg := limb(body, Vector3(side * 0.13, 0.9, 0))
+		W.box(leg, Vector3(0, -0.45, 0), Vector3(0.2, 0.9, 0.22), Color("#1e1a18"))
+		legs.append(leg)
+	W.box(body, Vector3(0, 1.2, 0), Vector3(0.56, 0.65, 0.32), cloth)  # leather coat
+	W.box(body, Vector3(0, 1.42, 0), Vector3(0.62, 0.14, 0.36), Color("#6a6e76"))  # iron shoulders
+	W.box(body, Vector3(0, 0.93, 0), Vector3(0.6, 0.08, 0.36), Color("#5a1414"))  # red sash
+	var head := limb(body, Vector3(0, 1.72, 0))
+	W.box(head, Vector3(0, 0, 0), Vector3(0.28, 0.3, 0.28), Color("#b88a6a"))
+	W.box(head, Vector3(0, 0.14, 0.0), Vector3(0.33, 0.14, 0.33), Color("#7a7e86"))  # iron helm
+	W.box(head, Vector3(0, 0.25, 0.0), Vector3(0.06, 0.12, 0.3), Color("#a82a2a"))  # crest
+	var arms := []
+	for side in [-1, 1]:
+		var arm := limb(body, Vector3(side * 0.37, 1.48, 0))
+		W.box(arm, Vector3(0, -0.3, 0), Vector3(0.15, 0.6, 0.15), cloth.darkened(0.1))
+		arms.append(arm)
+	var blade := limb(arms[1], Vector3(0, -0.6, -0.05))
+	W.box(blade, Vector3(0, 0, -0.4), Vector3(0.12, 0.04, 0.7), Color("#8a8e96"))
+	W.box(blade, Vector3(0, 0, -0.02), Vector3(0.06, 0.06, 0.2), Color("#3a2a1e"))
+	return {"body": body, "head": head, "legs": legs, "arms": arms}
+
+
+## Varga: a raider in black plate with a horned helm, a red cloak and a great two-handed cleaver.
+func model_captain(node: Node3D) -> Dictionary:
+	var parts := model_raider(node)
+	var iron := Color("#4a4e56")
+	W.box(parts.body, Vector3(0, 1.2, -0.185), Vector3(0.5, 0.6, 0.06), iron)  # breastplate, proud of the coat
+	W.box(parts.body, Vector3(0, 1.3, 0.2), Vector3(0.6, 1.0, 0.06), Color("#7a1a1a"))  # red cloak down the back
+	for side in [-1, 1]:
+		var horn: MeshInstance3D = W.box(parts.head, Vector3(side * 0.2, 0.3, 0.0), Vector3(0.07, 0.3, 0.07), Color("#d8d0b8"))
+		horn.rotation.z = -side * 0.4
+		W.box(parts.arms[0 if side < 0 else 1], Vector3(0, -0.62, 0), Vector3(0.19, 0.1, 0.19), iron)  # gauntlets
+	return parts
 
 
 ## A tall, hooded barrow lord: dark robe, pale skull, green fire in the eyes, a long rusted blade.
@@ -750,4 +844,6 @@ func seen_from(from: Vector3, _viewer: Node) -> Array:
 			"sealed": " (the wight is slain and the door walled shut)", "laid": " (the dead were given rest, candles burn there)",
 			"bargain": " (the wight was paid his tithe and keeps his dead quiet)"}.get(W.flag("barrow"), "")],
 		"the camp of Gorrak the troll, %s%s" % [W.where(from, TROLL_CAMP), {"bandits": " (bandits have taken it over)",
-			"cleared": " (now a watch post of the valley)", "tolled": " (bandits hold it, paid, and tolled the road)"}.get(W.flag("camp"), "")]]
+			"cleared": " (now a watch post of the valley)", "tolled": " (bandits hold it, paid, and tolled the road)"}.get(W.flag("camp"), "")],
+		"Highmoor Castle's courtyard%s" % {"burnt": " (Ashen Raiders hold the burning castle)", "ruin": " (a burnt, empty ruin; the raiders are gone)",
+			"tolled": " (paid-off raiders squat in the burnt ruin)"}.get(W.flag("castle"), "")]

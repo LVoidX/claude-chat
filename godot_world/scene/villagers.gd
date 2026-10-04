@@ -36,6 +36,27 @@ func plan() -> Array:
 	var wall_y := top - 0.3 + 7.0 # walking along the top of the south wall, behind the battlements
 	var wall_z := castle.z + 15.6
 	var pasture: Vector3 = ctx.parts["animals"].PASTURE if ctx.parts.has("animals") else village + Vector3(6, 0, 24)
+	return plan_all(village, gate, wall_y, wall_z, castle, pasture)
+
+
+## (Chapter 4: with the castle burnt, the guards are no longer at the castle: they camp in the village instead.)
+func plan_all(village: Vector3, gate: Vector3, wall_y: float, wall_z: float, castle: Vector3, pasture: Vector3) -> Array:
+	var people := base_plan(village, gate, wall_y, wall_z, castle, pasture)
+	if W.flag("castle") in ["burnt", "ruin", "tolled"]:
+		var out := []
+		for p in people:
+			if p.name == "a guard":
+				p.name = "a refugee guard"
+				var spot: Vector3 = village + Vector3(-6.0 + out.size() * 3.0, 0, -9.0)
+				p.steps = [[spot, "idle", 20.0], [spot + Vector3(2.0, 0, 1.5), "idle", 8.0]]
+			elif p.name == "a guard on the wall":
+				continue
+			out.append(p)
+		return out
+	return people
+
+
+func base_plan(village: Vector3, gate: Vector3, wall_y: float, wall_z: float, castle: Vector3, pasture: Vector3) -> Array:
 	return [
 		{"name": "the farmer", "tunic": "#6a7d3a", "hat": "straw", "tool": "hoe", "steps": [
 			[FIELD + Vector3(-4, 0, -2), "work", 6.0], [FIELD + Vector3(0, 0, -2), "work", 6.0], [FIELD + Vector3(4, 0, 2), "work", 6.0],

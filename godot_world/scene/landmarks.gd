@@ -38,6 +38,15 @@ func build(c: Dictionary) -> void:
 	make_plates.call_deferred()  # (after every part is built: Marigold and the villagers come after this one)
 
 
+## Another part was swapped (world.gd reload_part): if it was someone with a nameplate, make the plates again.
+func part_reloaded(name: String) -> void:
+	if name in ["barnaby", "marigold", "villagers", "rpg"]:
+		for p in plates:
+			p[0].queue_free()
+		plates.clear()
+		make_plates()
+
+
 func make_plates() -> void:
 	for part in ctx.parts.values():
 		if "npc_id" in part and "body" in part and part.body:

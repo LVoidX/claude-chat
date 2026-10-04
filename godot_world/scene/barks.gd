@@ -17,6 +17,13 @@ const FLAG_LINES := {
 	"barrow=laid": ["The barrow is quiet again. Candles and flowers. You did that.", "I slept well last night, first time in weeks."],
 	"barrow=sealed": ["They walled up the barrow. Good. Leave it shut.", "Blue wards on the barrow door. Gives me shivers."],
 	"barrow=bargain": ["A bargain with the dead? You're braver than me. Or madder."],
+	"castle=burnt": ["Highmoor is burning! Did you see the smoke?", "Raiders in the castle... where will the guards sleep now?", "The Ashen Host. May they choke on their own smoke."],
+	"castle=ruin": ["Highmoor is a black shell, but it's ours to rebuild.", "The raiders are gone. The castle is not coming back by itself.", "I can still smell the smoke on the north wind."],
+	"host=camped": ["Varga's men bar the north road now. Toll for everything, even a loaf.", "A captain with horns on his helm sits in our castle. Wonderful.", "We paid them once. Now they want it again."],
+	"host=broken": ["Varga's down. The Host scattered like crows.", "North road's open again. First honest traveller in weeks."],
+	"host=gone": ["Varga took his iron and marched off. Good riddance, but who'll he rob next?", "Smoke-black men gone from the road. Feels strange."],
+	"castle=rebuilt": ["Highmoor stands again! Red banners and blue, look at that.", "The guards are back on the wall. I sleep better.", "Fresh timber on the walls. Smells of sawdust and hope."],
+	"castle=tolled": ["Raiders under a black banner on the hill. We paid for that.", "The Host keeps to the castle, as promised. I still lock my door."],
 }
 const ANY_LINES := ["Fine day for it.", "Mind the wolves in the woods, traveller.", "Have you seen the board by the road? Always work going.",
 	"The smith's prices are robbery, but his steel is good.", "Marigold's bread is the best in the valley.",

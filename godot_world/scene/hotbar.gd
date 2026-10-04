@@ -4,7 +4,7 @@ extends Node3D
 ## Sword: left click swings it and hurts goblins (goblins.gd) in front of you. Given with [sword] or [hotbar].
 ## state["hotbar"] = the bar has been given, state["sword_held"] = the sword is in hand.
 
-const SLOTS := ["Hammer", "Sword", "Rocket", "","", "", "", "", ""]
+const SLOTS := ["Hammer", "Sword", "Rocket", "","", "", "", "", "Todo"]  # slot 9 is the to-do book (todo.gd)
 const GUN_RANGE := 80.0
 const GUN_DAMAGE := 2  # a goblin takes 3 hit points: two shots
 const SLOT_SIZE := 58

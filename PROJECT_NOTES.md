@@ -143,6 +143,10 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - scene/fly.gd: [fly] / [land] toggle state["flying"]; world.gd physics then lets Space rise, Ctrl descend, Shift faster.
 
+- scene/todo.gd: to-do book on hotbar slot 9 (key 9, Esc closes). Text lives in todo.txt next to chat.pyw (also state["todo"]); read or edit that file and the book updates within a second. "[x] " prefix = done. Commands [todo add X], [todo done N], [todo remove N], [todo clear]. While it is open ctx["typing"] = the part, and world.gd's _input sends keys only to it.
+
+- Story reset (2026-10-04): to send the story back, copy story/seed.json over story/chapter.json; story.gd sees the lower chapter number and clears the flags (flags.json becomes {}). The user keeps level, gold and items.
+
 ## Ideas mentioned but not done
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).
@@ -155,6 +159,9 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 ## Story flags
 - troll: slain | appeased (ch.1). camp: bandits | cleared | tolled (ch.2): bandits (kind "bandit", creatures.gd) hold Gorrak's camp (96, 12); build_bandit_camp() draws tents/flag per state; "tolled" bandits are tame.
 - barrow: stirring | sealed | laid | bargain (ch.3): creatures.gd build_tomb_marks() dresses the barrow; "stirring" = 11 skeletons + Barrow Wight (kind "wight") at the door, "bargain" = tame wight and 4 tame skeletons, sealed/laid = no dead.
+
+- castle: burnt | ruin | tolled (ch.4): castle.gd build_ruin() (no roofs, soot, rubble, fire/smoke); "burnt" = 8 raiders (kind "raider") in the yard, "tolled" = 4 tame raiders + black banner; guards move to the village (villagers.gd plan_all). Ch.5 idea: rebuild the castle ("rebuilt"), or who moves into the ruin.
+- host: camped | broken | gone (ch.5, with castle): "camped" = toll barrier + tents on the north road (creatures.gd build_toll_camp), 3 tame raiders and Varga (kind "captain", hostile) in the yard. Kill him -> castle "ruin", host "broken"; bring 12 ore -> castle "rebuilt" (castle.gd build_rebuilt: timber hoardings, new door, blue pennants; guards return), host "gone". Ch.6 idea: refill the ruin (who moves in), or what the Host's masters do.
 
 ## RPG layer (2026-10-03)
 - scene/rpg.gd: level/xp/health/gold, inventory (I), quest journal (J), quest board by the village road (E), the smith's
@@ -189,3 +196,6 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   "rain" 0..1), [rain] / [rain stop]. The sword in hand shows the equipped weapon (rusty / iron / blue Troll-Bane).
 - barks.gd: villagers say a line as you pass, chosen by story flags (FLAG_LINES "flag=value"), level, rain, night.
   Storyteller: add lines for new flags there. Blocking: right mouse with the sword out (hotbar.blocking): 75% less damage.
+- Live reload is per part now (world.gd reload_part): saving scene/x.gd swaps only part x; other parts keep running
+  with their state. Story flag changes rebuild only the parts that called W.flag() for that flag during build()
+  (world.gd flag_users). A part holding another part's nodes can implement part_reloaded(name) to catch up.
