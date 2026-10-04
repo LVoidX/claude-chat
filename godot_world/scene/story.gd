@@ -64,6 +64,29 @@ func chapter_file() -> String:
 	return path if FileAccess.file_exists(path) else STORY_DIR.path_join("seed.json")
 
 
+## Restore the authored first chapter and clear story progress; rpg.gd resets character progress and rebuilds parts.
+func reset_to_first() -> bool:
+	var seed := FileAccess.get_file_as_string("res://story/seed.json")
+	if seed.is_empty():
+		return false
+	var file := FileAccess.open(W.project_file("godot_world/story/chapter.json"), FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(seed)
+	st()["chapter"] = 0
+	st()["flags"] = {}
+	st()["done"] = []
+	st()["kills"] = {}
+	st().erase("finished")
+	st().erase("interlude")
+	var flags_file := FileAccess.open(W.project_file("godot_world/story/flags.json"), FileAccess.WRITE)
+	if flags_file:
+		flags_file.store_string("{}")
+	data_sig = ""
+	writing = false
+	return true
+
+
 func load_chapter() -> void:
 	var path := chapter_file()
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
@@ -430,4 +453,3 @@ func pay(id: String) -> void:
 		if q.id == id and rpg and rpg.count(q.what) >= int(q.get("n", 1)):
 			rpg.take(q.what, int(q.get("n", 1)))
 			complete(id)
-

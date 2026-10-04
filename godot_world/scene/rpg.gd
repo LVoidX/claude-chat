@@ -90,6 +90,7 @@ var smith_fire: OmniLight3D
 var smith_node: Node3D  # Hob the smith (gives a quest)
 var fire_t := 0.0
 var _styles := {}
+var reset_dialog: ConfirmationDialog
 
 
 func build(c: Dictionary) -> void:
@@ -513,6 +514,12 @@ func build_hud() -> void:
 	layer = CanvasLayer.new()
 	layer.layer = 2
 	add_child(layer)
+	reset_dialog = ConfirmationDialog.new()
+	reset_dialog.title = "Reset the adventure?"
+	reset_dialog.dialog_text = "Return to Chapter 1 and restore the default level, gear, inventory and quests? This cannot be undone."
+	reset_dialog.ok_button_text = "Reset"
+	reset_dialog.confirmed.connect(reset_to_first)
+	layer.add_child(reset_dialog)
 	hurt_flash = ColorRect.new()  # the screen flashes red when you are hit
 	hurt_flash.color = Color(0.8, 0, 0, 0)
 	hurt_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -735,6 +742,25 @@ func fill_journal(body: VBoxContainer) -> void:
 		row(body, head, "" if s == "done" else q.text, [])
 	if not any:
 		body.add_child(label("No quests yet. Folk round here need a hand: look for a gold ! over someone's head, walk up and press E.", 15, Color("#c8b890")))
+	body.add_child(HSeparator.new())
+	body.add_child(button("Reset to Chapter 1…", func(): reset_dialog.popup_centered()))
+
+
+func reset_to_first() -> void:
+	var story = ctx.parts.get("story")
+	if not story or not story.reset_to_first():
+		W.show_notice("Couldn't reset the story file.", 4.0)
+		return
+	ctx.state["rpg"] = {"reset_v": 2, "level": 1, "xp": 0, "hp": 50, "gold": 10,
+		"inv": {"potion": 2}, "weapon": "rusty_sword", "armor": "", "quests": {}}
+	ctx.state["chests"] = {}
+	ctx.state["sword_held"] = false
+	ctx.state["rocket_held"] = false
+	ctx.state["rocket_owned"] = false
+	close_panel()
+	W.save_state.call_deferred()
+	W.load_parts.call_deferred()
+	W.show_notice("The adventure begins again: Chapter 1, level 1, with your starter gear.", 6.0)
 
 
 func fill_board(body: VBoxContainer) -> void:

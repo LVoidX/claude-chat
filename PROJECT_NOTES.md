@@ -145,7 +145,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - scene/todo.gd: to-do book on hotbar slot 9 (key 9, Esc closes). Text lives in todo.txt next to chat.pyw (also state["todo"]); read or edit that file and the book updates within a second. "[x] " prefix = done. Commands [todo add X], [todo done N], [todo remove N], [todo clear]. While it is open ctx["typing"] = the part, and world.gd's _input sends keys only to it.
 
-- Story reset (2026-10-04): to send the story back, copy story/seed.json over story/chapter.json; story.gd sees the lower chapter number and clears the flags (flags.json becomes {}). The user keeps level, gold and items.
+- Journal reset button restores story/seed.json as chapter.json and resets story flags, character to level 1, 10 gold, 2 potions, rusty sword, no armour, and all quests; it asks for confirmation first.
 
 - Rocket shove: world.gd sets the player's x/z velocity from the keys every frame, so adding to player.velocity.x/z does nothing. Sideways shoves go into W.push (fades out, zeroed on walls); vertical still goes into player.velocity.y (rocket.gd).
 
