@@ -27,7 +27,7 @@ const FLAG_LINES := {
 	"castle=rebuilt": ["Highmoor stands again! Red banners and blue, look at that.", "The guards are back on the wall. I sleep better.", "Fresh timber on the walls. Smells of sawdust and hope."],
 	"castle=tolled": ["Raiders under a black banner on the hill. We paid for that.", "The Host keeps to the castle, as promised. I still lock my door."],
 }
-const ANY_LINES := ["Fine day for it.", "Mind the wolves in the woods, traveller.", "Have you seen the board by the road? Always work going.",
+const ANY_LINES := ["Fine day for it.", "Mind the wolves in the woods, traveller.", "Folk round here always need a hand. Look for the ones with a gold mark over their heads.",
 	"The smith's prices are robbery, but his steel is good.", "Marigold's bread is the best in the valley.",
 	"Old Barnaby still talks about the sea. There's no sea here, Barnaby.", "Highmoor's guards don't let just anyone in."]
 const NIGHT_LINES := ["Late to be out, friend.", "Keep to the lantern light.", "The red moon again... bad omen."]

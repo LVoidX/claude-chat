@@ -70,9 +70,11 @@ func load_chapter() -> void:
 	if not parsed is Dictionary:
 		printerr("story: ", path, " is not valid JSON, keeping the old chapter")
 		return
-	data = parsed
 	data_sig = path + str(FileAccess.get_modified_time(path))
-	var number := int(data.get("chapter", 1))
+	var number := int(parsed.get("chapter", 1))
+	if number > int(st().chapter) and st().get("finished", false) and not interlude_done():
+		return  # written, but it waits until the interlude (news to the village, a night's rest) is over
+	data = parsed
 	if number != int(st().chapter):  # a new chapter begins
 		if number < int(st().chapter) and int(st().chapter) > 0:  # the story was sent back: forget what happened since
 			st().flags = {}
@@ -81,6 +83,7 @@ func load_chapter() -> void:
 		st().done = []
 		st().kills = {}
 		st().erase("finished")
+		st().erase("interlude")
 		var start: Dictionary = data.get("start_sets", {})
 		if not start.is_empty():
 			set_flags(start)
@@ -164,7 +167,8 @@ func complete(id: String) -> void:
 		set_flags(sets)
 	if ends:
 		writing = true
-		get_tree().create_timer(6.5).timeout.connect(W.show_notice.bind("The world shifts... the next chapter is being written.", 8.0))
+		st().interlude = {"tell": false, "rest": false}  # something to do while the next chapter is written
+		get_tree().create_timer(6.5).timeout.connect(W.show_notice.bind("Word of what you did will spread. Bring the news to Thornvale, then rest by the fire.", 8.0))
 		W.send({"t": "story_next", "chapter": int(st().chapter), "quest": id})
 	build_beams()
 	if rpg:
@@ -201,15 +205,23 @@ func build_beams() -> void:
 	for b in beams:
 		b[0].queue_free()
 	beams.clear()
+	var spots := []  # [position, quest id or interlude step]
 	for q in open_quests():
-		if not q.get("kind") in ["reach", "bring"] or not q.has("pos"):
-			continue
+		if q.get("kind") in ["reach", "bring"] and q.has("pos"):
+			spots.append([quest_pos(q), q.id])
+	var il: Dictionary = st().get("interlude", {}) if ctx.has("state") else {}
+	if st().get("finished", false) and not il.is_empty():
+		if not il.tell:
+			spots.append([Vector3(VILLAGE_SQUARE.x, W.ground_y(VILLAGE_SQUARE.x, VILLAGE_SQUARE.y), VILLAGE_SQUARE.y), "tell"])
+		elif not il.rest:
+			spots.append([Vector3(CAMPFIRE.x, W.ground_y(CAMPFIRE.x, CAMPFIRE.y), CAMPFIRE.y), "rest"])
+	for spot in spots:
 		var node := Node3D.new()
-		node.position = quest_pos(q)
+		node.position = spot[0]
 		add_child(node)
 		var beam: MeshInstance3D = W.glow(node, Vector3(0, 30, 0), Vector3(0.6, 60, 0.6), Color("#ffd24d"), 1.2)
 		beam.transparency = 0.6
-		beams.append([node, q.id])
+		beams.append([node, spot[1]])
 
 
 func _process(delta: float) -> void:
@@ -223,6 +235,14 @@ func _process(delta: float) -> void:
 			if rpg:
 				rpg.refresh_hud()
 	var player: Vector3 = W.player.global_position
+	var il: Dictionary = st().get("interlude", {})
+	if st().get("finished", false) and not il.is_empty() and not il.tell 			and Vector2(player.x - VILLAGE_SQUARE.x, player.z - VILLAGE_SQUARE.y).length() < 10.0:
+		il.tell = true  # the village hears what you did (and the villagers' lines follow the new flags, barks.gd)
+		W.show_notice("The villagers gather round the well to hear your tale. Now rest: the fire at the crossroads.", 7.0)
+		var rpg = ctx.parts.get("rpg")
+		if rpg:
+			rpg.add_xp(25)
+		interlude_step()
 	for q in open_quests():
 		var kind: String = q.get("kind", "")
 		if not kind in ["reach", "bring"] or not q.has("pos"):
@@ -247,8 +267,44 @@ func tracker_lines() -> Array:
 	for q in open_quests():
 		out.append(q.title + progress_text(q))
 	if st().get("finished", false):
-		out.append("(the next chapter is being written...)")
+		var il: Dictionary = st().get("interlude", {})
+		if not il.is_empty() and not interlude_done():
+			out.append(("[done] " if il.tell else "") + "Bring the news to Thornvale")
+			out.append(("[done] " if il.rest else "") + "Rest by the campfire at the crossroads")
+		else:
+			out.append("(no word yet of what comes next: explore, help the villagers...)")
 	return out
+
+
+# --- the interlude between chapters: gives the storyteller time to write, and makes sense in the story -------
+
+const VILLAGE_SQUARE := Vector2(-44, 2)
+const CAMPFIRE := Vector2(9, 6)  # (travel.gd FIRE)
+
+
+func interlude_done() -> bool:
+	var il: Dictionary = st().get("interlude", {})
+	return il.is_empty() or (il.get("tell", false) and il.get("rest", false))
+
+
+## travel.gd calls this when you rest by the campfire.
+func interlude_rest() -> void:
+	var il: Dictionary = st().get("interlude", {})
+	if not st().get("finished", false) or il.is_empty() or il.rest:
+		return
+	il.rest = true
+	interlude_step()
+
+
+func interlude_step() -> void:
+	build_beams()
+	var rpg = ctx.parts.get("rpg")
+	if rpg:
+		rpg.refresh_hud()
+	if interlude_done():
+		load_chapter()  # if the next chapter is written, it begins now
+		if st().get("finished", false):
+			W.show_notice("No word yet of what comes next. Explore, help the villagers, and it will find you.", 7.0)
 
 
 func chapter_title() -> String:

@@ -34,26 +34,28 @@ const ITEMS := {
 	"chainmail": {"name": "Chainmail", "kind": "armor", "def": 5, "price": 130, "desc": "Rings of iron. Blocks 5 damage a hit."},
 }
 
-## The quest board. kind "kill" counts kills of `what`, "bring" wants `n` of an item handed in at the board,
+## The villagers' quests: each has a "giver" (a villager from villagers.gd, or "smith"); walk up and press E. A gold
+## ! over someone = they have work for you, ? = ready to hand in. kind "kill" counts kills of `what`, "bring" wants `n`
+## of an item handed to the giver,
 ## "find" wants the item found once. Rewards: xp, gold, items.
 const QUESTS := [
-	{"id": "wolves", "title": "Wolf Trouble", "level": 1, "kind": "kill", "what": "wolf", "n": 5,
-		"text": "The shepherd has lost three lambs this week. Wolves prowl the woods around the meadow. Thin the packs.",
+	{"id": "wolves", "giver": "the shepherd", "title": "Wolf Trouble", "level": 1, "kind": "kill", "what": "wolf", "n": 5,
+		"text": "I've lost three lambs this week. Wolves prowl the woods around the meadow. Thin the packs for me?",
 		"xp": 70, "gold": 30, "items": {"potion": 2}},
-	{"id": "herbs", "title": "The Healer's Errand", "level": 1, "kind": "bring", "what": "herb", "n": 6,
-		"text": "Silverleaf grows wild at the edges of the meadow, glowing faintly green. Bring six sprigs for the healer's salves.",
+	{"id": "herbs", "giver": "the water carrier", "title": "The Healer's Errand", "level": 1, "kind": "bring", "what": "herb", "n": 6,
+		"text": "The healer's run out of silverleaf. It grows wild at the edges of the meadow, glowing faintly green. Six sprigs, if you can.",
 		"xp": 40, "gold": 15, "items": {"potion": 3}},
-	{"id": "ring", "title": "The Miller's Ring", "level": 1, "kind": "find", "what": "ring", "n": 1,
-		"text": "Old Hob the miller lost his wedding ring somewhere near the windmill on the eastern hill. Look for a glint in the grass.",
+	{"id": "ring", "giver": "the farmer", "title": "The Miller's Ring", "level": 1, "kind": "find", "what": "ring", "n": 1,
+		"text": "Old Edric the miller lost his wedding ring up by the windmill on the eastern hill. Keep an eye out for a glint in the grass.",
 		"xp": 45, "gold": 35, "items": {}},
-	{"id": "pelts", "title": "A Warm Winter", "level": 2, "kind": "bring", "what": "pelt", "n": 4,
-		"text": "The tanner will turn four good wolf pelts into armour, and let you keep it.",
+	{"id": "pelts", "giver": "the shepherd", "title": "A Warm Winter", "level": 2, "kind": "bring", "what": "pelt", "n": 4,
+		"text": "Bring me four good wolf pelts and my brother the tanner will make you armour from them.",
 		"xp": 50, "gold": 0, "items": {"leather": 1}},
-	{"id": "ore", "title": "Iron for the Anvil", "level": 2, "kind": "bring", "what": "ore", "n": 5,
-		"text": "The smith's iron ran out. Rust-red ore rocks crop out on the high slopes. Press E at one to mine it.",
+	{"id": "ore", "giver": "smith", "title": "Iron for the Anvil", "level": 2, "kind": "bring", "what": "ore", "n": 5,
+		"text": "My iron's run out. Rust-red ore rocks crop out on the high slopes; press E at one to mine it. Five lumps and I'll forge you a blade.",
 		"xp": 70, "gold": 20, "items": {"iron_sword": 1}},
-	{"id": "barrow", "title": "The Restless Dead", "level": 3, "kind": "kill", "what": "skeleton", "n": 6,
-		"text": "Something has stirred the old barrow in the north-western woods. The dead walk there. Put them back to rest.",
+	{"id": "barrow", "giver": "a guard", "title": "The Restless Dead", "level": 3, "kind": "kill", "what": "skeleton", "n": 6,
+		"text": "Something has stirred the old barrow in the north-western woods. The dead walk there. The lord wants them put back to rest.",
 		"xp": 140, "gold": 60, "items": {"potion": 2}},
 ]
 
@@ -82,6 +84,7 @@ var last_strike := -10.0
 var regen := 0.0
 var near_act: Dictionary = {}  # the interactable you are standing next to
 var smith_fire: OmniLight3D
+var smith_node: Node3D  # Hob the smith (gives a quest)
 var fire_t := 0.0
 var _styles := {}
 
@@ -103,7 +106,6 @@ func build(c: Dictionary) -> void:
 		s["quests"] = {}
 	if not s.has("hp"):
 		s["hp"] = max_hp()
-	build_board()
 	build_smithy()
 	build_hud()
 	refresh_hud()
@@ -418,6 +420,7 @@ func build_smithy() -> void:
 		blade.rotation.x = 0.1
 	# the smith: a stout figure in a leather apron
 	var smith := Node3D.new()
+	smith_node = smith
 	smith.position = Vector3(0.2, 0, 0.9)
 	smith.rotation.y = PI * 0.15
 	smithy.add_child(smith)
@@ -447,8 +450,8 @@ func build_smithy() -> void:
 
 
 func interactables() -> Array:
-	return [
-		{"pos": at_ground(BOARD), "label": "Read the quest board", "act": open_panel.bind("board"), "range": 3.2},
+	var out := givers_to_talk_to()
+	return out + [
 		{"pos": at_ground(SMITHY), "label": "Trade with the smith", "act": open_panel.bind("shop"), "range": 3.6},
 	]
 
@@ -618,7 +621,7 @@ func refresh_panel() -> void:
 	panel.add_child(outer)
 	var head := HBoxContainer.new()
 	var title := label({"inventory": "INVENTORY", "journal": "QUEST JOURNAL", "board": "THE QUEST BOARD",
-		"shop": "THE SMITH"}.get(panel_kind, ""), 24, Color("#ffd24d"))
+		"shop": "THE SMITH"}.get(panel_kind, giver_title(panel_kind.trim_prefix("giver:")).to_upper()), 24, Color("#ffd24d"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	head.add_child(label("%d gold" % count("gold"), 18, Color("#ffe08a")))
@@ -641,6 +644,9 @@ func refresh_panel() -> void:
 			fill_board(body)
 		"shop":
 			fill_shop(body)
+		_:
+			if panel_kind.begins_with("giver:"):
+				fill_giver(body, panel_kind.trim_prefix("giver:"))
 
 
 func row(body: Control, text: String, sub: String, buttons: Array) -> void:
@@ -715,7 +721,7 @@ func fill_journal(body: VBoxContainer) -> void:
 		var head: String = ("[done] " + q.title) if s == "done" else quest_line(q)
 		row(body, head, "" if s == "done" else q.text, [])
 	if not any:
-		body.add_child(label("No quests yet. The quest board stands by the road into the village, west of the meadow.", 15, Color("#c8b890")))
+		body.add_child(label("No quests yet. Folk round here need a hand: look for a gold ! over someone's head, walk up and press E.", 15, Color("#c8b890")))
 
 
 func fill_board(body: VBoxContainer) -> void:
@@ -737,6 +743,112 @@ func fill_board(body: VBoxContainer) -> void:
 		else:
 			buttons.append(button("Accept", accept.bind(q.id)))
 		row(body, title, ("" if s == "done" else q.text + "\n") + reward, buttons)
+
+
+## --- quest givers ---------------------------------------------------------------------------------------
+
+const GIVER_TITLES := {"the shepherd": "Shepherd", "the water carrier": "Water Carrier", "the farmer": "Farmer",
+	"smith": "Hob the Smith", "a guard": "Castle Guard"}
+const GREETINGS := {"the shepherd": "\"Ah, a strong arm. Just what I need.\"", "the water carrier": "\"Mind the bucket! Oh, it's you.\"",
+	"the farmer": "\"Hard work, this. Got a moment, friend?\"", "smith": "\"Need steel? Or here to help for once?\"",
+	"a guard": "\"Halt. ...Oh, you're the one they talk about.\""}
+var marks := {}  # giver -> Label3D: the ! or ? over their head
+
+
+func giver_title(g: String) -> String:
+	return GIVER_TITLES.get(g, g.capitalize())
+
+
+## Where a giver is now: villagers walk about (villagers.gd), the smith stays at his forge. null = not around.
+func giver_node(g: String) -> Node3D:
+	if g == "smith":
+		return smith_node
+	var v = ctx.parts.get("villagers")
+	if v and "folk" in v:
+		for f in v.folk:
+			if f.name == g:
+				return f.node
+	return null
+
+
+func giver_quests(g: String) -> Array:
+	return QUESTS.filter(func(q): return q.get("giver", "") == g)
+
+
+## "!" = has a quest you can take, "?" = one ready to hand in, "." = one in progress, "" = nothing.
+func giver_state(g: String) -> String:
+	var mark := ""
+	for q in giver_quests(g):
+		var s := qstate(q.id)
+		if s == "active" and ready_to_hand_in(q):
+			return "?"
+		if s == "" and int(st().level) >= int(q.level):
+			mark = "!"
+		elif s == "active" and mark == "":
+			mark = "."
+	return mark
+
+
+func givers_to_talk_to() -> Array:
+	var out := []
+	var seen := {}
+	for q in QUESTS:
+		var g: String = q.get("giver", "")
+		if g == "" or g in seen:
+			continue
+		seen[g] = true
+		var node := giver_node(g)
+		if node and giver_state(g) != "":
+			out.append({"pos": node.global_position, "label": "Talk to the " + giver_title(g), "act": open_panel.bind("giver:" + g), "range": 2.8})
+	return out
+
+
+func update_marks() -> void:
+	for q in QUESTS:
+		var g: String = q.get("giver", "")
+		if g == "":
+			continue
+		if not g in marks or not is_instance_valid(marks[g]):
+			var l := Label3D.new()
+			l.font_size = 72
+			l.outline_size = 14
+			l.pixel_size = 0.0013
+			l.fixed_size = true
+			l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			l.no_depth_test = true
+			add_child(l)
+			marks[g] = l
+		var mark: Label3D = marks[g]
+		var node := giver_node(g)
+		var state := giver_state(g)
+		mark.visible = node != null and state in ["!", "?"]
+		if mark.visible:
+			mark.text = state
+			mark.modulate = Color("#ffd24d")
+			mark.global_position = node.global_position + Vector3(0, 2.75 + sin(Time.get_ticks_msec() / 300.0) * 0.06, 0)
+
+
+func fill_giver(body: VBoxContainer, g: String) -> void:
+	body.add_child(label(GREETINGS.get(g, ""), 16, Color("#e8d9b0")))
+	for q in giver_quests(g):
+		var s := qstate(q.id)
+		var reward := "Reward: %d xp" % q.xp
+		if int(q.gold) > 0:
+			reward += ", %d gold" % q.gold
+		for item in q.items:
+			reward += ", " + (("%d %s" % [q.items[item], ITEMS[item].name]) if int(q.items[item]) > 1 else ITEMS[item].name)
+		var buttons := []
+		var title: String = q.title
+		if s == "done":
+			title += "   (done, thank you!)"
+		elif s == "active":
+			buttons.append(button("Hand in" if ready_to_hand_in(q) else "%d/%d" % [progress(q), q.n], hand_in.bind(q.id), ready_to_hand_in(q)))
+		elif int(st().level) < int(q.level):
+			buttons.append(button("Come back at level %d" % q.level, func(): pass, false))
+		else:
+			buttons.append(button("Accept", accept.bind(q.id)))
+		row(body, title, ("" if s == "done" else str(q.text) + "
+") + reward, buttons)
 
 
 func fill_shop(body: VBoxContainer) -> void:
@@ -814,6 +926,7 @@ func key(event: InputEventKey) -> void:
 
 
 func _process(delta: float) -> void:
+	update_marks()
 	if not layer:
 		return
 	layer.visible = W.camera.current

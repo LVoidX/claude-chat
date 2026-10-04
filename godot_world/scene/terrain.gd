@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 11  # bump to rebuild the cached ground after changing the shape below
+const VERSION := 12  # bump to rebuild the cached ground after changing the shape below
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -309,18 +309,24 @@ func pine_mesh() -> ArrayMesh:
 	trunk.height = 2.0
 	trunk.radial_segments = 6
 	st.append_from(trunk, 0, Transform3D(Basis(), Vector3(0, 1.0, 0)))
+	var roots := CylinderMesh.new()  # a flare of roots where it meets the ground
+	roots.top_radius = 0.24
+	roots.bottom_radius = 0.24 * 1.9
+	roots.height = 0.45
+	roots.radial_segments = 6
+	st.append_from(roots, 0, Transform3D(Basis(), Vector3(0, 0.2, 0)))
 	st.commit(mesh)
 	mesh.surface_set_material(0, tree_material(Color("#4a3423")))
 	st = SurfaceTool.new()
-	for k in 4:  # stacked cones, each smaller
+	for k in 5:  # stacked cones, each smaller and twisted a little, so the tiers read as boughs
 		var cone := CylinderMesh.new()
 		cone.top_radius = 0.0
-		cone.bottom_radius = 2.1 - k * 0.42
-		cone.height = 2.3 - k * 0.25
-		cone.radial_segments = 7
-		st.append_from(cone, 0, Transform3D(Basis(), Vector3(0, 2.4 + k * 1.15, 0)))
+		cone.bottom_radius = 2.2 - k * 0.38
+		cone.height = 2.1 - k * 0.2
+		cone.radial_segments = 8
+		st.append_from(cone, 0, Transform3D(Basis(Vector3.UP, k * 0.45), Vector3(0, 2.2 + k * 0.95, 0)))
 	st.commit(mesh)
-	mesh.surface_set_material(1, tree_material(Color("#2f5230")))
+	mesh.surface_set_material(1, foliage_material(Color("#2f5a32"), 1.2, 7.5))
 	return mesh
 
 
@@ -333,10 +339,17 @@ func oak_mesh() -> ArrayMesh:
 	trunk.height = 2.6
 	trunk.radial_segments = 6
 	st.append_from(trunk, 0, Transform3D(Basis(), Vector3(0, 1.3, 0)))
+	var roots := CylinderMesh.new()  # a flare of roots where it meets the ground
+	roots.top_radius = 0.34
+	roots.bottom_radius = 0.34 * 1.9
+	roots.height = 0.45
+	roots.radial_segments = 6
+	st.append_from(roots, 0, Transform3D(Basis(), Vector3(0, 0.2, 0)))
 	st.commit(mesh)
 	mesh.surface_set_material(0, tree_material(Color("#53392a")))
 	st = SurfaceTool.new()
-	for blob in [[Vector3(0, 3.4, 0), 1.9], [Vector3(0.9, 3.0, 0.3), 1.3], [Vector3(-0.8, 3.1, -0.4), 1.35], [Vector3(0.1, 4.2, -0.2), 1.25]]:
+	for blob in [[Vector3(0, 3.4, 0), 1.9], [Vector3(0.9, 3.0, 0.3), 1.3], [Vector3(-0.8, 3.1, -0.4), 1.35], [Vector3(0.1, 4.2, -0.2), 1.25],
+			[Vector3(-0.3, 3.7, 0.9), 1.15], [Vector3(0.7, 4.0, -0.8), 1.05], [Vector3(-1.1, 3.9, 0.3), 0.95]]:  # a fuller, lumpier crown
 		var s := SphereMesh.new()
 		s.radius = blob[1]
 		s.height = blob[1] * 1.7
@@ -344,8 +357,47 @@ func oak_mesh() -> ArrayMesh:
 		s.rings = 5
 		st.append_from(s, 0, Transform3D(Basis(), blob[0]))
 	st.commit(mesh)
-	mesh.surface_set_material(1, tree_material(Color("#3e6b2e")))
+	mesh.surface_set_material(1, foliage_material(Color("#40722f"), 1.6, 5.4))
 	return mesh
+
+
+const FOLIAGE_SHADER := """
+shader_type spatial;
+render_mode cull_back;
+uniform vec3 leaf : source_color;
+uniform float low = 1.0;  // the crown's bottom and top (model space): darker below, sunlit on top
+uniform float high = 6.0;
+varying float up;
+varying vec3 wp;
+void vertex() {
+	up = clamp((VERTEX.y - low) / (high - low), 0.0, 1.0);
+	wp = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	float sway = sin(TIME * 1.1 + wp.x * 0.13 + wp.z * 0.11) + 0.4 * sin(TIME * 2.3 + wp.z * 0.3);
+	VERTEX.x += sway * 0.07 * up * up;  // the top moves, the bottom stays put
+	VERTEX.z += sway * 0.04 * up * up;
+}
+void fragment() {
+	vec3 c = leaf * COLOR.rgb;  // (COLOR = this tree's shade)
+	float tint = fract(sin(dot(wp.xz, vec2(12.9898, 78.233))) * 43758.5453);
+	c = mix(c, c * vec3(1.08, 1.02, 0.78), tint * 0.5);  // some trees a little yellower
+	c *= mix(0.62, 1.12, up);
+	ALBEDO = c;
+	ROUGHNESS = 0.85;
+	BACKLIGHT = vec3(0.12, 0.18, 0.06);
+}
+"""
+
+
+## Leaves: darker low in the crown, sunlit on top, each tree its own shade, swaying a little in the wind.
+func foliage_material(color: Color, low: float, high: float) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = FOLIAGE_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = shader
+	m.set_shader_parameter("leaf", color)
+	m.set_shader_parameter("low", low)
+	m.set_shader_parameter("high", high)
+	return m
 
 
 func tree_material(color: Color) -> StandardMaterial3D:

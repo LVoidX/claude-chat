@@ -281,7 +281,8 @@ func _process(delta: float) -> void:
 		var goal := place(step[0])
 		var to := Vector3(goal.x - node.position.x, 0, goal.z - node.position.z)
 		var moving := false
-		if to.length() > 0.12:
+		var by_you := Vector2(player.x - node.position.x, player.z - node.position.z).length() < 2.6
+		if to.length() > 0.12 and not by_you:  # (they stop to talk when you stand right by them)
 			var dir := to.normalized()
 			var me := Vector3(player.x - node.position.x, 0, player.z - node.position.z)
 			if me.length() < 1.6 and me.normalized().dot(dir) > 0.3:  # you're in the way: step around you
@@ -290,6 +291,8 @@ func _process(delta: float) -> void:
 			node.position.y = goal.y if step[0].y > 0.0 else W.ground_y(node.position.x, node.position.z)
 			node.rotation.y = lerp_angle(node.rotation.y, atan2(-dir.x, -dir.z), minf(delta * 7.0, 1.0))
 			moving = true
+		elif by_you:
+			f.work = false  # (puts the tool down and turns to you, below)
 		else:
 			f.wait -= delta
 			if f.wait <= 0.0:
@@ -310,7 +313,7 @@ func _process(delta: float) -> void:
 			work_pose(f)
 		else:  # standing about: tool held, and a slow look around now and then
 			f.tool_arm.rotation.x = lerpf(f.tool_arm.rotation.x, 0.15, minf(delta * 4.0, 1.0))
-			if Vector2(player.x - node.position.x, player.z - node.position.z).length() < 4.0:
+			if Vector2(player.x - node.position.x, player.z - node.position.z).length() < 4.0 or by_you:
 				node.rotation.y = lerp_angle(node.rotation.y, atan2(-(player.x - node.position.x), -(player.z - node.position.z)), minf(delta * 3.0, 1.0))
 
 

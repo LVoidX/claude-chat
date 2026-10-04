@@ -239,7 +239,7 @@ func cart(at: Vector3) -> void:
 		wheel.rotation.z = PI / 2.0
 		cart_node.add_child(wheel)
 	kit.block(W, cart_node, Vector3(0, 0.6, -1.8), Vector3(0.08, 0.08, 1.6), "timber", false)  # the shaft
-	hay(at + Vector3(0, 0.0, 0))  # (a bale stands beside it)
+	kit.block(W, cart_node, Vector3(0, 1.17, 0.15), Vector3(1.15, 0.72, 1.5), "thatch", false)  # a load of hay in the bed
 
 
 ## A stone windmill on the hill, with a wooden cap and four lattice sails turning in the wind.

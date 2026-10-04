@@ -200,7 +200,7 @@ quest kinds), PROJECT_NOTES.md (what exists and the user's taste), and the scene
    doable with what exists or what you build now; fair for the player's level (state in world_state.json, "rpg").
    Give rewards that fit (xp 100-400, some gold or items).
 5. Places (x, z; north is -z): meadow centre (0, 0), flat, radius 58; castle (0, -140) on a hilltop (y 17), gate
-   facing south at (0, -120); village (-46, 0) with the quest board (-30, -5.5) and the smith (-30, 8); Marigold's
+   facing south at (0, -120); village (-46, 0) with the smith (-30, 8) (side quests come from villagers: rpg.gd QUESTS "giver"); Marigold's
    stall (12, 18); windmill (74, 58); wheat field (-30, -28); log pile (-54, -20); sheep pasture (-40, 24); wolf dens
    (80, -32), (-24, 92), (-112, -20); the old barrow (-80, -80); the troll camp (96, 12); roads from the centre north
    to the castle, west to the village, east to the mill. W.ground_y(x, z) is the height; terrain.keep_clear() keeps

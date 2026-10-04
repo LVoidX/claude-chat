@@ -114,7 +114,10 @@ func rest() -> void:
 		if night and base:
 			ctx.state["time"] = 7.0
 			base.apply_time(0.0)
-		W.show_notice("You rest by the fire until morning, and wake refreshed." if night else "You rest a while by the fire. Fully healed.", 5.0))
+		W.show_notice("You rest by the fire until morning, and wake refreshed." if night else "You rest a while by the fire. Fully healed.", 5.0)
+		var story = ctx.parts.get("story")  # (between chapters, resting is part of the story: news may come)
+		if story and story.has_method("interlude_rest"):
+			story.interlude_rest())
 	tw.tween_interval(0.8 if night else 0.3)
 	tw.tween_property(fade, "color:a", 0.0, 1.0)
 

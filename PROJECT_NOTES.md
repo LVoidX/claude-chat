@@ -147,6 +147,8 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Story reset (2026-10-04): to send the story back, copy story/seed.json over story/chapter.json; story.gd sees the lower chapter number and clears the flags (flags.json becomes {}). The user keeps level, gold and items.
 
+- Rocket shove: world.gd sets the player's x/z velocity from the keys every frame, so adding to player.velocity.x/z does nothing. Sideways shoves go into W.push (fades out, zeroed on walls); vertical still goes into player.velocity.y (rocket.gd).
+
 ## Ideas mentioned but not done
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).
@@ -162,6 +164,10 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - castle: burnt | ruin | tolled (ch.4): castle.gd build_ruin() (no roofs, soot, rubble, fire/smoke); "burnt" = 8 raiders (kind "raider") in the yard, "tolled" = 4 tame raiders + black banner; guards move to the village (villagers.gd plan_all). Ch.5 idea: rebuild the castle ("rebuilt"), or who moves into the ruin.
 - host: camped | broken | gone (ch.5, with castle): "camped" = toll barrier + tents on the north road (creatures.gd build_toll_camp), 3 tame raiders and Varga (kind "captain", hostile) in the yard. Kill him -> castle "ruin", host "broken"; bring 12 ore -> castle "rebuilt" (castle.gd build_rebuilt: timber hoardings, new door, blue pennants; guards return), host "gone". Ch.6 idea: refill the ruin (who moves in), or what the Host's masters do.
+
+- Ch.2 rewritten after the story reset (2026-10-04): start_sets camp=bandits; kill 5 bandits -> cleared, or bring 120 gold to (96, 12) -> tolled. barks.gd has camp=bandits lines.
+
+- Ch.3 after the reset (2026-10-04): reuses the barrow flag (start_sets barrow=stirring; kill wight -> sealed, bring 6 bones -> laid, bring 150 gold -> bargain), framed as the tolled bandits having looted the barrow. barks.gd has an extra stirring line.
 
 ## RPG layer (2026-10-03)
 - scene/rpg.gd: level/xp/health/gold, inventory (I), quest journal (J), quest board by the village road (E), the smith's
@@ -199,3 +205,6 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Live reload is per part now (world.gd reload_part): saving scene/x.gd swaps only part x; other parts keep running
   with their state. Story flag changes rebuild only the parts that called W.flag() for that flag during build()
   (world.gd flag_users). A part holding another part's nodes can implement part_reloaded(name) to catch up.
+- Side quests come from villagers now (rpg.gd QUESTS "giver"; gold ! / ? over their heads; the board is gone).
+- Between chapters there is an interlude (story.gd): bring the news to Thornvale, rest by the campfire; the next chapter
+  (even if already written) starts only after that, so the storyteller has time and it fits the story.
