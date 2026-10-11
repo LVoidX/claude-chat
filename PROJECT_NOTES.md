@@ -176,6 +176,10 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Ch.5 after castle=ruin (2026-10-04): "The Captain Returns", reuses host/castle code (start_sets host=camped; kill Varga -> host broken; 12 ore -> castle rebuilt + host gone). No new code needed.
 
+- dead: walking | slain | hallowed (ch.6, with castle=ruin): creatures.gd spawns 8 skeletons in the Highmoor yard, castle.gd build_dead_marks() (blue flames; cairn with sword; cairn with flowers and lamp). Kill 8 skeletons -> slain, bring 6 herb to the gate -> hallowed. Ch.7 idea: the refugees return and the castle needs a new lord.
+
+- lord: vacant | bram | council | company (ch.7 "The Empty Throne", with castle=ruin): castle.gd build_lord() (refugee tents + oath post E action "crown_bram" when vacant; standards per lord), creatures.gd (company = 4 tame bandits in the yard), villagers.gd (guards return to the gate for bram/council). Bram: E at the oath post; council: 8 pelts; company: 200 gold at the gate. Ch.8 idea: the new rulers' consequences (taxes, a rival claimant, the company turns on the valley).
+
 ## RPG layer (2026-10-03)
 - scene/rpg.gd: level/xp/health/gold, inventory (I), quest journal (J), quest board by the village road (E), the smith's
   shop across the road (E: buy, sell for half), Q drinks a potion, death = wake at the well minus 10% gold. State in
@@ -298,3 +302,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - map.gd also marks quest givers (gold ! = has work for you at your level, ? = ready to hand in) at their current positions.
 - Night schedule: when it is dark (night > 0.75) Wat, Osric, Elsie and Tam stop work and gather round the crossroads campfire (villagers.gd NIGHT_FOLK); the guards stay at their posts. In the morning they resume their routes.
 - dog.gd (Blender dog.glb): a farm dog lies by the crossroads campfire. E beside it calls it (it then trots after you, 2 m behind, and comes at once next time: state["dog_joined"]); E again sends it home. It goes home by itself when you are 140 m from the fire.
+- net.gd (F3): small co-op. Host a game (UDP 7777) or join by address; players see each other (simple figure + name), positions only (quests/fights/story stay separate). Needs the host reachable: forward UDP 7777, or Tailscale/ZeroTier. Testing: `godot --path godot_world -- --host` and `-- --join=127.0.0.1` (tested locally, both directions).
