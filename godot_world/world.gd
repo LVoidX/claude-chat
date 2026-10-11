@@ -344,6 +344,17 @@ func load_mesh(name: String) -> ArrayMesh:
 	return found
 
 
+## The material for Blender models whose colours are painted into the vertices (roofs, props): the colour comes
+## from the mesh. One shared instance.
+func painted_mat() -> StandardMaterial3D:
+	if not ctx.has("painted_mat"):
+		var m := StandardMaterial3D.new()
+		m.vertex_color_use_as_albedo = true
+		m.roughness = 0.95
+		ctx["painted_mat"] = m
+	return ctx["painted_mat"]
+
+
 ## Take an old part out of the world now (its _exit_tree runs, so it tidies up first), but delete it only at the end
 ## of the frame: freeing it on the spot crashed the engine when a story flag swapped the creatures mid-fight.
 func retire_part(old: Node) -> void:

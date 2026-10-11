@@ -272,3 +272,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   godot_world/models3d/*.glb; world.gd load_mesh(name) loads them at run time. Used for the oak, pine, three rocks and the
   berry bushes (terrain.gd). Blender 5.2.2 is at D:\Toolslenderlender-5.2.2-windows-x64lender.exe. The trees/rocks
   cut triangles per frame from 9.6M to 3.6M and look better. Next models: village props, roofs, furniture.
+- Cottage roofs (village.gd cottage()) are Blender models roof_0..4.glb (tools/blender/roof.py): layered thatch courses with ragged edges, moss near the eaves, ridge roll, dark underside; sized to each HOUSES entry (if you change a house size, change HOUSES in roof.py and re-export). W.painted_mat() is the shared vertex-colour material.

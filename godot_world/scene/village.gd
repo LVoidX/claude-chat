@@ -155,26 +155,33 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 		brace.rotation.x = 0.5
 	# roof: a steep thatched prism over the length of the house, overhanging a little
 	var roof := MeshInstance3D.new()
-	var prism := PrismMesh.new()
-	prism.size = Vector3(w + 1.2, 2.8, d + 1.1)
-	roof.mesh = prism
-	roof.material_override = kit.mat("thatch")
-	roof.position = Vector3(0, 0.4 + h + 1.4, 0)
+	var painted_roof: ArrayMesh = W.load_mesh("roof_%d" % index)  # layered thatch made in Blender (tools/blender/roof.py)
+	if painted_roof:
+		roof.mesh = painted_roof
+		roof.material_override = W.painted_mat()
+		roof.position = Vector3(0, 0.4 + h, 0)  # (its base is at its own y = 0)
+	else:
+		var prism := PrismMesh.new()
+		prism.size = Vector3(w + 1.2, 2.8, d + 1.1)
+		roof.mesh = prism
+		roof.material_override = kit.mat("thatch")
+		roof.position = Vector3(0, 0.4 + h + 1.4, 0)
 	house.add_child(roof)
 	roof.create_convex_collision()  # the sloped roof is solid too (you can stand on it)
 	# Timber eaves finish the overhang, and a thatch ridge caps the two roof slopes.
 	var eave_x := w / 2.0 + 0.67
-	var ridge_y := roof.position.y + 1.4
+	var ridge_y := 0.4 + h + 2.8
 	var roof_slope := atan2(2.8, eave_x)
 	for side in [-1, 1]:
 		kit.block(W, house, Vector3(side * eave_x, 3.32, 0), Vector3(0.14, 0.18, d + 1.3), "timber", false)
-		for course in range(1, 6):  # raised straw courses catch moonlight along the roof slope
+		for course in range(1, 6 if painted_roof == null else 1):  # raised straw courses catch moonlight along the roof slope
 			var course_fraction := float(course) / 6.0
 			var row: MeshInstance3D = kit.block(W, house, Vector3(side * eave_x * course_fraction, ridge_y - 2.8 * course_fraction, 0),
 				Vector3(0.12, 0.045, d + 1.04), "thatch", false,
 				Color("#d2b66f") if course % 2 == 0 else Color("#b99755"))
 			row.rotation.z = -side * roof_slope
-	kit.block(W, house, Vector3(0, roof.position.y + 1.48, 0), Vector3(0.24, 0.16, d + 1.3), "thatch", false)
+	if painted_roof == null:
+		kit.block(W, house, Vector3(0, ridge_y + 0.08, 0), Vector3(0.24, 0.16, d + 1.3), "thatch", false)
 	var chimney_x := w / 2.0 - 0.7
 	kit.block(W, house, Vector3(chimney_x, 0.4 + h + 1.4, d / 4.0), Vector3(0.6, 2.8, 0.6), "stone", false)
 	if index % 2 == 0:
