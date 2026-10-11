@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 21  # rebuild cached terrain and grass after changing their scatter
+const VERSION := 22  # rebuild cached terrain and grass after changing their scatter
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -26,8 +26,8 @@ const ROAD_WIDTH := 3.2
 ## Everything is derived from this one polyline: the channel cut into the ground (height_at), the water ribbon, the
 ## muddy banks (ground_color), the reeds, and what keeps trees off it (keep_clear). The meadow is flat at y = 0, the
 ## water sits at WATER_Y, a little below it.
-const STREAM := [Vector2(-52, 49), Vector2(-36, 44), Vector2(-18, 49), Vector2(1, 52), Vector2(20, 47), Vector2(36, 42), Vector2(47, 34)]
-const POND := Vector3(51, 0, 30)  # centre (x, z; y unused); radius POND_R
+const STREAM := [Vector2(-52, 49), Vector2(-36, 44), Vector2(-18, 49), Vector2(1, 52), Vector2(16, 49), Vector2(28, 45)]
+const POND := Vector3(33, 0, 42)  # centre (x, z; y unused); radius POND_R (well clear of the east road)
 const POND_R := 6.5
 const STREAM_DEPTH := 0.75
 const WATER_Y := -0.16
