@@ -65,6 +65,8 @@ func _process(delta: float) -> void:
 	if terrain and terrain.ground_material:
 		terrain.ground_material.set_shader_parameter("wetness", wet)
 	var base = ctx.parts.get("base")  # (base.gd sets the light each frame before us: we dim what it set)
+	if base and base.cloud_material:  # more cloud when it rains (and a few drifting clouds even on dry days, base.gd)
+		base.cloud_material.set_shader_parameter("cloud_cover", lerpf(0.45, 1.0, wet))
 	if base and base.light and wet > 0.0:
 		base.light.light_energy *= lerpf(1.0, 0.35, wet)
 		base.env.fog_density += 0.008 * wet

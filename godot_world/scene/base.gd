@@ -97,10 +97,49 @@ void sky() {
 }
 """
 
+## Clouds are NOT part of the sky shader above: that shader is drawn into a small cube map, which made them blocky. They are
+## a big dome around the camera with their own shader, drawn per screen pixel (sharp), behind everything solid.
+const CLOUD_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_front, depth_draw_never, fog_disabled, shadows_disabled;
+uniform sampler2D cloud_noise : filter_linear_mipmap, repeat_enable;  // seamless fractal noise made in base.gd
+uniform float day = 1.0;
+uniform float glow = 0.0;
+uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+uniform float cloud_cover = 0.45;  // 0 clear .. 1 overcast (weather.gd raises it when it rains)
+uniform float cloud_time = 0.0;
+float cloud_field(vec2 p) {
+	return texture(cloud_noise, p * 0.16).r * 0.62 + texture(cloud_noise, p * 0.37 + 0.31).r * 0.38;
+}
+void fragment() {
+	vec3 d = normalize((INV_VIEW_MATRIX * vec4(-VIEW, 0.0)).xyz);  // the world direction of this very pixel
+	if (d.y < 0.015) discard;
+	vec2 p = d.xz / (d.y * 0.85 + 0.10) * 0.5 + vec2(cloud_time * 0.010, cloud_time * 0.004);
+	float base = cloud_field(p);
+	float cover = mix(0.60, 0.34, cloud_cover);
+	float dens = smoothstep(cover, cover + 0.16, base);
+	vec2 sun2 = normalize(sun_dir.xz + 0.0001);
+	float toward = cloud_field(p + sun2 * 0.07);
+	float rim = clamp((base - toward) * 6.0 + 0.55, 0.0, 1.0);  // thinner toward the sun = a lit edge
+	float toward_sun = max(dot(normalize(d.xz + 0.0001), sun2), 0.0);
+	vec3 col_day = mix(vec3(0.62, 0.68, 0.78), vec3(1.0, 0.99, 0.95), clamp(rim * 0.75 + (1.0 - dens) * 0.35, 0.0, 1.0));
+	col_day = mix(col_day, col_day * vec3(1.0, 0.62, 0.40) * 1.2, glow * (0.4 + 0.6 * toward_sun));  // warm at sunrise and sunset
+	col_day = mix(col_day, col_day * vec3(0.80, 0.78, 0.90), cloud_cover * 0.4);  // overcast clouds are greyer
+	vec3 col_night = mix(vec3(0.04, 0.025, 0.05), vec3(0.30, 0.10, 0.10), rim * 0.55);  // red moonlight on the edges
+	ALBEDO = mix(col_night, col_day, day);
+	float s = max(dot(d, normalize(sun_dir)), 0.0);
+	float thin = 1.0 - smoothstep(0.0, 1.2, s * s * 3.0 * day);  // thinner right at the sun
+	ALPHA = dens * smoothstep(0.015, 0.20, d.y) * mix(0.5, 0.92, day) * thin;
+}
+"""
+
 var ctx: Dictionary
 var W  # world.gd
 var env: Environment
 var sky_material: ShaderMaterial
+var cloud_material: ShaderMaterial
+var cloud_dome: MeshInstance3D
+var cloud_t := 0.0  # seconds the clouds have drifted
 var light: DirectionalLight3D  # the sun by day, the moon by night
 var placed_nodes := {}  # index in state.placed -> node
 var sky_from := 0.0
@@ -151,6 +190,37 @@ func build_environment() -> void:
 	env.fog_enabled = true  # a haze that swallows the far hills
 	env.fog_density = 0.005
 	env.fog_sky_affect = 0.1
+	var dome_mesh := SphereMesh.new()
+	dome_mesh.radius = 850.0
+	dome_mesh.height = 1700.0
+	dome_mesh.radial_segments = 32
+	dome_mesh.rings = 16
+	var cloud_shader := Shader.new()
+	cloud_shader.code = CLOUD_SHADER
+	cloud_material = ShaderMaterial.new()
+	cloud_material.shader = cloud_shader
+	var cloud_tex: NoiseTexture2D = ctx.get("cloud_noise_tex")  # (made once: it takes a moment, and is kept across reloads)
+	if cloud_tex == null:
+		var noise_gen := FastNoiseLite.new()
+		noise_gen.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		noise_gen.frequency = 0.011
+		noise_gen.fractal_type = FastNoiseLite.FRACTAL_FBM
+		noise_gen.fractal_octaves = 4
+		noise_gen.seed = 9
+		cloud_tex = NoiseTexture2D.new()
+		cloud_tex.noise = noise_gen
+		cloud_tex.width = 512
+		cloud_tex.height = 512
+		cloud_tex.seamless = true
+		ctx["cloud_noise_tex"] = cloud_tex
+	cloud_material.set_shader_parameter("cloud_noise", cloud_tex)
+	cloud_dome = MeshInstance3D.new()
+	cloud_dome.name = "CloudDome"
+	cloud_dome.mesh = dome_mesh
+	cloud_dome.material_override = cloud_material
+	cloud_dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	cloud_dome.extra_cull_margin = 16384.0  # (always drawn: it surrounds the camera)
+	add_child(cloud_dome)
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
@@ -166,6 +236,7 @@ func hour() -> float:
 
 ## Advance the clock by `delta` seconds and set the sky, the light, the fog and ctx["night"] to match.
 func apply_time(delta: float) -> void:
+	cloud_t += delta
 	var t := fposmod(hour() + delta * 24.0 / (DAY_MINUTES * 60.0), 24.0)
 	ctx.state["time"] = t
 	var day := smoothstep(5.0, 7.0, t) * (1.0 - smoothstep(18.0, 20.0, t))  # 0 night .. 1 day
@@ -175,6 +246,10 @@ func apply_time(delta: float) -> void:
 	var a := (t - 6.0) / 12.0 * PI
 	var sun := Vector3(cos(a), sin(a) * 0.85, sin(a) * 0.5).normalized()
 	sky_material.set_shader_parameter("day", day)
+	cloud_material.set_shader_parameter("day", day)
+	cloud_material.set_shader_parameter("glow", clampf(glow, 0.0, 1.0))
+	cloud_material.set_shader_parameter("sun_dir", sun)
+	cloud_material.set_shader_parameter("cloud_time", cloud_t)
 	sky_material.set_shader_parameter("glow", clampf(glow, 0.0, 1.0))
 	sky_material.set_shader_parameter("sun_dir", sun)
 	if day > 0.5 and sun.y > 0.05:  # by day the light follows the sun
@@ -217,6 +292,8 @@ func _process(delta: float) -> void:
 				sky_transition = 0.0
 		else:
 			apply_time(delta)
+	if cloud_dome and W.camera:  # the clouds always surround the camera
+		cloud_dome.global_position = W.camera.global_position
 
 
 ## A simple solid box, sphere or pillar placed on request.
