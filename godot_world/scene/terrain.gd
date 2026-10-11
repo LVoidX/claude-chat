@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 18  # rebuild cached terrain and grass after changing their scatter
+const VERSION := 20  # rebuild cached terrain and grass after changing their scatter
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -76,6 +76,26 @@ void vertex() {
 }
 void fragment() {
 	ALBEDO = COLOR.rgb * mix(0.4, 1.0, tip);
+	ROUGHNESS = 0.9;
+	BACKLIGHT = vec3(0.15, 0.2, 0.05);
+}
+"""
+
+## Painted tufts and flowers from Blender (grass.glb etc.): the colour is in the vertices (dark base, bright tip); this only
+## adds the wind. `height` = how tall the model is, so the top moves most.
+const TUFT_SHADER := """
+shader_type spatial;
+render_mode cull_disabled;
+uniform float height = 0.45;
+void vertex() {
+	float tip = clamp(VERTEX.y / height, 0.0, 1.0);
+	vec3 w = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	float sway = sin(TIME * 1.7 + w.x * 0.35 + w.z * 0.27) * 0.6 + sin(TIME * 3.1 + w.x * 1.3) * 0.25;
+	VERTEX.x += sway * 0.12 * tip * tip;
+	VERTEX.z += sway * 0.06 * tip * tip;
+}
+void fragment() {
+	ALBEDO = COLOR.rgb;
 	ROUGHNESS = 0.9;
 	BACKLIGHT = vec3(0.15, 0.2, 0.05);
 }
@@ -614,7 +634,8 @@ func add_grass() -> void:
 		mm = MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		mm.use_colors = true
-		mm.mesh = blade_mesh()
+		var tuft: ArrayMesh = W.load_mesh("grass_tuft")  # made in Blender (tools/blender/grass.py)
+		mm.mesh = tuft if tuft else blade_mesh()
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 3
 		var spots := []
@@ -653,8 +674,19 @@ func add_grass() -> void:
 				continue  # keep the exposed rock faces and snowy peaks bare
 			spots.append(Vector3(x, h, z))
 			extra += 1
+		if tuft:  # each tuft is several blades, so about half as many are needed
+			var thinned := []
+			for i in range(0, spots.size(), 2):
+				thinned.append(spots[i])
+			spots = thinned
 		mm.instance_count = spots.size()
 		for i in spots.size():
+			if tuft:
+				var sc := rng.randf_range(0.85, 1.5)
+				mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.3), sc)), spots[i]))
+				var tint := Color(rng.randf_range(0.8, 1.1), rng.randf_range(0.85, 1.05), rng.randf_range(0.7, 1.0))  # a patch a little yellower or bluer
+				mm.set_instance_color(i, tint.darkened(rng.randf_range(0.0, 0.18)))
+				continue
 			var s := rng.randf_range(0.65, 1.1)
 			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.4), s)), spots[i]))
 			var g := Color("#3e6a20").lerp(Color("#5e8a2a"), rng.randf()).darkened(rng.randf_range(0.0, 0.25))
@@ -665,11 +697,55 @@ func add_grass() -> void:
 	node.multimesh = mm
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var shader := Shader.new()
-	shader.code = GRASS_SHADER
+	shader.code = TUFT_SHADER if mm.mesh != null and not (mm.mesh.get_surface_count() == 1 and mm.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR] == null) else GRASS_SHADER
 	var m := ShaderMaterial.new()
 	m.shader = shader
 	node.material_override = m
 	add_child(node)
+	add_flowers()
+
+
+## Wildflowers (white, yellow, purple, red; Blender: flower_*.glb) dotted over the meadow, the village green and the
+## castle hill, thicker in clumps.
+func add_flowers() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var names := ["flower_white", "flower_yellow", "flower_purple", "flower_red"]
+	for name in names:
+		var mesh: ArrayMesh = W.load_mesh(name)
+		if mesh == null:
+			continue
+		var shader := Shader.new()
+		shader.code = TUFT_SHADER
+		var m := ShaderMaterial.new()
+		m.shader = shader
+		m.set_shader_parameter("height", 0.45)
+		mesh.surface_set_material(0, m)
+		var spots := []
+		var tries := 0
+		while spots.size() < 900 and tries < 10000:
+			tries += 1
+			var a := rng.randf() * TAU
+			var r := sqrt(rng.randf()) * (FLAT + 18.0)
+			var x := cos(a) * r
+			var z := sin(a) * r
+			if road_distance(x, z) < ROAD_WIDTH * 0.9 or keep_clear(x, z):
+				continue
+			if noise.get_noise_2d(x * 1.3 + 400.0 + names.find(name) * 50.0, z * 1.3) < 0.1:  # clumps, not an even sprinkle
+				continue
+			spots.append(Vector3(x, height_at(x, z), z))
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		mm.instance_count = spots.size()
+		for i in spots.size():
+			var sc := rng.randf_range(1.4, 2.1)
+			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc, sc)), spots[i]))
+		var node := MultiMeshInstance3D.new()
+		node.multimesh = mm
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		node.visibility_range_end = 60.0
+		add_child(node)
 
 
 ## Wooden posts with a hanging lantern every ~18 m along the roads, flickering warmly.

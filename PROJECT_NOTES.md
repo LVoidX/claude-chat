@@ -273,3 +273,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   berry bushes (terrain.gd). Blender 5.2.2 is at D:\Toolslenderlender-5.2.2-windows-x64lender.exe. The trees/rocks
   cut triangles per frame from 9.6M to 3.6M and look better. Next models: village props, roofs, furniture.
 - Cottage roofs (village.gd cottage()) are Blender models roof_0..4.glb (tools/blender/roof.py): layered thatch courses with ragged edges, moss near the eaves, ridge roll, dark underside; sized to each HOUSES entry (if you change a house size, change HOUSES in roof.py and re-export). W.painted_mat() is the shared vertex-colour material.
+- Ground cover from Blender (tools/blender/grass.py): grass_tuft.glb (6 painted blades, dark root -> bright tip; ~35k tufts replace the 71k single blades) and flower_white/yellow/purple/red.glb (900 each in clumps over the meadow), both with terrain.gd TUFT_SHADER (wind). quality.gd grass density still thins the tuft MultiMesh.
