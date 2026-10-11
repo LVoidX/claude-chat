@@ -36,6 +36,7 @@ var fireflies := []  # {node, home, seed}: tiny glowing lights drifting over the
 var butterflies := []  # {node, goal, speed, hover, phase}
 var ducks := []  # {node, angle, radius, speed}
 var t := 0.0
+var call_in := 8.0  # seconds until the next bird or owl calls
 
 
 func make_material(speed: float, amount: float) -> ShaderMaterial:
@@ -158,6 +159,12 @@ func _process(delta: float) -> void:
 		pos.y = maxf(ground, 0.0) + float(bf.hover) + sin(t * 2.6 + bf.seed) * 0.28 + sin(t * 1.1 + bf.seed * 2.0) * 0.15  # bobbing as they go
 		node.position = pos
 	var dark := float(ctx.get("night", 0.0)) > 0.6 and dry > 0.5
+	call_in -= delta
+	if call_in <= 0.0:  # a bird now and then by day, an owl by night: far-off and quiet
+		call_in = randf_range(9.0, 24.0)
+		var music = ctx.parts.get("music")
+		if music and (out or dark):
+			music.play_sfx("chirp" if out else "hoot")
 	for ff in fireflies:
 		var fl: MeshInstance3D = ff.node
 		fl.visible = dark

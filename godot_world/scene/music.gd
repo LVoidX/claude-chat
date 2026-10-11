@@ -14,7 +14,7 @@ const TRACK_TRIM_DB := {"The_Old_Tower_Inn.mp3": -3.0}  # per-track correction f
 const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
 const RATE := 22050
 const SFX_BASE_DB := -6.0
-const SFX_DB := {"swing": -10.0, "hit": -3.0, "pickup": -4.0, "step_grass": -15.0, "step_road": -13.0, "step_wood": -12.0, "step_water": -13.0}  # the sword whoosh stays quiet and consistent
+const SFX_DB := {"swing": -10.0, "hit": -3.0, "pickup": -4.0, "chirp": -20.0, "hoot": -17.0, "step_grass": -15.0, "step_road": -13.0, "step_wood": -12.0, "step_water": -13.0}  # the sword whoosh stays quiet and consistent
 
 var ctx: Dictionary
 var W
@@ -40,8 +40,8 @@ func build(c: Dictionary) -> void:
 	sfx = AudioStreamPlayer.new()
 	sfx.volume_db = SFX_BASE_DB
 	add_child(sfx)
-	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 5:
-		ctx["jingles_v"] = 5
+	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 6:
+		ctx["jingles_v"] = 6
 		ctx["jingles"] = {"levelup": jingle([[0, 523.3], [0.11, 659.3], [0.22, 784.0], [0.33, 1046.5]], 1.3),
 			"quest": jingle([[0, 392.0], [0.16, 523.3], [0.32, 659.3], [0.32, 392.0], [0.5, 784.0], [0.5, 523.3]], 1.6),
 			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6),
@@ -50,6 +50,8 @@ func build(c: Dictionary) -> void:
 			"hurt": thud(70.0, 0.25, 1.0),  # you take a hit: deeper, with a crunch
 			"pickup": jingle([[0, 880.0], [0.07, 1318.5]], 0.35),
 			"splash": noise_burst(0.3, 0.7, 0.01, 0.14),  # a plop in the water
+			"chirp": chirp(),  # a small bird, now and then, by day
+			"hoot": hoot(),  # an owl, at night
 			"step_grass": noise_burst(0.12, 0.15, 0.01, 0.03),  # a soft rustle underfoot
 			"step_road": thud(190.0, 0.07, 0.9),  # a dull tap on packed earth
 			"step_wood": thud(140.0, 0.1, 0.35),  # a hollow knock on planks
@@ -124,6 +126,38 @@ func noise_burst(length: float, bright: float, attack: float, peak: float) -> Au
 		low = lerpf(low, randf_range(-1.0, 1.0), lerpf(0.05, 0.6, bright))  # a simple low-pass on white noise
 		var env := smoothstep(0.0, attack + peak, t) * (1.0 - smoothstep(attack + peak, length, t))
 		buf[i] = low * env * 0.8
+	return to_wav(buf)
+
+
+## A few quick rising-and-falling whistles, like a small bird.
+func chirp() -> AudioStreamWAV:
+	var n := int(0.45 * RATE)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var phase := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var k := int(t / 0.11)  # a new note every 0.11 s, three or four of them
+		var u := fmod(t, 0.11) / 0.11
+		var base := 2600.0 + 450.0 * float((k * 7) % 3)
+		var f := base * (1.0 + 0.25 * sin(u * PI)) * (1.0 - 0.1 * k)
+		phase += TAU * f / RATE
+		var gate := 1.0 if k < 4 and u < 0.7 else 0.0
+		buf[i] = sin(phase) * sin(u / 0.7 * PI if u < 0.7 else 0.0) * gate * 0.5
+	return to_wav(buf)
+
+
+## Two soft low notes: a hoot.
+func hoot() -> AudioStreamWAV:
+	var n := int(0.9 * RATE)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	for i in n:
+		var t := float(i) / RATE
+		var f := 330.0 if t < 0.35 else 290.0
+		var tt := t if t < 0.35 else t - 0.35
+		var env := smoothstep(0.0, 0.06, tt) * exp(-tt * 3.5)
+		buf[i] = (sin(TAU * f * t) + 0.25 * sin(TAU * f * 2.0 * t)) * env * 0.5
 	return to_wav(buf)
 
 
