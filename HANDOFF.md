@@ -30,7 +30,7 @@ Also done: clouds (base.gd CLOUD_SHADER dome + noise texture; value-noise from s
 stream + pond water, wildlife (birds/butterflies/ducks), Blender reeds. Profile after all that: 3.3 ms worst spot (4070 Super), fine.
 
 Also done since: lampposts + fences (Blender), volumetric light shafts (quality presets). STYLE PHASE IS DONE ENOUGH: switch to FEATURES.
-FEATURES DONE (2026-10-11 morning): fishing.gd (+grilled trout, Wat's quest), juice.gd (shake + hit-stop), hints.gd (first-time tips).
+FEATURES DONE (2026-10-11 morning): fishing.gd (+grilled trout, quests from Wat/Hugh/Piers, fish shadows in the pond), juice.gd (shake + hit-stop), hints.gd (first-time tips), footbridge (Blender), fireflies, steps.gd (footsteps by surface), chirp/hoot ambience, map.gd (P), options.gd (F1), Blender sheep fleece + chickens. (Bridge/well/cart/chimneys were already done: roadmap items below marked old.)
 USAGE at this point: 5-hour 84%, weekly 93% (weekly resets ~08:59Z today). Shutdown rule still applies at 98% of either.
 Next (roadmap, in order): more Blender props to replace remaining boxes (signpost, well, cart, furniture: bed,
 table, bench, chest, shelf, anvil; castle banners), chimneys/windows/doors for cottages, stone bridge over the stream, sheep/chicken

@@ -74,15 +74,17 @@ func add_animal(kind: String, at: Vector3, rng: RandomNumberGenerator) -> void:
 				W.box(leg, Vector3(0, -0.38, -0.015), Vector3(0.105, 0.08, 0.12), Color("#252220"))  # split hoof
 				legs.append(leg)
 	else:
-		var feathers := Color("#f2ede2") if rng.randf() < 0.6 else Color("#a8643a")
-		W.box(node, Vector3(0, 0.25, 0.02), Vector3(0.24, 0.22, 0.32), feathers)  # body
-		W.box(node, Vector3(0, 0.36, 0.17), Vector3(0.16, 0.16, 0.1), feathers.darkened(0.08))  # tail
-		for side in [-1, 1]:
-			var wing: MeshInstance3D = W.box(node, Vector3(side * 0.12, 0.27, -0.005), Vector3(0.09, 0.15, 0.22), feathers.darkened(0.08), "sphere")
-			wing.rotation.x = -0.15
-			for feather in 3:
-				W.box(node, Vector3(side * (0.13 + feather * 0.012), 0.24, 0.08 + feather * 0.055),
-					Vector3(0.018, 0.055, 0.095), feathers.lightened(0.04 * feather))
+		var white := rng.randf() < 0.6
+		var feathers := Color("#f2ede2") if white else Color("#a8643a")
+		if W.prop("chicken_body_" + ("0" if white else "1"), node, Vector3.ZERO) == null:  # body, tail and wings are one Blender mesh (tools/blender/chicken.py)
+			W.box(node, Vector3(0, 0.25, 0.02), Vector3(0.24, 0.22, 0.32), feathers)  # body
+			W.box(node, Vector3(0, 0.36, 0.17), Vector3(0.16, 0.16, 0.1), feathers.darkened(0.08))  # tail
+			for side in [-1, 1]:
+				var wing: MeshInstance3D = W.box(node, Vector3(side * 0.12, 0.27, -0.005), Vector3(0.09, 0.15, 0.22), feathers.darkened(0.08), "sphere")
+				wing.rotation.x = -0.15
+				for feather in 3:
+					W.box(node, Vector3(side * (0.13 + feather * 0.012), 0.24, 0.08 + feather * 0.055),
+						Vector3(0.018, 0.055, 0.095), feathers.lightened(0.04 * feather))
 		head.position = Vector3(0, 0.42, -0.14)
 		node.add_child(head)
 		W.box(head, Vector3(0, 0, 0), Vector3(0.12, 0.14, 0.12), feathers)
