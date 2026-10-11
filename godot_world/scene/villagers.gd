@@ -22,6 +22,7 @@ func build(c: Dictionary) -> void:
 	ctx = c
 	W = ctx["world"]
 	kit = ctx.parts["kit"]
+	grid = ctx.get("path_grid")  # (the walkability map survives a reload of this part)
 	build_field()
 	build_logs()
 	for p in plan():
@@ -493,16 +494,27 @@ func handle(c: Dictionary) -> bool:
 const CELL := 1.5
 const GRID_FROM := Vector2(-95.0, -180.0)  # covers the village, the meadow, the road and the castle
 const GRID_CELLS := Vector2i(127, 167)
-var grid: AStarGrid2D
-var grid_ready := false
+var grid: AStarGrid2D  # the map villagers walk by (kept in ctx between reloads of this part)
+var new_grid: AStarGrid2D  # the map being built, a few columns per frame, so a rebuild never stalls the game
+var building := false
+var build_col := 0
+var probe: PhysicsShapeQueryParameters3D
+const BUILD_BUDGET_USEC := 2500  # at most this long per physics frame
+const STATIC_PARTS := ["village", "castle", "terrain", "gathering", "travel", "rpg", "creatures"]  # parts with colliders in the map
 
 
 func _physics_process(_delta: float) -> void:
-	if not grid_ready:
-		grid_ready = true
-		build_grid()
-		for f in folk:
-			f.path = []
+	if grid == null and not building:
+		start_grid()
+	if building:
+		grid_step()
+
+
+## A part with solid things in it was swapped (world.gd reload_part): build the map again, gradually, while the old one
+## keeps serving.
+func part_reloaded(name: String) -> void:
+	if name in STATIC_PARTS and not building:
+		start_grid.call_deferred()
 
 
 func cell_of(p: Vector3) -> Vector2i:
@@ -516,30 +528,46 @@ func cell_centre(c: Vector2i) -> Vector3:
 	return Vector3(x, W.ground_y(x, z), z)
 
 
-func build_grid() -> void:
-	grid = AStarGrid2D.new()
-	grid.region = Rect2i(Vector2i.ZERO, GRID_CELLS)
-	grid.cell_size = Vector2(CELL, CELL)
-	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	grid.update()
-	var space: PhysicsDirectSpaceState3D = W.get_world_3d().direct_space_state
-	var probe := PhysicsShapeQueryParameters3D.new()
+func start_grid() -> void:
+	if building:
+		return
+	new_grid = AStarGrid2D.new()
+	new_grid.region = Rect2i(Vector2i.ZERO, GRID_CELLS)
+	new_grid.cell_size = Vector2(CELL, CELL)
+	new_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	new_grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	new_grid.update()
+	probe = PhysicsShapeQueryParameters3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(CELL * 0.7, 1.0, CELL * 0.7)
 	probe.shape = shape
 	probe.exclude = [W.player.get_rid()]
+	build_col = 0
+	building = true
+
+
+## Probe columns of cells until this frame's time budget is used up; swap the new map in when it is complete.
+func grid_step() -> void:
+	var space: PhysicsDirectSpaceState3D = W.get_world_3d().direct_space_state
 	var terrain = ctx.parts.get("terrain")
-	for cx in GRID_CELLS.x:
+	var t0 := Time.get_ticks_usec()
+	while build_col < GRID_CELLS.x and Time.get_ticks_usec() - t0 < BUILD_BUDGET_USEC:
 		for cz in GRID_CELLS.y:
-			var c := cell_centre(Vector2i(cx, cz))
+			var c := cell_centre(Vector2i(build_col, cz))
 			var steep := false
 			if terrain:
 				var h0: float = c.y
 				steep = absf(terrain.height_at(c.x + 1.0, c.z) - h0) > 0.75 or absf(terrain.height_at(c.x, c.z + 1.0) - h0) > 0.75
 			probe.transform = Transform3D(Basis(), c + Vector3(0, 1.1, 0))  # (above the ground, so the ground itself isn't "solid")
 			if steep or not space.intersect_shape(probe, 1).is_empty():
-				grid.set_point_solid(Vector2i(cx, cz), true)
+				new_grid.set_point_solid(Vector2i(build_col, cz), true)
+		build_col += 1
+	if build_col >= GRID_CELLS.x:
+		grid = new_grid
+		ctx["path_grid"] = grid
+		building = false
+		for f in folk:
+			f.path = []
 
 
 ## Where to head next on the way to `goal`: the next point of an A* path (planned when the goal changes), skipping
