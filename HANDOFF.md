@@ -37,3 +37,7 @@ table, bench, chest, shelf, anvil; castle banners), chimneys/windows/doors for c
 models; then features (START HERE): combat feel (hit-stop, enemy reactions), journal polish, onboarding
 tutorial, new chapters' content, fishing in the pond (new!), ambient sounds (generated, quiet: user disliked wind/rain hiss).
 Keep committing after each step; check usage every few commits (>=98% on 5-hour OR weekly -> final push, then `shutdown /s /t 30`).
+
+2026-10-11 (later morning) additions: map.gd (P, with quest marks), options.gd (F1), steps.gd, chirp/hoot/thunder ambience, lightning, rabbits + deer + fireflies (wildlife.gd), Blender sheep/chicken/rabbit/deer/footbridge, fish shadows + ripples, grilled carp, guard fish quests, wider FOV when running, sfx volume-drift fix (music.gd SFX_BASE_DB).
+Ideas not done yet: horse/mount, dog companion, more story chapter content, stone bridge on a road, cave/dungeon, seasons, cooking menu, NPC schedules (sleep at night), quest-giver dialogue variety.
+User rule: at >=98% of the 5-hour OR weekly usage -> commit/push then `shutdown /s /t 30`.
