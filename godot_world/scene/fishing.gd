@@ -19,6 +19,7 @@ var bobber: MeshInstance3D
 var line: MeshInstance3D
 var splash: GPUParticles3D
 var t := 0.0
+var shoal: Array = []  # [node, radius, speed, phase, lift]: dark fish shapes drifting under the pond's surface
 
 
 func build(c: Dictionary) -> void:
@@ -71,6 +72,34 @@ func build(c: Dictionary) -> void:
 	drop.material = dm
 	splash.draw_pass_1 = drop
 	add_child(splash)
+	make_shoal()
+
+
+## A few fish seen as dim shapes under the water: they show where the pond is worth a cast.
+func make_shoal() -> void:
+	var tr = terrain()
+	if tr == null:
+		return
+	var body := SphereMesh.new()
+	body.radius = 0.5
+	body.height = 1.0
+	body.radial_segments = 8
+	body.rings = 4
+	var dm := StandardMaterial3D.new()
+	dm.albedo_color = Color(0.1, 0.16, 0.12, 0.55)
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	body.material = dm
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for i in 6:
+		var f := MeshInstance3D.new()
+		f.mesh = body
+		f.scale = Vector3(0.55, 0.1, 0.16) * rng.randf_range(0.8, 1.3)
+		f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		f.visibility_range_end = 45.0
+		add_child(f)
+		shoal.append([f, rng.randf_range(1.2, 4.8), rng.randf_range(0.25, 0.6) * (1.0 if i % 2 == 0 else -1.0), rng.randf() * TAU, rng.randf_range(0.22, 0.4)])
 
 
 func terrain():
@@ -202,6 +231,13 @@ func play(name: String) -> void:
 
 func _process(delta: float) -> void:
 	t += delta
+	var tr = terrain()
+	if tr != null:
+		for f in shoal:
+			var a: float = f[3] + t * f[2] + sin(t * 0.7 + f[1]) * 0.3
+			var c: Vector3 = tr.POND
+			f[0].position = Vector3(c.x + cos(a) * f[1], tr.WATER_Y - f[4], c.z + sin(a) * f[1])
+			f[0].rotation.y = -a + (PI / 2.0 if f[2] > 0.0 else -PI / 2.0)
 	if state == "idle":
 		return
 	var me: Vector3 = W.player.global_position
