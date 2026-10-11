@@ -283,3 +283,5 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - fishing.gd: fish at the pond/stream (E at the water's edge: cast where you look, E again on the bite; trout/carp/old boot/rare golden carp), E at the campfire grills a trout (rpg ITEMS trout, grilled_trout, carp, golden_carp, boot; music.gd "splash"). Quest "Supper from the Pond" from Wat (3 trout). rpg.event("catch", item).
 - juice.gd: camera shake + 0.04-0.09 s hit-stop (Engine.time_scale dip, restored by a real-time timer and in _exit_tree). creatures.damage and rpg.hurt call juice.shake()/hit_stop(); other parts can too.
 - hints.gd: one-time tips (welcome, talk by voice, gold !, sword, fishing, healing, night) shown the first time they matter, max one per 25 s, state["hints"]; none for saves at level 3+. Add a tip: TIPS entry + a condition in _process.
+
+- Footbridge: terrain.gd add_footbridge() puts tools/blender/bridge.py's footbridge.glb over the stream near x=-10 (bridge_spot(), solid deck collider); reeds keep clear of its ends.

@@ -114,5 +114,6 @@ def fence_section():
     export_glb("fence", [new_object("fence", bm)])
 
 
-lamppost()
-fence_section()
+if __name__ == "__main__":
+    lamppost()
+    fence_section()

@@ -30,6 +30,7 @@ const STREAM := [Vector2(-52, 49), Vector2(-36, 44), Vector2(-18, 49), Vector2(1
 const POND := Vector3(33, 0, 42)  # centre (x, z; y unused); radius POND_R (well clear of the east road)
 const POND_R := 6.5
 const STREAM_DEPTH := 0.75
+const BRIDGE_SCALE := 1.3
 const WATER_Y := -0.16
 const BANK_IN := 1.2  # within this far of the middle the channel is at full depth
 const BANK_OUT := 3.7  # ...and the ground is back to normal this far out
@@ -920,6 +921,29 @@ func add_water() -> void:
 	pnode.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(pnode)
 	add_reeds()
+	add_footbridge()
+
+
+## A plank footbridge (Blender: footbridge.glb) over the stream where the meadow path from the village comes down; its deck is solid.
+func bridge_spot() -> Array:
+	var pts := stream_points()
+	var best := 1
+	for i in range(1, pts.size() - 1):
+		if absf(pts[i].x - (-10.0)) < absf(pts[best].x - (-10.0)):
+			best = i
+	var p: Vector2 = pts[best]
+	var dir: Vector2 = (pts[best + 1] - pts[best - 1]).normalized()
+	return [p, atan2(-dir.x, -dir.y)]  # the model runs along X: turn it across the stream
+
+
+func add_footbridge() -> void:
+	var spot := bridge_spot()
+	var p: Vector2 = spot[0]
+	var yaw: float = spot[1]
+	var node = W.prop("footbridge", self, Vector3(p.x, -0.1, p.y), yaw, BRIDGE_SCALE)
+	if node == null:
+		return
+	W.add_collider(self, Transform3D(Basis(Vector3.UP, yaw), Vector3(p.x, 0.07, p.y)), Vector3(6.2 * BRIDGE_SCALE, 0.1, 1.7 * BRIDGE_SCALE))
 
 
 ## Reeds and cattails (Blender: reeds.glb, reeds_plain.glb) standing in clumps along both banks and round the pond.
@@ -945,6 +969,8 @@ func add_reeds() -> void:
 				var side := (b - a).normalized().rotated(PI / 2.0)
 				var off := (3.0 if rng.randf() < 0.5 else -3.0) + rng.randf_range(-0.8, 1.0)
 				var q: Vector2 = (pts[i] as Vector2) + side * off
+				if q.distance_to(bridge_spot()[0]) < 5.0:  # keep the bridge's ends clear
+					continue
 				spots.append(Vector3(q.x, height_at(q.x, q.y), q.y))
 		for k in 18:  # round the pond
 			var ang := rng.randf() * TAU
