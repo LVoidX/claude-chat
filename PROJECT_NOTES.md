@@ -150,6 +150,8 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 
 - Rocket shove: world.gd sets the player's x/z velocity from the keys every frame, so adding to player.velocity.x/z does nothing. Sideways shoves go into W.push (fades out, zeroed on walls); vertical still goes into player.velocity.y (rocket.gd).
 
+- Full fresh start (2026-10-11): rpg.gd build() has a one-time block keyed on state["reset_all_v"] that erases rpg, story, held items and found things, empties flags.json and rebuilds the parts. The story also needs story/chapter.json replaced by a copy of seed.json (done). Bump the number to reset again; the to-do book, music setting and time of day are kept.
+
 ## Ideas mentioned but not done
 - Zipping the project for the user's laptop (needs Python, `pip install faster-whisper sounddevice`, Godot,
   Claude Code signed in; leave out chat_state.json, world_state.json, logs).
@@ -303,3 +305,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Night schedule: when it is dark (night > 0.75) Wat, Osric, Elsie and Tam stop work and gather round the crossroads campfire (villagers.gd NIGHT_FOLK); the guards stay at their posts. In the morning they resume their routes.
 - dog.gd (Blender dog.glb): a farm dog lies by the crossroads campfire. E beside it calls it (it then trots after you, 2 m behind, and comes at once next time: state["dog_joined"]); E again sends it home. It goes home by itself when you are 140 m from the fire.
 - net.gd (F3): small co-op. Host a game (UDP 7777) or join by address; players see each other (simple figure + name), positions only (quests/fights/story stay separate). Needs the host reachable: forward UDP 7777, or Tailscale/ZeroTier. Testing: `godot --path godot_world -- --host` and `-- --join=127.0.0.1` (tested locally, both directions).
+- The hand-held sword is a Blender model (tools/blender/sword.py -> sword_rusty / sword_iron / sword_steel .glb, chosen by the equipped weapon in hotbar.gd make_sword); the old code-built sword stays as a fallback if the .glb is missing.

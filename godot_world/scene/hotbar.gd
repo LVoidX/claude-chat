@@ -63,6 +63,19 @@ func make_sword() -> void:
 	var weapon: String = ctx.state.get("rpg", {}).get("weapon", "iron_sword")
 	var steel: Color = {"rusty_sword": Color("#a47a55"), "steel_sword": Color("#91b7e3")}.get(weapon, Color("#bac5ce"))
 	var brass := Color("#c99c51") if weapon != "rusty_sword" else Color("#776044")
+	var model_name: String = {"rusty_sword": "sword_rusty", "steel_sword": "sword_steel"}.get(weapon, "sword_iron")
+	var model = W.prop(model_name, sword, Vector3.ZERO)  # the Blender sword (tools/blender/sword.py); the code-built one below is the fallback
+	if model != null:
+		var metal := StandardMaterial3D.new()
+		metal.vertex_color_use_as_albedo = true
+		metal.albedo_color = Color(0.8, 0.8, 0.82)  # (the hand-held light is strong: keep the blade from washing out)
+		metal.metallic = 0.2 if weapon != "rusty_sword" else 0.1
+		metal.roughness = 0.35 if weapon != "rusty_sword" else 0.6
+		metal.cull_mode = BaseMaterial3D.CULL_DISABLED
+		model.material_override = metal
+		W.camera.add_child(sword)
+		make_sword_arm()
+		return
 	var blade_material := StandardMaterial3D.new()
 	blade_material.albedo_color = steel
 	blade_material.metallic = 0.2 if weapon != "rusty_sword" else 0.05
