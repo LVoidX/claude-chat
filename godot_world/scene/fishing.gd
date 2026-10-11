@@ -166,6 +166,8 @@ func cast() -> void:
 		return
 	state = "waiting"
 	timer = randf_range(WAIT.x, WAIT.y)
+	if float(ctx.get("rain", 0.0)) > 0.3:  # the fish rise when it rains
+		timer *= 0.6
 	bobber.visible = true
 	line.visible = true
 	bobber.global_position = target + Vector3(0, 0.03, 0)
