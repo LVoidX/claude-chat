@@ -11,6 +11,7 @@ const BIRDS_PER_FLOCK := 5
 const BUTTERFLIES := 30
 const DUCKS := 4
 const FIREFLIES := 45
+const RABBITS := 9
 const TINTS := [Color("#ffb347"), Color("#ffe566"), Color("#9ec9ff"), Color("#ffffff"), Color("#ff8fb1"), Color("#c9a0ff")]
 
 const WING_SHADER := """
@@ -32,6 +33,7 @@ void fragment() {
 var ctx: Dictionary
 var W
 var birds := []  # {node, flock centre/radius/speed/height, angle, offset}
+var rabbits := []  # {node, goal, wait, hop}: they sit in the meadow, hop about, and bolt when you come near
 var fireflies := []  # {node, home, seed}: tiny glowing lights drifting over the meadow and the pond on dry nights
 var butterflies := []  # {node, goal, speed, hover, phase}
 var ducks := []  # {node, angle, radius, speed}
@@ -110,6 +112,12 @@ func build(c: Dictionary) -> void:
 		add_child(fl)
 		var spot := Vector2(rng.randf_range(-40, 50), rng.randf_range(-25, 55))
 		fireflies.append({"node": fl, "home": spot, "seed": rng.randf() * 100.0})
+	for i in RABBITS:
+		var spot := Vector2(rng.randf_range(-45, 55), rng.randf_range(-30, 42))
+		var node = W.prop("rabbit", self, Vector3(spot.x, W.ground_y(spot.x, spot.y), spot.y), rng.randf() * TAU, 1.0)
+		if node == null:
+			break
+		rabbits.append({"node": node, "goal": spot, "wait": rng.randf_range(1.0, 6.0), "hop": 0.0, "home": spot})
 	var duck_mat := make_material(0.0, 0.0)
 	var terrain = ctx.parts.get("terrain")
 	for i in DUCKS:
@@ -158,6 +166,42 @@ func _process(delta: float) -> void:
 		var ground: float = W.ground_y(pos.x, pos.z)
 		pos.y = maxf(ground, 0.0) + float(bf.hover) + sin(t * 2.6 + bf.seed) * 0.28 + sin(t * 1.1 + bf.seed * 2.0) * 0.15  # bobbing as they go
 		node.position = pos
+	var player: Vector3 = W.player.global_position
+	for r in rabbits:
+		var node: MeshInstance3D = r.node
+		node.visible = day > 0.25
+		if not node.visible:
+			continue
+		var p2 := Vector2(node.position.x, node.position.z)
+		var from_me := p2 - Vector2(player.x, player.z)
+		var bolting := from_me.length() < 6.0
+		if bolting and r.hop <= 0.0:  # startled: hop straight away from you
+			var home: Vector2 = r.home
+			r.goal = p2 + from_me.normalized() * 3.0
+			if (r.goal as Vector2).distance_to(home) > 18.0:
+				r.goal = home  # (don't run off the meadow)
+			r.hop = 0.001
+			r.wait = 0.0
+		elif r.hop <= 0.0:
+			r.wait -= delta
+			if r.wait <= 0.0:  # restless: a few hops somewhere close
+				var home: Vector2 = r.home
+				r.goal = home + Vector2(randf_range(-7, 7), randf_range(-7, 7))
+				r.hop = 0.001
+				r.wait = randf_range(2.0, 8.0)
+		if r.hop > 0.0:
+			var length := 0.28 if bolting else 0.4  # seconds per hop
+			r.hop += delta / length
+			var dir: Vector2 = (r.goal as Vector2) - p2
+			if dir.length() > 0.2:
+				var step := dir.normalized() * delta * ((9.0 if bolting else 3.2))
+				node.position.x += step.x
+				node.position.z += step.y
+				node.rotation.y = lerp_angle(node.rotation.y, atan2(-dir.x, -dir.y), minf(delta * 12.0, 1.0))
+			if r.hop >= 1.0:
+				r.hop = 0.0 if dir.length() <= 0.7 or not bolting and randf() < 0.4 else 0.001
+		var arc := sin(clampf(r.hop, 0.0, 1.0) * PI) * (0.22 if bolting else 0.12) if r.hop > 0.0 else 0.0
+		node.position.y = W.ground_y(node.position.x, node.position.z) + arc
 	var dark := float(ctx.get("night", 0.0)) > 0.6 and dry > 0.5
 	call_in -= delta
 	if call_in <= 0.0:  # a bird now and then by day, an owl by night: far-off and quiet
@@ -188,4 +232,4 @@ func _process(delta: float) -> void:
 
 
 func seen_from(_from: Vector3, _viewer: Node) -> Array:
-	return ["birds circling high over the valley by day, butterflies over the meadow, and ducks on the pond at the south of the meadow, and fireflies there on dry nights"]
+	return ["birds circling high over the valley by day, butterflies over the meadow, and ducks on the pond at the south of the meadow, fireflies there on dry nights, and rabbits in the meadow by day"]

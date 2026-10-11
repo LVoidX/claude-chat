@@ -292,3 +292,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - options.gd: F1 opens Options (master volume slider -> state["volume"], ambient sounds on/off -> state["ambient_off"] (steps.gd and wildlife calls obey it), graphics preset, fullscreen). Esc or F1 closes.
 - Sheep fleece is now a Blender mesh (tools/blender/sheep.py -> sheep_body_0..2.glb) with the box head/legs still animated by animals.gd.
 - Chickens: body/tail/wings from Blender too (tools/blender/chicken.py -> chicken_body_0/1.glb).
+- Rabbits (wildlife.gd, tools/blender/rabbit.py): nine in the meadow by day; they sit, hop short distances, and bolt (bigger, faster hops) when you come within 6 m.
