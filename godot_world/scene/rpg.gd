@@ -289,6 +289,9 @@ func hurt(amount: int, source := "") -> void:
 		amount = int(ceil(amount * 0.25))
 		sfx("hit")
 	var taken := maxi(amount - defense(), 1)
+	var juice = ctx.parts.get("juice")
+	if juice:
+		juice.shake(0.025 + minf(float(taken), 40.0) * 0.0012)
 	st().hp = int(st().hp) - taken
 	hurt_flash.color.a = clampf(0.25 + taken * 0.02, 0.25, 0.55)
 	if int(st().hp) <= 0:

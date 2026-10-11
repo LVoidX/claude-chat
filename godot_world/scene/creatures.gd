@@ -655,6 +655,10 @@ func damage(f: Dictionary, amount: int, push: Vector3) -> void:
 		W.show_notice("%s roars: \"Oathbreaker!\"" % KINDS[f.kind].name, 4.0)
 	f.hp -= amount
 	f.hurt = 0.18
+	var juice = ctx.parts.get("juice")  # a little weight: the camera jolts and the game freezes for an instant
+	if juice:
+		juice.shake(0.012 + minf(float(amount), 40.0) * 0.0006 + (0.03 if f.hp <= 0 else 0.0))
+		juice.hit_stop(0.085 if f.hp <= 0 else 0.04)
 	spark(f.node.position + Vector3(0, KINDS[f.kind].bar_y * 0.55, 0) - push * 0.3)
 	var music = ctx.parts.get("music")
 	if music:
