@@ -9,6 +9,7 @@ extends Node3D
 ## ground unless given, e.g. on the castle wall). New villagers: add an entry to plan().
 
 const FIELD := Vector3(-30, 0, -28)  # the wheat field (centre), 12 x 8 m
+const NIGHT_FOLK := ["wat", "osric", "elsie", "tam"]  # (the guards stay at their posts)
 const LOGS := Vector3(-54, 0, -20)  # the woodcutter's log pile and chopping block
 
 var ctx: Dictionary
@@ -339,9 +340,15 @@ func place(p: Vector3) -> Vector3:
 func _process(delta: float) -> void:
 	spin += delta
 	var player: Vector3 = ctx.player.position
+	var night: bool = float(ctx.get("night", 0.0)) > 0.75 and ctx.parts.has("travel")
 	for f in folk:
 		var node: Node3D = f.node
 		var step: Array = f.steps[f.step]
+		var evening: bool = night and f.get("who", "") in NIGHT_FOLK  # villagers leave their work at night and gather round the campfire
+		if evening:
+			var fire: Vector2 = ctx.parts["travel"].FIRE
+			var ang := 0.4 + NIGHT_FOLK.find(f.get("who", "")) * 1.45
+			step = [Vector3(fire.x + cos(ang) * 4.0, 0, fire.y + sin(ang) * 4.0), "idle", 10.0]
 		var goal := place(step[0])
 		var to := Vector3(goal.x - node.position.x, 0, goal.z - node.position.z)
 		var moving := false
@@ -359,6 +366,8 @@ func _process(delta: float) -> void:
 			moving = true
 		elif by_you:
 			f.work = false  # (puts the tool down and turns to you, below)
+		elif evening:
+			f.work = false  # (they sit about the fire until morning)
 		else:
 			f.wait -= delta
 			if f.wait <= 0.0:
