@@ -137,6 +137,10 @@ func interactables() -> Array:
 		var fire: Vector3 = travel.ground(travel.FIRE)
 		if Vector2(me.x - fire.x, me.z - fire.z).length() < 3.2:
 			out.append({"pos": me, "label": "Grill a trout", "act": grill, "range": 3.0})
+	if travel and rpg and rpg.count("trout") == 0 and rpg.count("carp") > 0:
+		var fire2: Vector3 = travel.ground(travel.FIRE)
+		if Vector2(me.x - fire2.x, me.z - fire2.z).length() < 3.2:
+			out.append({"pos": me, "label": "Grill a carp", "act": grill_carp, "range": 3.0})
 	return out
 
 
@@ -222,6 +226,14 @@ func grill() -> void:
 	if rpg and rpg.take("trout", 1):
 		rpg.give("grilled_trout", 1, true)
 		W.show_notice("You grill a trout over the fire. It smells wonderful.", 3.0)
+		play("pickup")
+
+
+func grill_carp() -> void:
+	var rpg = ctx.parts.get("rpg")
+	if rpg and rpg.take("carp", 1):
+		rpg.give("grilled_carp", 1, true)
+		W.show_notice("You grill the carp until the skin blisters. Hearty.", 3.0)
 		play("pickup")
 
 

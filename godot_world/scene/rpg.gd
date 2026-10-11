@@ -22,6 +22,7 @@ const ITEMS := {
 		"desc": "A brown forest mushroom. Restores 12 health."},
 	"trout": {"name": "Pond Trout", "kind": "use", "heal": 14, "price": 6, "desc": "Fresh from the pond. Good raw, better grilled over the campfire."},
 	"grilled_trout": {"name": "Grilled Trout", "kind": "use", "heal": 45, "price": 9, "desc": "Crisp skin, flaky and hot. Restores 45 health."},
+	"grilled_carp": {"name": "Grilled Carp", "kind": "use", "heal": 60, "price": 14, "desc": "A whole carp, blackened at the edges and juicy inside. Restores 60 health."},
 	"carp": {"name": "Carp", "kind": "loot", "price": 9, "desc": "A heavy, whiskered fish. The smith pays well for it."},
 	"golden_carp": {"name": "Golden Carp", "kind": "loot", "price": 70, "desc": "It shines like a coin. Villagers say these bring luck, and a good price."},
 	"boot": {"name": "Old Boot", "kind": "loot", "price": 1, "desc": "Waterlogged. Somebody lost this long ago."},
