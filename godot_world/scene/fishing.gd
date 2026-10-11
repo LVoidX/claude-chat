@@ -36,6 +36,9 @@ func build(c: Dictionary) -> void:
 	bobber.mesh = m
 	var top := StandardMaterial3D.new()
 	top.albedo_color = Color("#e0392b")
+	top.emission_enabled = true  # (a faint glow keeps the float visible at dusk)
+	top.emission = Color("#e0392b")
+	top.emission_energy_multiplier = 0.6
 	bobber.material_override = top
 	bobber.visible = false
 	add_child(bobber)
