@@ -25,7 +25,7 @@ func build(c: Dictionary) -> void:
 
 func make_rain() -> void:
 	rain = GPUParticles3D.new()
-	rain.amount = 4000
+	rain.amount = 1200
 	rain.lifetime = 1.1
 	rain.visibility_aabb = AABB(Vector3(-25, -25, -25), Vector3(50, 50, 50))
 	var pm := ParticleProcessMaterial.new()
@@ -38,9 +38,9 @@ func make_rain() -> void:
 	pm.gravity = Vector3(0, -9.8, 0)
 	rain.process_material = pm
 	var drop := BoxMesh.new()  # a thin streak
-	drop.size = Vector3(0.015, 0.45, 0.015)
+	drop.size = Vector3(0.008, 0.18, 0.008)
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.75, 0.82, 0.95, 0.45)
+	m.albedo_color = Color(0.75, 0.82, 0.95, 0.22)
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	drop.material = m
@@ -61,6 +61,9 @@ func _process(delta: float) -> void:
 	ctx["rain"] = wet
 	rain.emitting = wet > 0.35
 	rain.global_position = W.player.global_position + Vector3(0, 16, 0)
+	var terrain = ctx.parts.get("terrain")
+	if terrain and terrain.ground_material:
+		terrain.ground_material.set_shader_parameter("wetness", wet)
 	var base = ctx.parts.get("base")  # (base.gd sets the light each frame before us: we dim what it set)
 	if base and base.light and wet > 0.0:
 		base.light.light_energy *= lerpf(1.0, 0.35, wet)

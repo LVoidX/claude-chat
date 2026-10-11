@@ -80,6 +80,8 @@ var level_text: Label
 var gold_text: Label
 var prompt_label: Label
 var tracker: Label
+var stats_plate: Panel
+var tracker_plate: Panel
 var hurt_flash: ColorRect
 var panel: PanelContainer  # the open screen (inventory, journal, board, shop), or null
 var panel_kind := ""
@@ -421,20 +423,37 @@ func build_smithy() -> void:
 	for x in [-2.4, 2.4]:  # an open shed: four posts and a roof
 		for z in [-1.6, 1.6]:
 			W.box(smithy, Vector3(x, 1.4, z), Vector3(0.22, 2.8, 0.22), timber, "cube", true)
+			var brace: MeshInstance3D = W.box(smithy, Vector3(x * 0.91, 2.28, z), Vector3(0.65, 0.12, 0.12), timber)
+			brace.rotation.z = signf(x) * 0.72
 	var roof: MeshInstance3D = W.box(smithy, Vector3(0, 3.0, 0), Vector3(5.6, 0.18, 4.0), Color("#5c4a3a"))
 	roof.rotation.x = -0.12
+	for z in [-1.45, 0.0, 1.45]:  # open rafters beneath the shed roof
+		var rafter: MeshInstance3D = W.box(smithy, Vector3(0, 2.88, z), Vector3(5.2, 0.11, 0.12), timber)
+		rafter.rotation.x = -0.12
 	var forge: MeshInstance3D = W.box(smithy, Vector3(-1.5, 0.6, 0.6), Vector3(1.4, 1.2, 1.4), Color.WHITE, "cube", true)
 	forge.material_override = stone
-	W.glow(smithy, Vector3(-1.5, 1.22, 0.6), Vector3(0.9, 0.06, 0.9), Color("#ff6a1a"), 3.0)  # embers
+	for side in [-1, 1]:
+		W.box(smithy, Vector3(-1.5 + side * 0.46, 1.17, -0.11), Vector3(0.28, 0.16, 0.2), Color("#302820"))  # firebrick lip
+	for coal in 5:
+		var ember: MeshInstance3D = W.box(smithy, Vector3(-1.82 + coal * 0.15, 1.27, 0.34 + (coal % 2) * 0.16),
+			Vector3(0.16, 0.08, 0.15), Color(["#d83f20", "#ff842c", "#4a2520"][coal % 3]), "sphere")
+		ember.rotation.y = coal * 0.6
+	W.glow(smithy, Vector3(-1.5, 1.29, 0.6), Vector3(0.78, 0.05, 0.74), Color("#ff6a1a"), 2.2)  # live coals
 	smith_fire = W.light(smithy, Vector3(-1.5, 1.7, 0.6), Color("#ff7a30"), 2.0, 7.0)
 	W.box(smithy, Vector3(0.9, 0.35, -0.2), Vector3(0.5, 0.7, 0.5), Color("#4a3220"), "cube", true)  # anvil block
 	W.box(smithy, Vector3(0.9, 0.8, -0.2), Vector3(0.9, 0.22, 0.34), Color("#3a3d42"))  # anvil
 	W.box(smithy, Vector3(1.4, 0.8, -0.2), Vector3(0.3, 0.12, 0.2), Color("#3a3d42"))  # its horn
+	W.box(smithy, Vector3(0.9, 0.92, -0.2), Vector3(0.58, 0.025, 0.23), Color("#87909a"))  # polished striking face
+	W.box(smithy, Vector3(0.9, 0.67, -0.2), Vector3(0.62, 0.08, 0.38), Color("#282c31"))  # anvil waist
+	W.box(smithy, Vector3(0.9, 0.48, -0.2), Vector3(0.7, 0.1, 0.42), Color("#3b2a1e"))  # anvil foot
 	# a wooden board on the corner post holds the swords (they used to hang in the air)
 	W.box(smithy, Vector3(2.26, 1.3, -0.575), Vector3(0.06, 1.2, 1.85), timber)
 	for i in 3:  # swords on the rack
 		var blade: MeshInstance3D = W.box(smithy, Vector3(2.21, 1.3, -0.9 + i * 0.5), Vector3(0.04, 1.0, 0.1), Color("#c9d1d9"))
 		blade.rotation.x = 0.1
+		W.box(smithy, Vector3(2.19, 0.76, -0.9 + i * 0.5), Vector3(0.07, 0.22, 0.07), Color("#4a3020"))  # leather grip
+		W.box(smithy, Vector3(2.18, 0.91, -0.9 + i * 0.5), Vector3(0.28, 0.035, 0.13), Color("#b58b4a"))  # crossguard
+		W.box(smithy, Vector3(2.18, 0.61, -0.9 + i * 0.5), Vector3(0.1, 0.08, 0.1), Color("#b58b4a"), "sphere")
 	# the smith: a stout figure in a leather apron
 	var smith := Node3D.new()
 	smith_node = smith
@@ -445,12 +464,25 @@ func build_smithy() -> void:
 	W.box(smith, Vector3(0.16, 0.42, 0), Vector3(0.22, 0.84, 0.26), Color("#3a2d22"))
 	W.box(smith, Vector3(0, 1.22, 0), Vector3(0.7, 0.8, 0.42), Color("#8a4a2a"))  # shirt
 	W.box(smith, Vector3(0, 1.08, 0.22), Vector3(0.6, 0.95, 0.04), Color("#5a3a20"))  # apron
+	W.box(smith, Vector3(0, 0.9, 0.25), Vector3(0.72, 0.09, 0.07), Color("#2a1d14"))  # tool belt
+	W.box(smith, Vector3(0, 1.54, 0.245), Vector3(0.12, 0.52, 0.025), Color("#8c6844"))  # apron bib and neck strap
+	for side in [-1, 1]:
+		W.box(smith, Vector3(side * 0.24, 1.07, 0.247), Vector3(0.014, 0.72, 0.012), Color("#98704a"))  # apron seams
+	W.box(smith, Vector3(0.18, 1.14, 0.251), Vector3(0.19, 0.18, 0.018), Color("#463020"))  # apron pocket
+	W.box(smith, Vector3(0.18, 1.22, 0.263), Vector3(0.2, 0.035, 0.018), Color("#bd925b"))  # pocket edge
 	W.box(smith, Vector3(-0.45, 1.25, 0), Vector3(0.2, 0.7, 0.22), Color("#d9a07a"))  # arms
 	W.box(smith, Vector3(0.45, 1.25, 0), Vector3(0.2, 0.7, 0.22), Color("#d9a07a"))
+	for side in [-1, 1]:
+		W.box(smith, Vector3(side * 0.45, 1.0, 0.0), Vector3(0.22, 0.12, 0.23), Color("#4b3021"))  # leather bracers
+		W.box(smith, Vector3(side * 0.45, 0.98, -0.12), Vector3(0.12, 0.025, 0.018), Color("#bd925b"))
 	W.box(smith, Vector3(0, 1.85, 0), Vector3(0.42, 0.44, 0.42), Color("#d9a07a"))  # head
 	W.box(smith, Vector3(0, 1.7, 0.2), Vector3(0.4, 0.22, 0.06), Color("#3b2414"))  # beard
+	W.box(smith, Vector3(0, 1.58, 0.16), Vector3(0.27, 0.2, 0.12), Color("#3b2414"))  # pointed beard
+	for side in [-1, 1]:
+		W.box(smith, Vector3(side * 0.17, 1.86, 0.0), Vector3(0.08, 0.15, 0.13), Color("#3b2414"))  # side hair
 	for side in [-1, 1]:  # his face: eyes, bushy brows, a big nose (he faces +z)
-		W.box(smith, Vector3(side * 0.09, 1.9, 0.212), Vector3(0.06, 0.05, 0.01), Color("#1a1410"))
+		W.box(smith, Vector3(side * 0.09, 1.9, 0.216), Vector3(0.065, 0.05, 0.012), Color("#f0d9bd"))
+		W.box(smith, Vector3(side * 0.09, 1.9, 0.224), Vector3(0.022, 0.04, 0.012), Color("#1a1410"))
 		W.box(smith, Vector3(side * 0.09, 1.96, 0.214), Vector3(0.11, 0.035, 0.02), Color("#2a1a10"))
 	W.box(smith, Vector3(0, 1.84, 0.225), Vector3(0.07, 0.09, 0.05), Color("#c48a66"))
 	W.box(smith, Vector3(0, 1.79, 0.214), Vector3(0.18, 0.04, 0.02), Color("#3b2414"))  # moustache
@@ -547,6 +579,22 @@ func build_hud() -> void:
 	hurt_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hurt_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hurt_flash)
+	stats_plate = Panel.new()
+	stats_plate.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	stats_plate.offset_left = 10
+	stats_plate.offset_top = -146
+	stats_plate.offset_right = 328
+	stats_plate.offset_bottom = -10
+	stats_plate.add_theme_stylebox_override("panel", style(Color(0.08, 0.07, 0.06, 0.74), Color("#80623d"), 1, 6))
+	layer.add_child(stats_plate)
+	tracker_plate = Panel.new()
+	tracker_plate.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	tracker_plate.offset_left = 10
+	tracker_plate.offset_top = 62
+	tracker_plate.offset_right = 350
+	tracker_plate.offset_bottom = 224
+	tracker_plate.add_theme_stylebox_override("panel", style(Color(0.08, 0.07, 0.06, 0.68), Color("#80623d"), 1, 6))
+	layer.add_child(tracker_plate)
 	var box := VBoxContainer.new()  # bottom left: level, health, xp, gold
 	box.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -570,7 +618,7 @@ func build_hud() -> void:
 	box.add_child(hp_bar)
 	xp_bar = bar(Color("#5b8cff"), 8)
 	box.add_child(xp_bar)
-	box.add_child(label("I inventory   J journal   Q potion   Right-click block   K music", 12, Color(1, 1, 1, 0.55)))
+	box.add_child(label("WASD move  ·  Shift run  ·  click strike  ·  RMB guard\nE talk/use  ·  I pack  ·  J journal  ·  Q potion", 11, Color("#d8c8aa")))
 	prompt_label = label("", 20, Color.WHITE)  # "[E] Read the quest board"
 	prompt_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	prompt_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -578,12 +626,15 @@ func build_hud() -> void:
 	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt_label.offset_bottom = -96
 	layer.add_child(prompt_label)
-	tracker = label("", 16, Color("#f2e6c8"))  # the active quests, right side
-	tracker.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	tracker.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	tracker.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	tracker.offset_top = 70
-	tracker.offset_right = -18
+	tracker = label("", 14, Color("#f2e6c8"))  # the active quests, beneath the compass on the left
+	tracker.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	tracker.grow_horizontal = Control.GROW_DIRECTION_END
+	tracker.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	tracker.offset_left = 24
+	tracker.offset_top = 74
+	tracker.offset_right = 336
+	tracker.offset_bottom = 210
+	tracker.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layer.add_child(tracker)
 
 
@@ -779,6 +830,7 @@ func reset_to_first() -> void:
 	ctx.state["sword_held"] = false
 	ctx.state["rocket_held"] = false
 	ctx.state["rocket_owned"] = false
+	W.recenter()
 	close_panel()
 	W.save_state.call_deferred()
 	W.load_parts.call_deferred()
@@ -1014,7 +1066,20 @@ func _process(delta: float) -> void:
 				best = it
 				best_d = d
 	near_act = best
-	prompt_label.text = "" if best.is_empty() or panel or ctx.get("ui_open", false) else "[E]  " + best.label
+	var voice_name := ""
+	if str(W.near_who).begins_with("folk:"):
+		voice_name = W.near_name
+	elif W.near_who == "barnaby":
+		voice_name = "Barnaby"
+	elif W.near_who == "marigold":
+		voice_name = "Marigold"
+	if panel or ctx.get("ui_open", false):
+		prompt_label.text = ""
+	else:
+		var prompt: String = "[E]  " + str(best.label) if not best.is_empty() else ""
+		if voice_name != "":
+			prompt += ("     ·     " if prompt != "" else "") + "Speak to " + voice_name
+		prompt_label.text = prompt
 
 
 func level_up_burst() -> void:

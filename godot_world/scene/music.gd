@@ -54,10 +54,18 @@ func build(c: Dictionary) -> void:
 func play_sfx(name: String) -> void:
 	if not sfx or not ctx.jingles.has(name):
 		return
+	if name == "swing":
+		# A fresh one-shot voice avoids any playback state carrying over between fast sword swings.
+		var whoosh := AudioStreamPlayer.new()
+		whoosh.stream = ctx.jingles[name]
+		whoosh.volume_db = -16.0
+		whoosh.pitch_scale = 1.0
+		add_child(whoosh)
+		whoosh.finished.connect(whoosh.queue_free)
+		whoosh.play()
+		return
 	var player := sfx
-	if name == "swing" and sfx.playing:
-		sfx.stop()  # fast repeated clicks replace the quiet whoosh instead of layering it
-	elif sfx.playing:  # a hit during a jingle uses a free player, so neither cuts off
+	if sfx.playing:  # a hit during a jingle uses a free player, so neither cuts off
 		player = null
 		for p in extra:
 			if not p.playing:

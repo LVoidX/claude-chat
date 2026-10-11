@@ -103,7 +103,8 @@ func _process(delta: float) -> void:
 		var shoulder: Node3D = arms[i][0]
 		var elbow: Node3D = arms[i][1]
 		var held_sword: bool = ctx.state.get("sword_held", false) and i == 1
-		shoulder.rotation.x = lerpf(swing * side * 0.38, -0.45 if held_sword else 0.0, 0.65 if held_sword else 0.0)
+		shoulder.visible = not held_sword  # the first-person sword arm is drawn at the actual grip by hotbar.gd
+		shoulder.rotation.x = lerpf(swing * side * 0.38, 0.95 if held_sword else 0.0, 0.65 if held_sword else 0.0)
 		shoulder.rotation.z = side * 0.08
-		elbow.rotation.x = 0.82 if held_sword else 0.05
+		elbow.rotation.x = 0.65 if held_sword else 0.05
 	body.visible = W.camera.current

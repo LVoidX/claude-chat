@@ -400,8 +400,15 @@ func model_wolf(node: Node3D) -> Dictionary:
 	W.box(head, Vector3(0, -0.06, -0.3), Vector3(0.18, 0.16, 0.24), fur.darkened(0.1))  # snout
 	W.box(head, Vector3(0, -0.02, -0.43), Vector3(0.07, 0.06, 0.03), Color("#111111"))  # nose
 	for side in [-1, 1]:
-		W.box(head, Vector3(side * 0.09, 0.2, -0.02), Vector3(0.07, 0.14, 0.06), fur.darkened(0.15))  # ears
-		W.glow(head, Vector3(side * 0.08, 0.05, -0.235), Vector3(0.05, 0.035, 0.01), Color("#ffc23a"), 2.0)  # eyes
+		var ear: MeshInstance3D = W.box(head, Vector3(side * 0.12, 0.19, -0.015), Vector3(0.12, 0.23, 0.09), fur.darkened(0.18))
+		ear.rotation.z = -side * 0.24
+		W.box(head, Vector3(side * 0.12, 0.19, -0.063), Vector3(0.045, 0.12, 0.012), Color("#9c7770"))  # inner ear
+		W.box(head, Vector3(side * 0.085, 0.05, -0.238), Vector3(0.07, 0.055, 0.018), Color("#d3ad66"))  # eye socket
+		W.glow(head, Vector3(side * 0.085, 0.05, -0.25), Vector3(0.035, 0.035, 0.01), Color("#ffc23a"), 1.3)  # eye
+		W.box(head, Vector3(side * 0.09, -0.12, -0.36), Vector3(0.035, 0.025, 0.014), Color("#ddd3c2"))  # fang
+		# Fur tufts at the cheek and forelegs break up the smooth block silhouette.
+		var cheek: MeshInstance3D = W.box(head, Vector3(side * 0.18, -0.07, -0.13), Vector3(0.13, 0.08, 0.12), fur.lightened(0.08))
+		cheek.rotation.z = side * 0.25
 	var tail := limb(body, Vector3(0, 0.75, 0.55))
 	var tail_box: MeshInstance3D = W.box(tail, Vector3(0, -0.12, 0.2), Vector3(0.12, 0.12, 0.45), fur.darkened(0.1))
 	tail_box.rotation.x = 0.6
@@ -409,6 +416,8 @@ func model_wolf(node: Node3D) -> Dictionary:
 	for p in [Vector3(-0.14, 0.45, -0.38), Vector3(0.14, 0.45, -0.38), Vector3(-0.14, 0.45, 0.4), Vector3(0.14, 0.45, 0.4)]:
 		var leg := limb(body, p)
 		W.box(leg, Vector3(0, -0.22, 0), Vector3(0.11, 0.45, 0.11), fur.darkened(0.12))
+		for toe in [-1, 1]:
+			W.box(leg, Vector3(toe * 0.035, -0.43, -0.035), Vector3(0.035, 0.045, 0.07), Color("#393430"))  # dark claws
 		legs.append(leg)
 	return {"body": body, "head": head, "legs": legs, "tail": tail}
 
@@ -433,6 +442,10 @@ func model_skeleton(node: Node3D) -> Dictionary:
 	W.box(head, Vector3(0, -0.13, -0.03), Vector3(0.2, 0.08, 0.2), bone.darkened(0.08))  # jaw
 	for side in [-1, 1]:
 		W.glow(head, Vector3(side * 0.06, 0.04, -0.136), Vector3(0.06, 0.06, 0.01), Color("#5dff9a"), 2.5)  # eye sockets
+		W.box(head, Vector3(side * 0.06, -0.03, -0.145), Vector3(0.025, 0.03, 0.012), Color("#1c1713"))  # nose cavity
+		W.box(body, Vector3(side * 0.22, 1.28, -0.12), Vector3(0.1, 0.12, 0.11), bone)  # shoulder joint
+		W.box(body, Vector3(side * 0.205, 1.12, -0.13), Vector3(0.08, 0.08, 0.09), bone)  # elbow joint
+		W.box(body, Vector3(side * 0.27, 1.42, -0.12), Vector3(0.14, 0.16, 0.12), Color("#4b4032"))  # leather shoulder guard
 	var arms := []
 	for side in [-1, 1]:
 		var arm := limb(body, Vector3(side * 0.27, 1.52, 0))
@@ -440,7 +453,9 @@ func model_skeleton(node: Node3D) -> Dictionary:
 		arms.append(arm)
 	var sword := limb(arms[1], Vector3(0, -0.66, -0.05))  # a rusty blade in the right hand
 	W.box(sword, Vector3(0, 0, -0.42), Vector3(0.05, 0.02, 0.8), Color("#8a5a3a"))
-	W.box(sword, Vector3(0, 0, -0.02), Vector3(0.2, 0.04, 0.04), Color("#5a4030"))
+	W.box(sword, Vector3(0, 0, -0.42), Vector3(0.012, 0.012, 0.7), Color("#c2b28e"))  # chipped edge
+	W.box(sword, Vector3(0, 0, -0.02), Vector3(0.24, 0.05, 0.06), Color("#5a4030"))
+	W.box(sword, Vector3(0, 0, 0.05), Vector3(0.07, 0.12, 0.07), Color("#7a6548"))  # pommel
 	var shield: MeshInstance3D = W.box(arms[0], Vector3(-0.06, -0.45, -0.1), Vector3(0.06, 0.5, 0.42), Color("#5a4a38"))
 	shield.rotation.y = 0.2
 	return {"body": body, "head": head, "legs": legs, "arms": arms}
@@ -461,6 +476,10 @@ func model_bandit(node: Node3D) -> Dictionary:
 	W.box(head, Vector3(0, 0, 0), Vector3(0.28, 0.3, 0.28), Color("#c89a78"))
 	W.box(head, Vector3(0, 0.1, 0.0), Vector3(0.32, 0.2, 0.32), Color("#5a1414"))  # red hood
 	W.box(head, Vector3(0, -0.08, -0.145), Vector3(0.28, 0.12, 0.02), Color("#2a2a2a"))  # face cloth
+	for side in [-1, 1]:
+		W.box(head, Vector3(side * 0.065, -0.015, -0.153), Vector3(0.035, 0.022, 0.012), Color("#d9b779"))  # wary eyes
+		W.box(body, Vector3(side * 0.15, 1.2, -0.16), Vector3(0.07, 0.43, 0.025), cloth.lightened(0.12))  # leather seam
+		W.box(body, Vector3(side * 0.35, 1.0, -0.08), Vector3(0.1, 0.28, 0.08), Color("#60472e"))  # belt pouch
 	var arms := []
 	for side in [-1, 1]:
 		var arm := limb(body, Vector3(side * 0.35, 1.48, 0))
@@ -485,10 +504,19 @@ func model_raider(node: Node3D) -> Dictionary:
 	W.box(body, Vector3(0, 1.2, 0), Vector3(0.56, 0.65, 0.32), cloth)  # leather coat
 	W.box(body, Vector3(0, 1.42, 0), Vector3(0.62, 0.14, 0.36), Color("#6a6e76"))  # iron shoulders
 	W.box(body, Vector3(0, 0.93, 0), Vector3(0.6, 0.08, 0.36), Color("#5a1414"))  # red sash
+	W.box(body, Vector3(0, 1.18, -0.17), Vector3(0.42, 0.5, 0.035), Color("#44474c"))  # layered breastplate
+	W.box(body, Vector3(0, 1.19, -0.193), Vector3(0.035, 0.46, 0.018), Color("#8d3430"))  # red heraldic stripe
+	for y in [1.02, 1.18, 1.34]:
+		W.box(body, Vector3(0, y, -0.215), Vector3(0.035, 0.035, 0.025), Color("#b9a979"), "sphere")  # rivets
 	var head := limb(body, Vector3(0, 1.72, 0))
 	W.box(head, Vector3(0, 0, 0), Vector3(0.28, 0.3, 0.28), Color("#b88a6a"))
 	W.box(head, Vector3(0, 0.14, 0.0), Vector3(0.33, 0.14, 0.33), Color("#7a7e86"))  # iron helm
 	W.box(head, Vector3(0, 0.25, 0.0), Vector3(0.06, 0.12, 0.3), Color("#a82a2a"))  # crest
+	W.box(head, Vector3(0, -0.05, -0.15), Vector3(0.28, 0.075, 0.03), Color("#555a61"))  # brow and visor rim
+	W.box(head, Vector3(0, -0.12, -0.12), Vector3(0.19, 0.06, 0.07), Color("#3b3734"))  # shadowed face opening
+	for side in [-1, 1]:
+		W.box(head, Vector3(side * 0.09, -0.075, -0.16), Vector3(0.025, 0.018, 0.012), Color("#d09b55"))  # eye slit
+		W.box(body, Vector3(side * 0.23, 1.03, -0.19), Vector3(0.09, 0.3, 0.025), Color("#8d3430"))  # split tabard
 	var arms := []
 	for side in [-1, 1]:
 		var arm := limb(body, Vector3(side * 0.37, 1.48, 0))
@@ -559,6 +587,13 @@ func model_troll(node: Node3D) -> Dictionary:
 	W.box(body, Vector3(0, 1.35, 0), Vector3(1.3, 0.5, 0.8), Color("#5a4632"))  # loincloth
 	W.box(body, Vector3(0, 2.2, 0.05), Vector3(1.6, 1.4, 1.1), skin)  # belly
 	W.box(body, Vector3(0, 2.95, 0.2), Vector3(1.9, 0.7, 1.0), skin.darkened(0.05))  # hunched shoulders
+	W.box(body, Vector3(0, 1.55, -0.42), Vector3(1.1, 0.13, 0.05), Color("#36271f"))  # broad belt
+	W.box(body, Vector3(0, 1.55, -0.46), Vector3(0.22, 0.18, 0.05), Color("#b5944e"))  # old bronze buckle
+	for side in [-1, 1]:
+		W.box(body, Vector3(side * 0.42, 2.45, -0.53), Vector3(0.08, 0.42, 0.025), Color("#536344"))  # healed scars
+		W.box(body, Vector3(side * 0.22, 3.42, -0.1), Vector3(0.14, 0.25, 0.16), Color("#e2d1a5"))  # tusk
+	for side in [-1, 1]:
+		W.box(body, Vector3(side * 0.67, 2.05, -0.1), Vector3(0.28, 0.3, 0.34), skin.lightened(0.06), "sphere")  # knuckles
 	var head := limb(body, Vector3(0, 3.3, -0.35))
 	W.box(head, Vector3(0, 0, 0), Vector3(0.75, 0.62, 0.7), skin)
 	W.box(head, Vector3(0, 0.05, -0.38), Vector3(0.28, 0.22, 0.12), skin.darkened(0.12))  # big nose

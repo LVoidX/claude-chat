@@ -75,9 +75,10 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   - Day and night (base.gd): state["time"] = hour 0..24, a day = DAY_MINUTES (40) real minutes, starts at night.
     A sky shader blends the red-moon panorama into a day sky with sun and dusk colours. ctx["night"] (1 night ..
     0 day) is read by lanterns, torches, windows and fireflies. [sky day/sunset/night/...] sets the time.
-- The user hasn't decided the game's core concept yet (maybe a 3D RimWorld-like). Keep additions generic:
-  world, life, systems; don't lock in one game loop.
-- avatar.gd: first-person body has a stitched green tunic, articulated sleeves/forearms, cuffs and gloves, with the right arm brought forward when the sword is equipped; leg gait and sitting are animated. barnaby.gd: Barnaby Finch (model: models/barnaby.json, 275 textured boxes, textures barnaby_*.png);
+- Core direction (2026-10-05): Thornvale: The Red Moon, a grounded, voice-led medieval story adventure. The main loop is meet people, take
+  local work, explore the valley, choose how to solve its conflicts, and see the story reshape familiar places.
+  Keep the world and systems open-ended; whimsical commands stay optional and out of the main path.
+- avatar.gd: first-person body has a stitched green tunic, articulated arms and legs, cuffs and gloves; the right body arm hides while the sword is equipped so hotbar.gd can draw a first-person sleeve and hand at the sword grip. Leg gait and sitting are animated. barnaby.gd: Barnaby Finch (model: models/barnaby.json, 275 textured boxes, textures barnaby_*.png);
     wanders, stops and faces you when near (hands-free listening), commands follow / wander / stay.
 - ctx.state is saved to world_state.json (next to chat.pyw) every few seconds and on exit: keep plain values.
 - Textures: PNGs next to chat.pyw, loaded at runtime with W.tex() (no Godot import step).
@@ -85,7 +86,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - North is -z. Faces/fronts of models point to -z; W.face(node, target) turns a node toward a point.
 
 ## Controls
-- Tab or the ⇄ button: switch chat / world. Esc frees the mouse, click locks it. F11 fullscreen. R recenter.
+- Tab or the ⇄ button: switch chat / world. Esc frees the mouse, click locks it. F11 fullscreen. R returns to the village square.
 - World: WASD, Shift run, Space jump, Ctrl crouch (hold; slower, stays down under low ceilings), mouse look.
 - Mouse button 5 or M: record / stop+send / cancel transcription. Mouse button 4 or N: stop speaking.
   (M/N only act in the chat when the text box is empty.)
@@ -229,9 +230,12 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   first physics frame after a rebuild, ~0.16 s) and A* paths with line-of-sight smoothing. New buildings are avoided
   automatically as long as they have colliders.
 - terrain.gd tree cache v15: pines have seven close overlapping bough tiers; oaks have fuller, smoother crowns and visible branches.
-- 2026-10-05 fixes: the held sword has a tapered blade, fuller, guard, wrapped grip and pommel. Its ready pose is
-  angled from the lower-right toward the upper-left; keep its model geometry unchanged. The repeated swing whoosh
-  is quiet, fixed-pitch, and replaces itself instead of layering. Barnaby's [look]
+- 2026-10-05 fixes: the held sword has a tapered, faceted blade, fuller, swept guard, wrapped grip and pommel. Its ready
+  pose follows the user's reference: a lower center-right hilt, hand wrapped around the grip, and blade rising off the
+  upper-right edge; a shortened sleeve joins the fist. The fist is parented to the sword, with a crosswise palm and
+  four curled finger segments, and the hand/sword drift subtly at rest and with footsteps.
+  The repeated swing whoosh is quiet, fixed-pitch, and uses a fresh one-shot player so repeated swings cannot inherit
+  volume changes. Barnaby's [look]
   context asks for a direct description of the valley without narrating his own actions. Named sky presets blend over
   three seconds. Highmoor's rebuilding quest now explains where and how to mine ore, and 15 ore rocks are placed so
   its 12-ore goal is possible without waiting for regrowth. Grass is scattered over walkable hills across the map;
@@ -241,3 +245,23 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   use simpler layouts appropriate to each outcome.
 - Cottage roofs: the thatch prism has a wider overhang and steeper pitch, finished with timber eaves and a raised
   ridge cap.
+- First-pass game revamp: new games and R now begin at the village well facing into the square; the sword rests
+  smaller at the lower right and the right arm reaches its hilt. Movement has a very slight walk/sprint bob. Rain is
+  lighter; the active story and side quest sit on a dark HUD plate, the stat plate is anchored cleanly, the controls
+  hint uses current actions, the hotbar hides unused slots, and a compact story tracker sits upper-left to leave room
+  for the held sword at upper-right. Chat-fed task lines start below the story tracker so the two lists do not overlap.
+- Sword grip correction: the visible first-person sleeve and gloved hand now follow the sword's grip through ready,
+  guard, and swing poses; the old body arm is hidden while equipped to avoid showing a detached second hand.
+- Detail pass: villagers have stitched clothing and individualized faces; sheep and chickens have layered fleece/feathers,
+  expressive heads and feet; wolves and humanoid foes have added armor, facial and weapon details. The village cart now
+  has built-up spoked wheels, axle pins, boardwork and tied hay; barrels have stave seams and lids. Cottage windows now
+  have timber frames, divided lights and strapped shutters. Thatch roofs gained distinct parallel courses, grass
+  density was reduced on footpaths, and a clearing protects the whole village square. Highmoor's curtain walls now
+  have projecting masonry courses and regular buttresses; round towers have raised stone bands. The well canopy now
+  has warmer timber, raised pitch seams and capped ends. project.godot enables 4x 3D MSAA and 16x anisotropic filtering
+  for cleaner edges and sharper oblique ground/roof textures.
+- Sword readability pass: the held blade is wider with a pale steel facet palette and a visible tapered center fuller;
+  simplified the glove around the grip and made first-person sleeve and hand colors hold at night.
+- Grip follow-up: the palm now sits around the hilt itself, with curled fingers returning behind the handle and a
+  leather forearm bracer connecting the wrist to the lower-right screen edge. Rain streaks are shorter and subtler;
+  the ground shader darkens and smooths gradually when rain arrives, then dries back out with the weather.

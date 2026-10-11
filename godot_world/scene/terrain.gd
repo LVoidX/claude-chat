@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 15  # rebuild cached terrain and grass after changing their scatter
+const VERSION := 16  # rebuild cached terrain and grass after changing their scatter
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -26,6 +26,7 @@ const ROAD_WIDTH := 3.2
 const GROUND_SHADER := """
 shader_type spatial;
 render_mode cull_back;
+uniform float wetness = 0.0;
 varying vec3 wpos;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p) {
@@ -56,9 +57,9 @@ void fragment() {
 	float peb = step(0.82, hash(floor(wpos.xz * 7.0))) * (1.0 - smoothstep(0.18, 0.3, length(fract(wpos.xz * 7.0) - 0.5)));
 	float worn = vnoise(wpos.xz * vec2(0.6, 3.5));
 	col = mix(col, col * mix(0.82, 1.05, worn) + peb * vec3(0.12, 0.11, 0.09), road);
-	ALBEDO = col;
-	ROUGHNESS = 0.95;
-	SPECULAR = 0.2;
+	ALBEDO = col * mix(1.0, 0.78, wetness * (0.2 + road * 0.8));
+	ROUGHNESS = mix(0.95, 0.72 - road * 0.22, wetness);
+	SPECULAR = 0.2 + road * wetness * 0.32;
 }
 """
 
@@ -67,7 +68,7 @@ shader_type spatial;
 render_mode cull_disabled;
 varying float tip;
 void vertex() {
-	tip = clamp(VERTEX.y / 0.38, 0.0, 1.0);
+	tip = clamp(VERTEX.y / 0.30, 0.0, 1.0);
 	vec3 w = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	float sway = sin(TIME * 1.7 + w.x * 0.35 + w.z * 0.27) * 0.6 + sin(TIME * 3.1 + w.x * 1.3) * 0.25;
 	VERTEX.x += sway * 0.12 * tip * tip;
@@ -82,6 +83,7 @@ void fragment() {
 
 var ctx: Dictionary
 var W
+var ground_material: ShaderMaterial
 var noise: FastNoiseLite
 var lanterns := []  # [light, base energy, phase]
 var fireflies: GPUParticles3D
@@ -99,9 +101,9 @@ func build(c: Dictionary) -> void:
 	ground.mesh = cache["mesh"]
 	var shader := Shader.new()
 	shader.code = GROUND_SHADER
-	var gm := ShaderMaterial.new()
-	gm.shader = shader
-	ground.material_override = gm
+	ground_material = ShaderMaterial.new()
+	ground_material.shader = shader
+	ground.material_override = ground_material
 	add_child(ground)
 	add_ground_collision(cache["heights"])
 	for mm in cache["trees"]:
@@ -496,9 +498,9 @@ func blade_mesh() -> ArrayMesh:
 	for k in 3:  # three thin blades leaning out a little in different directions
 		var a := k * TAU / 3.0 + 0.4
 		var d := Vector3(cos(a), 0, sin(a))
-		var side := d.cross(Vector3.UP) * 0.022
-		var lean := d * 0.09
-		verts.append_array([-side, side, Vector3(0, 0.38 - k * 0.07, 0) + lean])
+		var side := d.cross(Vector3.UP) * 0.018
+		var lean := d * 0.07
+		verts.append_array([-side, side, Vector3(0, 0.3 - k * 0.05, 0) + lean])
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
@@ -517,16 +519,16 @@ func add_grass() -> void:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 3
 		var spots := []
-		while spots.size() < 55000:
+		while spots.size() < 23000:
 			var a := rng.randf() * TAU
 			var r := sqrt(rng.randf()) * (FLAT + 14.0)
 			var x := cos(a) * r
 			var z := sin(a) * r
-			if road_distance(x, z) < ROAD_WIDTH * 0.8 or Vector2(x - 12.0, z - 18.0).length() < 4.5:
+			if road_distance(x, z) < ROAD_WIDTH * 0.8 or Vector2(x - VILLAGE.x, z - VILLAGE.z).length() < 24.0:
 				continue
 			spots.append(Vector3(x, height_at(x, z), z))
 		var extra := 0  # the castle hill and the road up to it
-		while extra < 22000:
+		while extra < 12000:
 			var x := rng.randf_range(-48.0, 48.0)
 			var z := rng.randf_range(-182.0, -66.0)
 			var dc := Vector2(x - CASTLE.x, z - CASTLE.z).length()
@@ -542,7 +544,7 @@ func add_grass() -> void:
 			spots.append(Vector3(x, h, z))
 			extra += 1
 		extra = 0  # scatter grass over the remaining walkable hills, not just the meadow and castle road
-		while extra < 70000:
+		while extra < 36000:
 			var x := rng.randf_range(-SIZE * 0.5, SIZE * 0.5)
 			var z := rng.randf_range(-SIZE * 0.5, SIZE * 0.5)
 			if road_distance(x, z) < ROAD_WIDTH * 0.8:
@@ -554,7 +556,7 @@ func add_grass() -> void:
 			extra += 1
 		mm.instance_count = spots.size()
 		for i in spots.size():
-			var s := rng.randf_range(0.55, 1.2)
+			var s := rng.randf_range(0.65, 1.1)
 			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.4), s)), spots[i]))
 			var g := Color("#3e6a20").lerp(Color("#5e8a2a"), rng.randf()).darkened(rng.randf_range(0.0, 0.25))
 			mm.set_instance_color(i, g)

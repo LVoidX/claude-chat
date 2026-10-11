@@ -87,10 +87,14 @@ func well() -> void:
 	var prism := PrismMesh.new()
 	prism.size = Vector3(2.9, 0.95, 1.9)
 	roof.mesh = prism
-	roof.material_override = kit.mat("planks", Color("#8a6a4a"))
+	roof.material_override = kit.mat("planks", Color("#b18a59"))
 	roof.position = Vector3(0, 3.15, 0)
 	roof.rotation.y = PI / 2.0
 	add_child(roof)
+	# A raised ridge cap and carved end bosses finish the small canopy.
+	kit.block(W, roof, Vector3(0, 0.48, 0), Vector3(0.16, 0.12, 2.15), "timber", false, Color("#745131"))
+	for end in [-1, 1]:
+		W.box(roof, Vector3(0, 0.52, end * 1.04), Vector3(0.18, 0.18, 0.08), Color("#c9a24a"), "sphere")
 	roof.create_convex_collision()
 	kit.block(W, self, Vector3(0, 2.7, 0), Vector3(2.3, 0.14, 0.14), "timber", false)  # tie beam
 
@@ -160,8 +164,16 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 	roof.create_convex_collision()  # the sloped roof is solid too (you can stand on it)
 	# Timber eaves finish the overhang, and a thatch ridge caps the two roof slopes.
 	var eave_x := w / 2.0 + 0.67
+	var ridge_y := roof.position.y + 1.4
+	var roof_slope := atan2(2.8, eave_x)
 	for side in [-1, 1]:
 		kit.block(W, house, Vector3(side * eave_x, 3.32, 0), Vector3(0.14, 0.18, d + 1.3), "timber", false)
+		for course in range(1, 6):  # raised straw courses catch moonlight along the roof slope
+			var course_fraction := float(course) / 6.0
+			var row: MeshInstance3D = kit.block(W, house, Vector3(side * eave_x * course_fraction, ridge_y - 2.8 * course_fraction, 0),
+				Vector3(0.12, 0.045, d + 1.04), "thatch", false,
+				Color("#d2b66f") if course % 2 == 0 else Color("#b99755"))
+			row.rotation.z = -side * roof_slope
 	kit.block(W, house, Vector3(0, roof.position.y + 1.48, 0), Vector3(0.24, 0.16, d + 1.3), "thatch", false)
 	var chimney_x := w / 2.0 - 0.7
 	kit.block(W, house, Vector3(chimney_x, 0.4 + h + 1.4, d / 4.0), Vector3(0.6, 2.8, 0.6), "stone", false)
@@ -173,22 +185,73 @@ func cottage(offset: Vector3, size: Vector2, index: int) -> void:
 	hinge.rotation.y = -1.75
 	house.add_child(hinge)
 	kit.block(W, hinge, Vector3(door_w / 2.0 - 0.05, door_h / 2.0, 0.04), Vector3(door_w - 0.1, door_h - 0.05, 0.07), "planks", false)
-	W.box(hinge, Vector3(door_w - 0.25, 1.0, 0.09), Vector3(0.08, 0.08, 0.04), Color("#2a2622"))
+	for y in [0.28, door_h - 0.26]:  # two forged straps with proud rivets hold the door boards together
+		W.box(hinge, Vector3(door_w / 2.0 - 0.05, y, 0.087), Vector3(door_w - 0.2, 0.065, 0.025), Color("#34302c"))
+		for side in [-1, 1]:
+			W.box(hinge, Vector3(door_w / 2.0 - 0.05 + side * (door_w / 2.0 - 0.16), y, 0.105),
+				Vector3(0.035, 0.035, 0.018), Color("#c9a24a"), "sphere")
+	W.box(hinge, Vector3(door_w - 0.25, 1.0, 0.11), Vector3(0.08, 0.08, 0.05), Color("#c9a24a"), "sphere")
+	# A timber surround and lintel leave a finished edge around the open doorway.
+	for side in [-1, 1]:
+		kit.block(W, house, Vector3(door_x + side * (door_w / 2.0 + 0.04), door_h / 2.0, -d / 2.0 - 0.08),
+			Vector3(0.12, door_h + 0.12, 0.12), "timber", false)
+	kit.block(W, house, Vector3(door_x, door_h + 0.04, -d / 2.0 - 0.08), Vector3(door_w + 0.2, 0.14, 0.12), "timber", false)
 	for wx in [w / 4.0]:
 		window(house, Vector3(wx, 2.0, -d / 2.0 - 0.03), false)
+		flower_box(house, Vector3(wx, 1.38, -d / 2.0 - 0.2), index)
 	for wz in [-d / 4.0, d / 4.0]:
 		window(house, Vector3(w / 2.0 + 0.03, 2.0, wz), true)
 		window(house, Vector3(-w / 2.0 - 0.03, 2.0, wz), true)
+
+
+## A narrow planter under each street-facing window adds a little colour and a lived-in scale cue.
+func flower_box(house: Node3D, at: Vector3, index: int) -> void:
+	var wood := Color("#69472d")
+	W.box(house, at, Vector3(0.88, 0.2, 0.24), wood)
+	W.box(house, at + Vector3(0, 0.12, 0), Vector3(0.82, 0.06, 0.19), Color("#38281c"))  # dark soil
+	var blooms := [Color("#e8a0b5"), Color("#e8c35a"), Color("#b7a0d8")]
+	for i in 5:
+		var x := -0.32 + i * 0.16
+		var height := 0.17 + 0.04 * float((i + index) % 3)
+		W.box(house, at + Vector3(x, 0.2 + height * 0.5, 0), Vector3(0.025, height, 0.025), Color("#587342"))
+		W.box(house, at + Vector3(x, 0.2 + height, 0), Vector3(0.09, 0.07, 0.08), blooms[(i + index) % blooms.size()], "sphere")
+		W.box(house, at + Vector3(x + 0.04, 0.27, -0.035), Vector3(0.08, 0.035, 0.045), Color("#6d8a46"), "sphere")
 
 
 func window(house: Node3D, at: Vector3, side_wall: bool) -> void:
 	var size := Vector3(0.3, 0.75, 0.7) if side_wall else Vector3(0.7, 0.75, 0.3)  # (right through the wall: lit inside too)
 	var inward := Vector3(-signf(at.x) * 0.12, 0, 0) if side_wall else Vector3(0, 0, -signf(at.z) * 0.12)
 	W.glow(house, at + inward, size, Color("#ffbf66"), 2.2)
+	var outward := Vector3(signf(at.x), 0, 0) if side_wall else Vector3(0, 0, signf(at.z))
+	var face := at + outward * 0.19
+	var wood := Color("#4a3220")
+	var width_axis := "z" if side_wall else "x"
+	# Four proud timber pieces frame the opening, with a sill deep enough to catch the light.
+	for side in [-1, 1]:
+		var post_pos := face + (Vector3(0, 0, side * 0.4) if width_axis == "z" else Vector3(side * 0.4, 0, 0))
+		W.box(house, post_pos, Vector3(0.085, 0.9, 0.085), wood)
+	var beam_size := Vector3(0.09, 0.09, 0.86) if side_wall else Vector3(0.86, 0.09, 0.09)
+	for y in [-0.43, 0.43]:
+		W.box(house, face + Vector3(0, y, 0), beam_size, wood)
+	# A cross rail separates the upper light from the lower shuttered pane.
+	var muntin_size := Vector3(0.045, 0.035, 0.62) if side_wall else Vector3(0.62, 0.035, 0.045)
+	W.box(house, face + Vector3(0, 0.02, 0), muntin_size, Color("#735133"))
 	var shutter := Vector3(0.05, 0.8, 0.3) if side_wall else Vector3(0.3, 0.8, 0.05)
 	for k in [-1, 1]:
 		var off := Vector3(0, 0, k * 0.52) if side_wall else Vector3(k * 0.52, 0, 0)
-		kit.block(W, house, at + off, shutter, "planks", false, Color("#6d8a6a"))
+		var leaf: MeshInstance3D = kit.block(W, house, at + outward * 0.22 + off, shutter, "planks", false,
+			Color("#6d8a6a") if k < 0 else Color("#617e61"))
+		# Two board divisions, an iron strap and a brass hinge pin finish each open shutter.
+		for board in [-1, 1]:
+			var board_off := Vector3(0, 0, board * 0.075) if side_wall else Vector3(board * 0.075, 0, 0)
+			var board_size := Vector3(0.012, 0.74, 0.012) if side_wall else Vector3(0.012, 0.74, 0.012)
+			var seam: MeshInstance3D = W.box(house, leaf.position + board_off + outward * 0.035, board_size, Color("#4e684e"))
+			seam.rotation.y = 0.0 if side_wall else PI / 2.0
+		var strap_size := Vector3(0.025, 0.07, 0.32) if side_wall else Vector3(0.32, 0.07, 0.025)
+		W.box(house, leaf.position + outward * 0.045, strap_size, Color("#3b3935"))
+		var hinge_pos := leaf.position - off * 0.72 + outward * 0.05
+		W.box(house, hinge_pos + Vector3(0, 0.25, 0), Vector3(0.035, 0.045, 0.035), Color("#c9a24a"), "sphere")
+		W.box(house, hinge_pos + Vector3(0, -0.25, 0), Vector3(0.035, 0.045, 0.035), Color("#c9a24a"), "sphere")
 	if windows.size() < 6:  # a few of the windows really light the ground outside
 		var out := Vector3(signf(at.x) * 0.8, 0, 0) if side_wall else Vector3(0, 0, -0.8)
 		var l: OmniLight3D = W.light(house, at + out, Color("#ffb86a"), 0.9, 6.0)
@@ -255,6 +318,10 @@ func hay(at: Vector3) -> void:
 
 
 func barrel(at: Vector3) -> void:
+	var barrel_node := Node3D.new()
+	barrel_node.position = at_ground(at)
+	barrel_node.rotation.y = randf() * TAU
+	add_child(barrel_node)
 	var b := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = 0.32
@@ -263,8 +330,8 @@ func barrel(at: Vector3) -> void:
 	cyl.radial_segments = 10
 	b.mesh = cyl
 	b.material_override = kit.mat("planks", Color("#a07a52"))
-	b.position = at_ground(at) + Vector3(0, 0.45, 0)
-	add_child(b)
+	b.position = Vector3(0, 0.45, 0)
+	barrel_node.add_child(b)
 	for y in [0.18, 0.72]:
 		var hoop := MeshInstance3D.new()
 		var hc := CylinderMesh.new()
@@ -274,9 +341,14 @@ func barrel(at: Vector3) -> void:
 		hc.radial_segments = 10
 		hoop.mesh = hc
 		hoop.material_override = W.mat(Color("#34302c"))
-		hoop.position = at_ground(at) + Vector3(0, y, 0)
-		add_child(hoop)
-	W.add_collider(self, Transform3D(Basis(), b.position), Vector3(0.64, 0.9, 0.64), "sphere")
+		hoop.position = Vector3(0, y, 0)
+		barrel_node.add_child(hoop)
+	for i in 10:  # narrow stave seams make the cask read as separate oak boards
+		var a := i * TAU / 10.0
+		var seam: MeshInstance3D = W.box(barrel_node, Vector3(cos(a) * 0.322, 0.45, sin(a) * 0.322), Vector3(0.012, 0.72, 0.012), Color("#66482f"))
+		seam.rotation.y = -a
+	W.box(barrel_node, Vector3(0, 0.91, 0), Vector3(0.38, 0.035, 0.38), Color("#8a6a48"), "cylinder")  # lid
+	W.add_collider(self, Transform3D(Basis(), barrel_node.position + Vector3(0, 0.45, 0)), Vector3(0.64, 0.9, 0.64), "sphere")
 
 
 func cart(at: Vector3) -> void:
@@ -298,6 +370,38 @@ func cart(at: Vector3) -> void:
 		wheel.position = Vector3(side * 0.78, 0.48, 0.2)
 		wheel.rotation.z = PI / 2.0
 		cart_node.add_child(wheel)
+		# A wooden rim, spokes and a square iron axle pin give the wheels a readable silhouette.
+		var rim := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = 0.38
+		torus.outer_radius = 0.46
+		torus.rings = 8
+		torus.ring_segments = 16
+		rim.mesh = torus
+		rim.material_override = kit.mat("timber", Color("#76512f"))
+		rim.position = wheel.position
+		rim.rotation.z = PI / 2.0
+		cart_node.add_child(rim)
+		for spoke in 8:
+			var angle := spoke * TAU / 8.0
+			var slat: MeshInstance3D = kit.block(W, cart_node, wheel.position + Vector3(0, cos(angle) * 0.22, sin(angle) * 0.22),
+				Vector3(0.12, 0.46, 0.07), "timber", false, Color("#a07a52"))
+			slat.rotation.x = angle
+		var pin: MeshInstance3D = W.box(cart_node, Vector3(side * 0.85, 0.48, 0.2), Vector3(0.16, 0.16, 0.16), Color("#48413a"), "sphere")
+	# Cross slats and corner straps make the body and hay load feel assembled.
+	for z in [-0.82, -0.2, 0.42, 1.03]:
+		kit.block(W, cart_node, Vector3(0, 1.0, z), Vector3(1.24, 0.07, 0.08), "timber", false, Color("#8a6744"))
+	for side in [-1, 1]:
+		for z in [-0.85, 0.85]:
+			W.box(cart_node, Vector3(side * 0.72, 0.95, z), Vector3(0.035, 0.35, 0.04), Color("#4c4842"))
+	# The hay is tied down with crossed rope and sprigs of loose straw.
+	for x in [-0.32, 0.32]:
+		var rope: MeshInstance3D = W.box(cart_node, Vector3(x, 1.57, 0.15), Vector3(0.055, 0.045, 1.45), Color("#bd9d68"))
+		rope.rotation.y = x * 0.25
+	for i in 9:
+		var straw: MeshInstance3D = W.box(cart_node, Vector3(randf_range(-0.48, 0.48), 1.56 + randf_range(-0.05, 0.12), randf_range(-0.5, 0.72)),
+			Vector3(0.04, 0.035, randf_range(0.18, 0.42)), Color("#d4b45e"))
+		straw.rotation.y = randf() * PI
 	kit.block(W, cart_node, Vector3(0, 0.6, -1.8), Vector3(0.08, 0.08, 1.6), "timber", false)  # the shaft
 	kit.block(W, cart_node, Vector3(0, 1.17, 0.15), Vector3(1.15, 0.72, 1.5), "thatch", false)  # a load of hay in the bed
 

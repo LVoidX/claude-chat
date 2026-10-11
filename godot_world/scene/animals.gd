@@ -45,6 +45,11 @@ func add_animal(kind: String, at: Vector3, rng: RandomNumberGenerator) -> void:
 		var face := Color("#2e2a27")
 		W.box(node, Vector3(0, 0.62, 0.05), Vector3(0.62, 0.5, 0.9), wool)  # woolly body
 		W.box(node, Vector3(0, 0.82, 0.05), Vector3(0.5, 0.18, 0.75), wool.lightened(0.05))  # fluffy back
+		for side in [-1, 1]:
+			for z in [-0.2, 0.12, 0.4]:
+				W.box(node, Vector3(side * 0.28, 0.63, z), Vector3(0.22, 0.24, 0.25), wool.lightened(0.06), "sphere")  # fleece curls
+		for z in [-0.2, 0.12, 0.4]:
+			W.box(node, Vector3(0, 0.9, z), Vector3(0.23, 0.18, 0.24), wool.lightened(0.1), "sphere")  # back fleece
 		head.position = Vector3(0, 0.78, -0.48)
 		node.add_child(head)
 		W.box(head, Vector3(0, 0, -0.08), Vector3(0.26, 0.26, 0.3), face)
@@ -52,23 +57,39 @@ func add_animal(kind: String, at: Vector3, rng: RandomNumberGenerator) -> void:
 		for side in [-1, 1]:
 			var ear: MeshInstance3D = W.box(head, Vector3(side * 0.18, 0.04, 0.0), Vector3(0.14, 0.05, 0.08), face)
 			ear.rotation.z = side * -0.4
-			W.box(head, Vector3(side * 0.07, 0.04, -0.235), Vector3(0.04, 0.04, 0.01), Color("#111111"))  # eyes
+			W.box(ear, Vector3(0, 0, -0.52), Vector3(0.55, 0.45, 0.3), Color("#b77b76"))  # warm inner ear
+			W.box(head, Vector3(side * 0.07, 0.04, -0.235), Vector3(0.05, 0.045, 0.015), Color("#e4cfb7"))  # eye whites
+			W.box(head, Vector3(side * 0.07, 0.04, -0.245), Vector3(0.02, 0.032, 0.012), Color("#171514"))  # pupils
+		W.box(head, Vector3(0, -0.075, -0.235), Vector3(0.085, 0.045, 0.06), Color("#514440"), "sphere")  # muzzle
+		W.box(head, Vector3(0, -0.075, -0.269), Vector3(0.03, 0.02, 0.012), Color("#c99d91"))  # nose
 		for x in [-0.18, 0.18]:
 			for z in [-0.28, 0.32]:
 				var leg := Node3D.new()
 				leg.position = Vector3(x, 0.42, z)
 				node.add_child(leg)
-				W.box(leg, Vector3(0, -0.21, 0), Vector3(0.09, 0.42, 0.09), face)
+				W.box(leg, Vector3(0, -0.18, 0), Vector3(0.075, 0.34, 0.075), face)
+				W.box(leg, Vector3(0, -0.38, -0.015), Vector3(0.105, 0.08, 0.12), Color("#252220"))  # split hoof
 				legs.append(leg)
 	else:
 		var feathers := Color("#f2ede2") if rng.randf() < 0.6 else Color("#a8643a")
 		W.box(node, Vector3(0, 0.25, 0.02), Vector3(0.24, 0.22, 0.32), feathers)  # body
 		W.box(node, Vector3(0, 0.36, 0.17), Vector3(0.16, 0.16, 0.1), feathers.darkened(0.08))  # tail
+		for side in [-1, 1]:
+			var wing: MeshInstance3D = W.box(node, Vector3(side * 0.12, 0.27, -0.005), Vector3(0.09, 0.15, 0.22), feathers.darkened(0.08), "sphere")
+			wing.rotation.x = -0.15
+			for feather in 3:
+				W.box(node, Vector3(side * (0.13 + feather * 0.012), 0.24, 0.08 + feather * 0.055),
+					Vector3(0.018, 0.055, 0.095), feathers.lightened(0.04 * feather))
 		head.position = Vector3(0, 0.42, -0.14)
 		node.add_child(head)
 		W.box(head, Vector3(0, 0, 0), Vector3(0.12, 0.14, 0.12), feathers)
-		W.box(head, Vector3(0, 0.1, 0), Vector3(0.04, 0.06, 0.08), Color("#d23a2c"))  # comb
-		W.box(head, Vector3(0, -0.01, -0.08), Vector3(0.04, 0.03, 0.05), Color("#e8a530"))  # beak
+		for crest in 3:
+			W.box(head, Vector3(-0.03 + crest * 0.03, 0.095, 0), Vector3(0.025, 0.06, 0.055), Color("#d23a2c"))  # comb
+		W.box(head, Vector3(0, -0.01, -0.08), Vector3(0.05, 0.03, 0.065), Color("#e8a530"))  # beak
+		for side in [-1, 1]:
+			W.box(head, Vector3(side * 0.057, 0.025, -0.054), Vector3(0.026, 0.03, 0.014), Color("#f1dcbb"))
+			W.box(head, Vector3(side * 0.057, 0.025, -0.063), Vector3(0.012, 0.018, 0.01), Color("#1a1714"))  # eye
+			W.box(head, Vector3(side * 0.015, -0.1, -0.015), Vector3(0.025, 0.055, 0.025), Color("#bd392b"))  # wattle
 		for x in [-0.06, 0.06]:
 			var leg := Node3D.new()
 			leg.position = Vector3(x, 0.15, 0.02)

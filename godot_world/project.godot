@@ -4,7 +4,7 @@ config_version=5
 
 [application]
 
-config/name="Claude World"
+config/name="Thornvale: The Red Moon"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
@@ -17,3 +17,8 @@ window/vsync/vsync_mode=1
 [physics]
 
 common/physics_ticks_per_second=120
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
+textures/default_filters/anisotropic_filtering_level=4

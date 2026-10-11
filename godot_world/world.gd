@@ -26,6 +26,8 @@ const CROUCH_EYE := 1.0
 var player_shape: CollisionShape3D
 var push := Vector3.ZERO  # sideways shove from blasts (rockets), added to walking and fading out
 var crouch_amount := 0.0  # 0 = standing .. 1 = fully crouched (eases)
+var walk_bob := 0.0
+var walk_phase := 0.0
 const QUIET_COMMANDS := ["quests", "say", "say_start", "say_end", "npc_state"]  # too frequent to log
 const COMPASS := ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
 
@@ -52,6 +54,7 @@ var part_mtimes := {}  # part file -> when it was saved (so only the saved part 
 var next_parts_check := 0.0
 var was_fullscreen := false
 var near_who := ""  # the character the player is standing next to ("" = nobody)
+var near_name := ""
 var sights := {}  # character -> what they could see last time we told the chat
 var next_sight := 0.0
 var next_save := 0.0
@@ -419,6 +422,7 @@ func _process(_delta: float) -> void:
 			break
 	if who != near_who:
 		near_who = who
+		near_name = who_name
 		send({"t": "near", "v": who != "", "who": who, "name": who_name})
 	if now > next_sight:  # what each character can see, for their next answer
 		next_sight = now + 1.0
@@ -711,9 +715,9 @@ func build_player() -> void:
 
 
 func recenter() -> void:
-	player.position = Vector3(0, 0.5, 0)
+	player.position = Vector3(-38, 0.5, 2)  # by Thornvale's well: a safer, more useful starting point than the empty crossroads
 	player.velocity = Vector3.ZERO
-	player.rotation.y = 0
+	player.rotation.y = PI / 2.0  # face into the village square
 	head.rotation.x = 0
 
 
@@ -762,6 +766,7 @@ func _physics_process(delta: float) -> void:
 			fly_dir = (head.global_transform.basis * Vector3(0, 0, fz) + player.transform.basis * Vector3(fx, 0, 0)).normalized()
 		player.velocity = fly_dir * fly_speed + Vector3(0, up * fly_speed, 0)
 		player.move_and_slide()
+		camera_motion(delta, false, false)
 		return
 	player.velocity.x = dir.x * speed + push.x  # (walking sets the speed every frame, so a blast's sideways shove lives in push)
 	player.velocity.z = dir.z * speed + push.z
@@ -771,11 +776,20 @@ func _physics_process(delta: float) -> void:
 	else:
 		player.velocity.y -= GRAVITY * delta
 	player.move_and_slide()
+	camera_motion(delta, playing and dir.length() > 0.05 and player.is_on_floor(), speed > setting("WALK_SPEED", 5.0))
 	push *= exp(-delta * (4.0 if player.is_on_floor() else 1.0))  # slides to a stop quickly on the ground, carries in the air
 	if player.is_on_wall():
 		push = Vector3.ZERO
 	if player.position.y < -50:  # fell off the world
 		recenter()
+
+
+func camera_motion(delta: float, moving: bool, running: bool) -> void:
+	walk_bob = move_toward(walk_bob, 1.0 if moving else 0.0, delta * 5.0)
+	if moving:
+		walk_phase += delta * (11.0 if running else 8.0)
+	camera.position.y = sin(walk_phase) * 0.018 * walk_bob
+	camera.rotation.z = sin(walk_phase * 0.5) * 0.003 * walk_bob
 
 
 func _input(event: InputEvent) -> void:
@@ -858,6 +872,7 @@ func build_hud() -> void:
 	status_label = make_label(Control.PRESET_CENTER_TOP, HORIZONTAL_ALIGNMENT_CENTER, Color("#ff4d4d"), 28)
 	notice_label = make_label(Control.PRESET_TOP_RIGHT, HORIZONTAL_ALIGNMENT_RIGHT, Color("#8ef0a4"), 22)
 	quest_label = make_label(Control.PRESET_TOP_LEFT, HORIZONTAL_ALIGNMENT_LEFT, Color("#ffd24d"), 20)
+	quest_label.position.y = 284  # chat-provided tasks sit below the RPG story tracker
 	for label in [status_label, notice_label, quest_label]:
 		hud.add_child(label)
 

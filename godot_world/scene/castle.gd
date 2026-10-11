@@ -68,12 +68,42 @@ func build_walls() -> void:
 	var side := (HALF * 2 - GATE_W) / 2.0  # the south wall, in two pieces either side of the gate
 	s(Vector3(-(GATE_W / 2.0 + side / 2.0), y, HALF), Vector3(side, WALL_H, WALL_T))
 	s(Vector3(GATE_W / 2.0 + side / 2.0, y, HALF), Vector3(side, WALL_H, WALL_T))
+	# Three raised belt courses break up the broad curtain walls; buttresses mark each bay.
+	wall_face(Vector2(-HALF, -HALF), Vector2(HALF, -HALF), "north")
+	wall_face(Vector2(-HALF, -HALF), Vector2(-HALF, HALF), "west")
+	wall_face(Vector2(HALF, -HALF), Vector2(HALF, HALF), "east")
+	wall_face(Vector2(-HALF, HALF), Vector2(-GATE_W / 2.0, HALF), "south")
+	wall_face(Vector2(GATE_W / 2.0, HALF), Vector2(HALF, HALF), "south")
 	battlements(Vector3(-HALF, 0, -HALF), Vector3(HALF, 0, -HALF), WALL_H, WALL_T)
 	battlements(Vector3(-HALF, 0, -HALF), Vector3(-HALF, 0, HALF), WALL_H, WALL_T)
 	battlements(Vector3(HALF, 0, -HALF), Vector3(HALF, 0, HALF), WALL_H, WALL_T)
 	battlements(Vector3(-HALF, 0, HALF), Vector3(-GATE_W / 2.0 - 2.0, 0, HALF), WALL_H, WALL_T)
 	battlements(Vector3(GATE_W / 2.0 + 2.0, 0, HALF), Vector3(HALF, 0, HALF), WALL_H, WALL_T)
 	s(Vector3(0, SINK + 0.05, 0), Vector3(HALF * 2 - WALL_T, 0.1, HALF * 2 - WALL_T), "dark_stone", false)  # courtyard paving, just above the ground
+
+
+## Faced masonry courses and shallow buttresses give the curtain wall a built, jointed surface.
+func wall_face(a: Vector2, b: Vector2, side: String) -> void:
+	var along_x := absf(b.x - a.x) > 0.1
+	var length := a.distance_to(b)
+	var count := int(length / 2.4)
+	var direction := (b - a).normalized()
+	for row in 3:
+		var y := 1.05 + row * 2.65
+		for i in count:
+			var start := float(i) / count
+			var finish := float(i + 1) / count
+			var p := a.lerp(b, (start + finish) * 0.5)
+			var width := length / count - 0.04
+			var size := Vector3(width, 0.12, 0.12) if along_x else Vector3(0.12, 0.12, width)
+			var outward := Vector3(0, 0, -1 if side == "north" else 1) if along_x else Vector3(-1 if side == "west" else 1, 0, 0)
+			kit.block(W, self, Vector3(p.x, y, p.y) + outward * (WALL_T / 2.0 + 0.015), size,
+				"dark_stone" if row == 1 else "stone", false)
+	for i in count + 1:
+		var p := a + direction * (float(i) / count * length)
+		var size := Vector3(0.34, WALL_H + 0.12, 0.3) if along_x else Vector3(0.3, WALL_H + 0.12, 0.34)
+		var outward := Vector3(0, 0, -1 if side == "north" else 1) if along_x else Vector3(-1 if side == "west" else 1, 0, 0)
+		kit.block(W, self, Vector3(p.x, WALL_H / 2.0, p.y) + outward * (WALL_T / 2.0 + 0.04), size, "stone", false)
 
 
 ## A round tower with a conical slate roof and a banner on top.
@@ -88,6 +118,17 @@ func tower(at: Vector3, radius: float, height: float) -> void:
 	body.material_override = kit.mat("stone")
 	body.position = at + Vector3(0, height / 2.0, 0)
 	add_child(body)
+	for y in [1.15, height * 0.54, height - 1.0]:  # projecting rings tie the round tower courses together
+		var band := MeshInstance3D.new()
+		var band_mesh := CylinderMesh.new()
+		band_mesh.top_radius = radius * 1.1
+		band_mesh.bottom_radius = radius * 1.1
+		band_mesh.height = 0.14
+		band_mesh.radial_segments = 14
+		band.mesh = band_mesh
+		band.material_override = kit.mat("dark_stone")
+		band.position = at + Vector3(0, y, 0)
+		add_child(band)
 	W.add_collider(self, Transform3D(Basis(), body.position), Vector3(radius * 2, height, radius * 2))
 	if not ruined:
 		var roof := MeshInstance3D.new()

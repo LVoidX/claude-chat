@@ -138,12 +138,12 @@ func build_environment() -> void:
 	sky_material.set_shader_parameter("moon_dir", Basis.from_euler(MOON_ANGLES * PI / 180.0).z)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR  # an even fill light, so colours still read
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES  # richer colour than filmic, which washed everything pastel
-	env.tonemap_exposure = 0.72
-	env.adjustment_enabled = true  # a touch of grading: livelier colour, a bit more contrast
-	env.adjustment_saturation = 1.25
-	env.adjustment_contrast = 1.07
+	env.tonemap_exposure = 0.82
+	env.adjustment_enabled = true  # keep the night colours rich without crushing shadow detail
+	env.adjustment_saturation = 1.12
+	env.adjustment_contrast = 1.03
 	env.glow_enabled = true  # lanterns, windows and fireflies bloom softly
-	env.glow_intensity = 0.7
+	env.glow_intensity = 0.52
 	env.glow_bloom = 0.05
 	env.glow_hdr_threshold = 0.9
 	env.ssao_enabled = true  # soft shadows in corners: walls on the ground, roofs on walls
@@ -184,7 +184,7 @@ func apply_time(delta: float) -> void:
 	light.light_color = Color("#ffc7b8").lerp(Color("#fff1dc"), day).lerp(Color("#ffb070"), clampf(glow, 0.0, 1.0) * day)
 	light.light_energy = lerpf(1.0, 1.55, day)  # a strong sun and a weaker fill: real shadows, shapes read
 	env.ambient_light_color = Color("#6f78a0").lerp(Color("#a8b6cc"), day).lerp(Color("#c09080"), clampf(glow, 0.0, 1.0) * day * 0.5)
-	env.ambient_light_energy = lerpf(0.5, 0.3, day)
+	env.ambient_light_energy = lerpf(0.62, 0.34, day)
 	env.fog_light_color = Color("#1e1a2c").lerp(Color("#7f93ab"), day).lerp(Color("#c27a55"), clampf(glow, 0.0, 1.0) * 0.6)
 	env.fog_density = lerpf(0.005, 0.0013, day)
 
