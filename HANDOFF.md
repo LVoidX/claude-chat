@@ -10,13 +10,18 @@ How to continue:
 3. Remove the task from todo.txt, update PROJECT_NOTES.md if something works differently, commit and push.
 4. When todo.txt is empty: refine (the user asked e.g. for better-looking village roofs), one commit per change.
 
-Currently working on (2026-10-05): the user asked for a broad game revamp. The chosen direction is a grounded,
-voice-led medieval story adventure; see PROJECT_NOTES.md. First-pass work tightens first-person feel, readability,
-weather and the new-game hub while preserving the user's current save. Continue by improving the chapter/quest loop,
-world art consistency, and in-game onboarding. The older todo.txt items are all complete and removed. These changes
-have not been pushed; the previous push was rejected by automatic review.
+Currently working on (2026-10-11): the user is asleep and asked for ALL remaining usage to go into improving the game, with no
+summaries / stopping. Order: (1) core code + efficiency, (2) style revamp (Blender models), (3) new features.
+STANDING RULES: commit + push after every finished step; check usage (get_usage tool) every few commits; if the 5-hour OR weekly usage
+is >= 98%: final commit + push, then `shutdown /s /t 30` (user's order). Never ask the user anything; decide yourself.
 
-The bandit camp and cottage roof refinements are complete; see PROJECT_NOTES.md. The latest visual pass adds close-up
-detail to villagers, animals, hostile models, the cart and barrels, and improves the first-person glove/forearm and
-sword facets. It also clears grass from the village paths. Keep bringing the remaining world props and landmarks up to
-the Barnaby model's layered detail standard. Use `python tools/check.py` after each change.
+Done tonight: graphics presets (quality.gd, F8), small-detail culling in W.box (-28% draws), time-sliced pathfinding map,
+Blender pipeline (tools/blender/, README) with painted low-poly oak/pine/rocks/bushes (-60% triangles). Batching boxes into merged
+meshes was tried and is WORSE (shadow cascades draw merged meshes whole): don't redo it.
+Test rig (outside the repo, in the session scratchpad): sync.sh copies the project to a scratch copy, runprof.sh profiles six spots,
+shots.sh renders views from cc / cc_old (git HEAD) to compare. Blender: D:\Toolslenderlender-5.2.2-windows-x64lender.exe.
+
+Next (roadmap, in order): Blender props to replace boxes (barrel, crate, chest, bench, table, stool, bucket, lantern, fence,
+hay bale, cart, well), cottage roofs + chimneys, grass tufts/flowers/ferns/stumps/logs; water (a stream through the meadow);
+sky/clouds + volumetric light; wildlife (birds, butterflies); then features: better combat feel, more quests/chapters,
+journal polish, onboarding. Use `python tools/check.py` after each change; compare screenshots before/after.
