@@ -297,3 +297,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Deer (wildlife.gd, tools/blender/deer.py): three at the woods' edge (DEER_HOMES), browse slowly, trot away at 14 m.
 - map.gd also marks quest givers (gold ! = has work for you at your level, ? = ready to hand in) at their current positions.
 - Night schedule: when it is dark (night > 0.75) Wat, Osric, Elsie and Tam stop work and gather round the crossroads campfire (villagers.gd NIGHT_FOLK); the guards stay at their posts. In the morning they resume their routes.
+- dog.gd (Blender dog.glb): a farm dog lies by the crossroads campfire. E beside it calls it (it then trots after you, 2 m behind, and comes at once next time: state["dog_joined"]); E again sends it home. It goes home by itself when you are 140 m from the fire.
