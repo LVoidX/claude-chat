@@ -559,7 +559,7 @@ func grid_step() -> void:
 				var h0: float = c.y
 				steep = absf(terrain.height_at(c.x + 1.0, c.z) - h0) > 0.75 or absf(terrain.height_at(c.x, c.z + 1.0) - h0) > 0.75
 			probe.transform = Transform3D(Basis(), c + Vector3(0, 1.1, 0))  # (above the ground, so the ground itself isn't "solid")
-			if steep or not space.intersect_shape(probe, 1).is_empty():
+			if steep or c.y < -0.12 or not space.intersect_shape(probe, 1).is_empty():  # (steep ground, water, or something solid)
 				new_grid.set_point_solid(Vector2i(build_col, cz), true)
 		build_col += 1
 	if build_col >= GRID_CELLS.x:

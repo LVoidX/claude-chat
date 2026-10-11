@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 20  # rebuild cached terrain and grass after changing their scatter
+const VERSION := 21  # rebuild cached terrain and grass after changing their scatter
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -22,6 +22,17 @@ const ROADS := [
 	[Vector2(4, 1), Vector2(22, -4), Vector2(48, 20), Vector2(66, 48), Vector2(72, 55)],
 ]
 const ROAD_WIDTH := 3.2
+## A stream rising at the south-west foot of the hills and winding east across the south of the meadow into a pond.
+## Everything is derived from this one polyline: the channel cut into the ground (height_at), the water ribbon, the
+## muddy banks (ground_color), the reeds, and what keeps trees off it (keep_clear). The meadow is flat at y = 0, the
+## water sits at WATER_Y, a little below it.
+const STREAM := [Vector2(-52, 49), Vector2(-36, 44), Vector2(-18, 49), Vector2(1, 52), Vector2(20, 47), Vector2(36, 42), Vector2(47, 34)]
+const POND := Vector3(51, 0, 30)  # centre (x, z; y unused); radius POND_R
+const POND_R := 6.5
+const STREAM_DEPTH := 0.75
+const WATER_Y := -0.16
+const BANK_IN := 1.2  # within this far of the middle the channel is at full depth
+const BANK_OUT := 3.7  # ...and the ground is back to normal this far out
 
 const GROUND_SHADER := """
 shader_type spatial;
@@ -132,6 +143,7 @@ func build(c: Dictionary) -> void:
 		add_child(node)
 	add_tree_collision()
 	add_grass()
+	add_water()
 	add_lanterns()
 	add_fireflies()
 
@@ -147,6 +159,18 @@ func setup_noise() -> void:
 
 ## The ground height at x, z (0 everywhere in the meadow).
 func height_at(x: float, z: float) -> float:
+	var h := base_height(x, z)
+	var sd := stream_distance(x, z)
+	if sd < BANK_OUT:
+		h -= STREAM_DEPTH * (1.0 - smoothstep(BANK_IN, BANK_OUT, sd))
+	var pd := pond_distance(x, z)
+	if pd < 2.5:
+		h -= (STREAM_DEPTH + 0.35) * (1.0 - smoothstep(-2.0, 2.5, pd))
+	return h
+
+
+## The land before the stream is cut into it.
+func base_height(x: float, z: float) -> float:
 	if noise == null:
 		setup_noise()
 	var r := Vector2(x, z).length()
@@ -172,6 +196,48 @@ func smoothed_height(x: float, z: float) -> float:  # the hills without their sm
 
 
 ## How far x, z is from the nearest road's centre line.
+var _stream_dense: Array = []
+
+
+## The stream's polyline, with a gentle meander added and a point every ~2 m.
+func stream_points() -> Array:
+	if not _stream_dense.is_empty():
+		return _stream_dense
+	var out := []
+	for i in STREAM.size() - 1:
+		var a: Vector2 = STREAM[i]
+		var b: Vector2 = STREAM[i + 1]
+		var n := int(a.distance_to(b) / 2.0)
+		for k in n:
+			var t := float(k) / n
+			var p := a.lerp(b, t)
+			var side := (b - a).normalized().rotated(PI / 2.0)
+			var s := float(out.size())
+			out.append(p + side * (1.3 * sin(s * 0.33) + 0.6 * sin(s * 0.9 + 1.0)))
+	out.append(STREAM[STREAM.size() - 1])
+	_stream_dense = out
+	return out
+
+
+## How far x, z is from the stream's middle (INF when none is near: a cheap early-out by bounding box).
+func stream_distance(x: float, z: float) -> float:
+	if z < 24.0 or z > 62.0 or x < -64.0 or x > 62.0:
+		return INF
+	var pts := stream_points()
+	var p := Vector2(x, z)
+	var best := INF
+	for i in pts.size() - 1:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[i + 1]
+		var t := clampf((p - a).dot(b - a) / (b - a).length_squared(), 0.0, 1.0)
+		best = minf(best, p.distance_to(a + (b - a) * t))
+	return best
+
+
+func pond_distance(x: float, z: float) -> float:
+	return Vector2(x - POND.x, z - POND.z).length() - POND_R
+
+
 func road_distance(x: float, z: float) -> float:
 	var p := Vector2(x, z)
 	var best := INF
@@ -195,6 +261,9 @@ func ground_color(x: float, z: float, h: float, slope: float) -> Color:
 	col = col.lerp(Color("#77746d"), smoothstep(26.0, 36.0, h))  # high up: grey stone
 	col = col.lerp(Color("#cdd3de"), smoothstep(46.0, 54.0, h + n * 6.0))  # peaks: snow
 	var road := road_distance(x, z)
+	var wet := minf(stream_distance(x, z), maxf(pond_distance(x, z) + 3.0, 0.0))  # distance to the water's edge zone
+	col = col.lerp(Color("#8a7a58"), (1.0 - smoothstep(1.6, 4.4 + n * 0.8, wet)) * 0.75)  # sandy, pebbly banks
+	col = col.lerp(Color("#4d4434"), (1.0 - smoothstep(0.8, 2.6, wet)) * 0.85)  # dark wet mud at the water
 	var on_road := smoothstep(ROAD_WIDTH, ROAD_WIDTH * 0.55, road + n * 0.6)
 	col = col.lerp(Color("#66503a"), on_road)  # dirt road
 	var dc := Vector2(x - CASTLE.x, z - CASTLE.z).length()
@@ -276,6 +345,8 @@ var tree_spots := []  # [position, kind, scale] of every tree, also used for the
 ## Places where no tree or boulder may stand.
 func keep_clear(x: float, z: float) -> bool:
 	if road_distance(x, z) < ROAD_WIDTH + 2.5:
+		return true
+	if stream_distance(x, z) < 5.0 or pond_distance(x, z) < 3.0:
 		return true
 	if Vector2(x - CASTLE.x, z - CASTLE.z).length() < 42.0 or Vector2(x - VILLAGE.x, z - VILLAGE.z).length() < 22.0:
 		return true
@@ -674,6 +745,7 @@ func add_grass() -> void:
 				continue  # keep the exposed rock faces and snowy peaks bare
 			spots.append(Vector3(x, h, z))
 			extra += 1
+		spots = spots.filter(func(p): return stream_distance(p.x, p.z) > BANK_OUT - 0.4 and pond_distance(p.x, p.z) > 0.5)  # (no grass underwater)
 		if tuft:  # each tuft is several blades, so about half as many are needed
 			var thinned := []
 			for i in range(0, spots.size(), 2):
@@ -745,6 +817,152 @@ func add_flowers() -> void:
 		node.multimesh = mm
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.visibility_range_end = 60.0
+		add_child(node)
+
+
+const WATER_SHADER := """
+shader_type spatial;
+render_mode blend_mix, cull_disabled, depth_draw_opaque, specular_schlick_ggx;
+uniform vec3 shallow : source_color = vec3(0.30, 0.72, 0.68);
+uniform vec3 deep : source_color = vec3(0.06, 0.34, 0.48);
+uniform float flow_speed = 0.35;
+void fragment() {
+	float edge = abs(UV.y - 0.5) * 2.0;  // 0 in the middle of the stream .. 1 at the bank
+	float u = UV.x - TIME * flow_speed;
+	float a = sin(u * 7.0 + sin(UV.y * 9.0 + TIME * 0.8) * 1.6);
+	float b = sin(u * 13.0 - UV.y * 11.0 + TIME * 0.6);
+	float ripple = (a + b) * 0.25 + 0.5;
+	vec3 col = mix(deep, shallow, smoothstep(0.05, 0.95, edge));
+	col += vec3(0.10, 0.12, 0.10) * smoothstep(0.78, 0.98, ripple);  // little glints on the ripples
+	float foam = smoothstep(0.80, 1.0, edge) * (0.55 + 0.45 * sin(UV.x * 38.0 + TIME * 2.2 + sin(UV.y * 20.0) * 2.0));
+	col = mix(col, vec3(0.94, 0.97, 0.95), foam * 0.75);
+	ALBEDO = col;
+	ALPHA = mix(0.82, 0.92, edge) * (1.0 - smoothstep(0.96, 1.0, edge) * 0.4);
+	ROUGHNESS = mix(0.03, 0.12, ripple);
+	SPECULAR = 0.9;
+	NORMAL_MAP = vec3(0.5 + (ripple - 0.5) * 0.14, 0.5 + (b * 0.5) * 0.06, 1.0);  // tiny ripples bend the reflections
+	NORMAL_MAP_DEPTH = 1.0;
+}
+"""
+
+
+## The water: a ribbon along the stream and a disc for the pond, flat at WATER_Y (parts of it lie under the banks and are
+## hidden by the ground), with moving ripples, glints and foam at the edges (WATER_SHADER), and reeds along the banks.
+func add_water() -> void:
+	var pts := stream_points()
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var indices := PackedInt32Array()
+	var run := 0.0
+	var half := 3.1
+	for i in pts.size():
+		var a: Vector2 = pts[maxi(i - 1, 0)]
+		var b: Vector2 = pts[mini(i + 1, pts.size() - 1)]
+		var t := (b - a).normalized()
+		var side := Vector2(-t.y, t.x)
+		if i > 0:
+			run += (pts[i] as Vector2).distance_to(pts[i - 1])
+		var wide := half * (1.0 if i < pts.size() - 4 else lerpf(1.0, 1.6, float(i - (pts.size() - 4)) / 3.0))  # opens into the pond
+		for s in [-1.0, 1.0]:
+			var q: Vector2 = (pts[i] as Vector2) + side * wide * s
+			verts.append(Vector3(q.x, WATER_Y, q.y))
+			normals.append(Vector3.UP)
+			uvs.append(Vector2(run / 5.0, 0.5 + 0.5 * s))
+		if i > 0:
+			var k := (i - 1) * 2
+			indices.append_array([k, k + 1, k + 2, k + 1, k + 3, k + 2])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var shader := Shader.new()
+	shader.code = WATER_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	var node := MeshInstance3D.new()
+	node.mesh = mesh
+	node.material_override = mat
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
+	# the pond: a disc with the same look (UV.y runs from the middle to the rim)
+	var pv := PackedVector3Array()
+	var pn := PackedVector3Array()
+	var pu := PackedVector2Array()
+	var pi := PackedInt32Array()
+	pv.append(Vector3(POND.x, WATER_Y, POND.z))
+	pn.append(Vector3.UP)
+	pu.append(Vector2(0.0, 0.5))
+	var seg := 28
+	for k in seg + 1:
+		var ang := k * TAU / seg
+		var rr := POND_R + 0.9 + 0.5 * sin(ang * 3.0)
+		pv.append(Vector3(POND.x + cos(ang) * rr, WATER_Y, POND.z + sin(ang) * rr))
+		pn.append(Vector3.UP)
+		pu.append(Vector2(float(k) * 0.4, 1.0))
+		if k > 0:
+			pi.append_array([0, k + 1, k])
+	var parrays := []
+	parrays.resize(Mesh.ARRAY_MAX)
+	parrays[Mesh.ARRAY_VERTEX] = pv
+	parrays[Mesh.ARRAY_NORMAL] = pn
+	parrays[Mesh.ARRAY_TEX_UV] = pu
+	parrays[Mesh.ARRAY_INDEX] = pi
+	var pmesh := ArrayMesh.new()
+	pmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, parrays)
+	var pnode := MeshInstance3D.new()
+	pnode.mesh = pmesh
+	pnode.material_override = mat
+	pnode.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(pnode)
+	add_reeds()
+
+
+## Reeds and cattails (Blender: reeds.glb, reeds_plain.glb) standing in clumps along both banks and round the pond.
+func add_reeds() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12
+	var pts := stream_points()
+	for name in ["reeds", "reeds_plain"]:
+		var mesh: ArrayMesh = W.load_mesh(name)
+		if mesh == null:
+			continue
+		var shader := Shader.new()
+		shader.code = TUFT_SHADER
+		var m := ShaderMaterial.new()
+		m.shader = shader
+		m.set_shader_parameter("height", 1.6)
+		mesh.surface_set_material(0, m)
+		var spots := []
+		for i in range(2, pts.size() - 1):
+			if rng.randf() < (0.55 if name == "reeds" else 0.4):
+				var a: Vector2 = pts[i - 1]
+				var b: Vector2 = pts[i + 1]
+				var side := (b - a).normalized().rotated(PI / 2.0)
+				var off := (3.0 if rng.randf() < 0.5 else -3.0) + rng.randf_range(-0.8, 1.0)
+				var q: Vector2 = (pts[i] as Vector2) + side * off
+				spots.append(Vector3(q.x, height_at(q.x, q.y), q.y))
+		for k in 18:  # round the pond
+			var ang := rng.randf() * TAU
+			var rr := POND_R + rng.randf_range(-0.2, 1.8)
+			var qx := POND.x + cos(ang) * rr
+			var qz := POND.z + sin(ang) * rr
+			spots.append(Vector3(qx, height_at(qx, qz), qz))
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		mm.instance_count = spots.size()
+		for i in spots.size():
+			var sc := rng.randf_range(0.8, 1.4)
+			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc, sc)), spots[i] - Vector3(0, 0.12, 0)))
+		var node := MultiMeshInstance3D.new()
+		node.multimesh = mm
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		node.visibility_range_end = 90.0
 		add_child(node)
 
 
