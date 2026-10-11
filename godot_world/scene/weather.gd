@@ -86,7 +86,7 @@ func _process(delta: float) -> void:
 		flash.color.a = 0.0
 	if thunder_in > 0.0:
 		thunder_in -= delta
-		if thunder_in <= 0.0 and ctx.parts.has("music"):
+		if thunder_in <= 0.0 and ctx.parts.has("music") and not ctx.state.get("ambient_off", false):
 			ctx.parts["music"].play_sfx("thunder")
 	var terrain = ctx.parts.get("terrain")
 	if terrain and terrain.ground_material:
