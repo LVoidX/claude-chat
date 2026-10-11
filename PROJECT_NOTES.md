@@ -266,3 +266,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
   leather forearm bracer connecting the wrist to the lower-right screen edge. Rain streaks are shorter and subtler;
   the ground shader darkens and smooths gradually when rain arrives, then dries back out with the weather.
 - quality.gd: graphics presets Ultra/High/Medium/Low (MSAA/FXAA, SSAO, glow, sun shadow splits+range, grass density, render scale), auto-picked per PC, lowered by itself when under 38 fps for 5 s, F8 cycles; state["quality"].
+- world.gd W.box: boxes under 0.3 m cast no shadow and vanish beyond 22/42/80 m depending on size (visibility_range_end): -28% draw calls, -37% triangles, -21% GPU time in the meadow, no visible change. (Merging boxes per material was tried and made the GPU slower: merged meshes are drawn whole in every shadow cascade.)

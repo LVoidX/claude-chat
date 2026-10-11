@@ -545,6 +545,13 @@ func box(parent: Node, pos: Vector3, size: Vector3, color: Color, kind := "cube"
 	m.material_override = mat(color)
 	m.position = pos
 	m.scale = size
+	var biggest := maxf(size.x, maxf(size.y, size.z))
+	if biggest < 0.3:  # tiny details (pegs, handles, buckles) don't need to throw shadows...
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# ...and are not drawn from far away: the smaller they are, the sooner they go (the GPU skips them entirely)
+	var reach := 22.0 if biggest < 0.12 else (42.0 if biggest < 0.3 else (80.0 if biggest < 0.8 else 0.0))
+	if reach > 0.0:
+		m.visibility_range_end = reach
 	parent.add_child(m)
 	if collide:
 		add_collider(parent, Transform3D(Basis(), pos), size, kind)
