@@ -39,8 +39,8 @@ func build(c: Dictionary) -> void:
 	sfx = AudioStreamPlayer.new()
 	sfx.volume_db = -6.0
 	add_child(sfx)
-	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 3:
-		ctx["jingles_v"] = 3
+	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 4:
+		ctx["jingles_v"] = 4
 		ctx["jingles"] = {"levelup": jingle([[0, 523.3], [0.11, 659.3], [0.22, 784.0], [0.33, 1046.5]], 1.3),
 			"quest": jingle([[0, 392.0], [0.16, 523.3], [0.32, 659.3], [0.32, 392.0], [0.5, 784.0], [0.5, 523.3]], 1.6),
 			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6),
@@ -48,6 +48,7 @@ func build(c: Dictionary) -> void:
 			"hit": thud(110.0, 0.16, 0.7),  # the blade lands
 			"hurt": thud(70.0, 0.25, 1.0),  # you take a hit: deeper, with a crunch
 			"pickup": jingle([[0, 880.0], [0.07, 1318.5]], 0.35),
+			"splash": noise_burst(0.3, 0.7, 0.01, 0.14),  # a plop in the water
 			"coin": jingle([[0, 1760.0], [0.05, 2349.3]], 0.4)}
 
 
