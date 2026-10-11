@@ -41,6 +41,10 @@ func _thaw() -> void:
 
 
 func _process(delta: float) -> void:
+	# running widens the view a little (80 -> 86 degrees), walking and standing settle it back
+	var run_speed := Vector2(W.player.velocity.x, W.player.velocity.z).length()
+	var want_fov := 80.0 + clampf((run_speed - 5.0) * 2.0, 0.0, 6.0)
+	W.camera.fov = lerpf(W.camera.fov, want_fov, minf(delta * 4.0, 1.0))
 	if amount > 0.0005:
 		W.camera.h_offset = randf_range(-1.0, 1.0) * amount
 		W.camera.v_offset = randf_range(-1.0, 1.0) * amount
