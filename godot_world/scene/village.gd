@@ -309,6 +309,20 @@ func smoke(parent: Node3D, at: Vector3) -> void:
 
 func fence(a: Vector3, b: Vector3) -> void:
 	var length := a.distance_to(b)
+	if W.load_mesh("fence") != null:  # Blender sections (2 m each: a post and two sagging rails), bent to follow the ground
+		var bays := maxi(1, int(round(length / 2.0)))
+		var yaw := -atan2(b.z - a.z, b.x - a.x)
+		for i in bays:
+			var p := at_ground(a.lerp(b, float(i) / bays))
+			var q := at_ground(a.lerp(b, float(i + 1) / bays))
+			var section: MeshInstance3D = W.prop("fence", self, p, yaw, 1.0)
+			var run := Vector2(q.x - p.x, q.z - p.z).length()
+			section.scale = Vector3(run / 2.0, 1.0, 1.0)  # (a bay is not always exactly 2 m)
+			section.rotation.z = atan2(q.y - p.y, run)
+		var end := at_ground(b)
+		var last: MeshInstance3D = W.prop("fence", self, end, yaw)  # (the last post: a section squeezed to nothing along its length leaves only its post)
+		last.scale = Vector3(0.001, 1.0, 1.0)
+		return
 	var n := int(length / 2.0) + 1
 	for i in n + 1:
 		var p := at_ground(a.lerp(b, float(i) / n))

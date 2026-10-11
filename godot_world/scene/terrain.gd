@@ -992,14 +992,17 @@ func lantern_post(at: Vector3, phase: float) -> void:
 	var post := Node3D.new()
 	post.position = at
 	add_child(post)
-	var wood := Color("#4a3423")
-	W.box(post, Vector3(0, 1.3, 0), Vector3(0.14, 2.6, 0.14), wood, "cube", true)
-	W.box(post, Vector3(0.28, 2.5, 0), Vector3(0.62, 0.09, 0.09), wood)  # the arm
-	W.box(post, Vector3(0.52, 2.33, 0), Vector3(0.02, 0.25, 0.02), Color("#222222"))  # chain
-	W.box(post, Vector3(0.52, 2.1, 0), Vector3(0.24, 0.05, 0.24), Color("#2b2620"))  # lantern lid
-	W.box(post, Vector3(0.52, 1.82, 0), Vector3(0.22, 0.04, 0.22), Color("#2b2620"))  # and base
-	W.glow(post, Vector3(0.52, 1.96, 0), Vector3(0.15, 0.24, 0.15), Color("#ffb54d"), 3.0)  # the flame behind glass
-	var l: OmniLight3D = W.light(post, Vector3(0.52, 1.9, 0), Color("#ffae55"), 1.6, 9.0)
+	if W.prop("lamppost", post, Vector3.ZERO):  # post, bracket and lantern frame from Blender (tools/blender/lamp.py)
+		W.add_collider(post, Transform3D(Basis(), Vector3(0, 1.2, 0)), Vector3(0.3, 2.4, 0.3))
+	else:
+		var wood := Color("#4a3423")
+		W.box(post, Vector3(0, 1.3, 0), Vector3(0.14, 2.6, 0.14), wood, "cube", true)
+		W.box(post, Vector3(0.28, 2.5, 0), Vector3(0.62, 0.09, 0.09), wood)  # the arm
+		W.box(post, Vector3(0.52, 2.33, 0), Vector3(0.02, 0.25, 0.02), Color("#222222"))  # chain
+		W.box(post, Vector3(0.52, 2.1, 0), Vector3(0.24, 0.05, 0.24), Color("#2b2620"))  # lantern lid
+		W.box(post, Vector3(0.52, 1.82, 0), Vector3(0.22, 0.04, 0.22), Color("#2b2620"))  # and base
+	W.glow(post, Vector3(0.54, 1.97, 0), Vector3(0.15, 0.24, 0.15), Color("#ffb54d"), 3.0)  # the flame behind glass
+	var l: OmniLight3D = W.light(post, Vector3(0.54, 1.9, 0), Color("#ffae55"), 1.6, 9.0)
 	l.shadow_enabled = false
 	lanterns.append([l, 1.6, phase])
 
