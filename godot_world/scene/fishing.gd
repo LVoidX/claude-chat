@@ -19,6 +19,8 @@ var bobber: MeshInstance3D
 var line: MeshInstance3D
 var splash: GPUParticles3D
 var t := 0.0
+var ripple: MeshInstance3D  # a ring spreading over the water where the bobber lands and where a fish bites
+var ripple_t := 9.0
 var shoal: Array = []  # [node, radius, speed, phase, lift]: dark fish shapes drifting under the pond's surface
 
 
@@ -73,6 +75,21 @@ func build(c: Dictionary) -> void:
 	splash.draw_pass_1 = drop
 	add_child(splash)
 	make_shoal()
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.1
+	ring.outer_radius = 0.13
+	ring.rings = 16
+	ring.ring_segments = 4
+	var rm := StandardMaterial3D.new()
+	rm.albedo_color = Color(1, 1, 1, 0.6)
+	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ring.material = rm
+	ripple = MeshInstance3D.new()
+	ripple.mesh = ring
+	ripple.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ripple.scale = Vector3(0.001, 0.2, 0.001)
+	add_child(ripple)
 
 
 ## A few fish seen as dim shapes under the water: they show where the pond is worth a cast.
@@ -176,7 +193,13 @@ func cast() -> void:
 	line.visible = true
 	bobber.global_position = target + Vector3(0, 0.03, 0)
 	play("splash")
+	start_ripple()
 	W.show_notice("You cast your line... (E reels it in)", 3.0)
+
+
+func start_ripple() -> void:
+	ripple.global_position = Vector3(target.x, WATER_Y_SAFE() + 0.02, target.z)
+	ripple_t = 0.0
 
 
 func WATER_Y_SAFE() -> float:
@@ -245,6 +268,14 @@ func play(name: String) -> void:
 
 func _process(delta: float) -> void:
 	t += delta
+	if ripple_t < 1.2:
+		ripple_t += delta
+		var k := ripple_t / 1.2
+		var r := 0.2 + k * 5.0
+		ripple.scale = Vector3(r, 0.2, r)
+		(ripple.mesh.material as StandardMaterial3D).albedo_color.a = 0.6 * (1.0 - k)
+	elif ripple.scale.x > 0.01:
+		ripple.scale = Vector3(0.001, 0.2, 0.001)
 	var tr = terrain()
 	if tr != null:
 		for f in shoal:
@@ -269,6 +300,7 @@ func _process(delta: float) -> void:
 			splash.global_position = target
 			splash.restart()
 			play("splash")
+			start_ripple()
 			W.show_notice("A bite! Press E!", 1.4)
 	elif state == "bite":
 		bobber.global_position = target + Vector3(0, -0.04 + sin(t * 30.0) * 0.03, 0)  # it bobs under, hard
