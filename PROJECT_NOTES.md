@@ -289,3 +289,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - steps.gd: footsteps per stride, sound by ground (grass/road/footbridge planks/water) via music.gd play_sfx (step_* sounds, quiet). music.gd now plays sfx at a fixed SFX_BASE_DB (before, each sound lowered sfx.volume_db for the next: everything faded over time).
 - Ambient calls: wildlife.gd plays a quiet synthesized bird chirp now and then by dry day and an owl hoot on dry nights (music.gd chirp()/hoot(), every 9-24 s). Quietest sounds in the game; lower SFX_DB chirp/hoot if it annoys.
 - map.gd: P opens a painted world map (built once from terrain heights, a few rows per frame) with waystones (unvisited ones show ?), the pond, village and a red arrow for you; P/Esc closes.
+- options.gd: F1 opens Options (master volume slider -> state["volume"], ambient sounds on/off -> state["ambient_off"] (steps.gd and wildlife calls obey it), graphics preset, fullscreen). Esc or F1 closes.

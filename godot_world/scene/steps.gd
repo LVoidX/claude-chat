@@ -44,5 +44,5 @@ func _process(_delta: float) -> void:
 	if travelled >= stride:
 		travelled = 0.0
 		var music = ctx.parts.get("music")
-		if music:
+		if music and not ctx.state.get("ambient_off", false):
 			music.play_sfx(surface(me))

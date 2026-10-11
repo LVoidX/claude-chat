@@ -163,7 +163,7 @@ func _process(delta: float) -> void:
 	if call_in <= 0.0:  # a bird now and then by day, an owl by night: far-off and quiet
 		call_in = randf_range(9.0, 24.0)
 		var music = ctx.parts.get("music")
-		if music and (out or dark):
+		if music and (out or dark) and not ctx.state.get("ambient_off", false):
 			music.play_sfx("chirp" if out else "hoot")
 	for ff in fireflies:
 		var fl: MeshInstance3D = ff.node
