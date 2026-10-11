@@ -190,6 +190,12 @@ func build_environment() -> void:
 	env.fog_enabled = true  # a haze that swallows the far hills
 	env.fog_density = 0.005
 	env.fog_sky_affect = 0.1
+	env.volumetric_fog_enabled = true  # light shafts through trees and haze (the sun's shadows are lit in the air)
+	env.volumetric_fog_density = 0.0075
+	env.volumetric_fog_albedo = Color(1.0, 0.96, 0.88)
+	env.volumetric_fog_length = 90.0
+	env.volumetric_fog_ambient_inject = 0.0
+	env.volumetric_fog_anisotropy = 0.55  # forward scattering: bright shafts when you look toward the sun
 	var dome_mesh := SphereMesh.new()
 	dome_mesh.radius = 850.0
 	dome_mesh.height = 1700.0

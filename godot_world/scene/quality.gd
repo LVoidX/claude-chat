@@ -2,16 +2,16 @@ extends Node3D
 ## Graphics quality: four presets (Ultra / High / Medium / Low), picked for the PC the first time it runs (a
 ## discrete graphics card gets High, an integrated one Medium), lowered automatically if the game runs slowly, and
 ## changed by hand with F8. The choice is saved in state["quality"] = {"level": 0..3, "locked": bool}.
-## Each preset sets: 3D anti-aliasing, SSAO, glow, the sun's shadow splits and range, the grass density (the grass
+## Each preset sets: 3D anti-aliasing, SSAO, glow, volumetric light shafts, the sun's shadow splits and range, the grass density (the grass
 ## MultiMesh draws only a share of its blades) and the 3D render scale. base.gd / terrain.gd rebuild their environment
 ## and grass when saved, so part_reloaded() puts the current preset back.
 
 const NAMES := ["Ultra", "High", "Medium", "Low"]
 const PRESETS := [
-	{"msaa": Viewport.MSAA_4X, "fxaa": false, "ssao": true, "glow": true, "splits": 4, "shadow_m": 140.0, "grass": 1.0, "scale": 1.0},
-	{"msaa": Viewport.MSAA_2X, "fxaa": false, "ssao": true, "glow": true, "splits": 2, "shadow_m": 110.0, "grass": 1.0, "scale": 1.0},
-	{"msaa": Viewport.MSAA_DISABLED, "fxaa": true, "ssao": false, "glow": true, "splits": 2, "shadow_m": 70.0, "grass": 0.55, "scale": 1.0},
-	{"msaa": Viewport.MSAA_DISABLED, "fxaa": true, "ssao": false, "glow": false, "splits": 1, "shadow_m": 40.0, "grass": 0.25, "scale": 0.77},
+	{"msaa": Viewport.MSAA_4X, "fxaa": false, "ssao": true, "glow": true, "vol": true, "splits": 4, "shadow_m": 140.0, "grass": 1.0, "scale": 1.0},
+	{"msaa": Viewport.MSAA_2X, "fxaa": false, "ssao": true, "glow": true, "vol": true, "splits": 2, "shadow_m": 110.0, "grass": 1.0, "scale": 1.0},
+	{"msaa": Viewport.MSAA_DISABLED, "fxaa": true, "ssao": false, "glow": true, "vol": false, "splits": 2, "shadow_m": 70.0, "grass": 0.55, "scale": 1.0},
+	{"msaa": Viewport.MSAA_DISABLED, "fxaa": true, "ssao": false, "glow": false, "vol": false, "splits": 1, "shadow_m": 40.0, "grass": 0.25, "scale": 0.77},
 ]
 const SLOW_FPS := 38.0  # below this for SLOW_SECONDS in a row, drop one level
 const SLOW_SECONDS := 5
@@ -61,6 +61,7 @@ func apply() -> void:
 	if base and base.env and base.light:
 		base.env.ssao_enabled = p.ssao
 		base.env.glow_enabled = p.glow
+		base.env.volumetric_fog_enabled = p.vol  # light shafts (the costliest effect after shadows)
 		base.light.directional_shadow_mode = {1: DirectionalLight3D.SHADOW_ORTHOGONAL, 2: DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS,
 			4: DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS}[p.splits]
 		base.light.directional_shadow_max_distance = p.shadow_m
