@@ -41,3 +41,4 @@ Keep committing after each step; check usage every few commits (>=98% on 5-hour 
 2026-10-11 (later morning) additions: map.gd (P, with quest marks), options.gd (F1), steps.gd, chirp/hoot/thunder ambience, lightning, rabbits + deer + fireflies (wildlife.gd), Blender sheep/chicken/rabbit/deer/footbridge, fish shadows + ripples, grilled carp, guard fish quests, wider FOV when running, sfx volume-drift fix (music.gd SFX_BASE_DB).
 Ideas not done yet: horse/mount, dog companion, more story chapter content, stone bridge on a road, cave/dungeon, seasons, cooking menu, NPC schedules (sleep at night), quest-giver dialogue variety.
 User rule: at >=98% of the 5-hour OR weekly usage -> commit/push then `shutdown /s /t 30`.
+Also (latest): villagers gather at the campfire at night, quest tip about map/options. Usage was 97% (5-hour) / 95% (weekly) when this was written: if the PC shut itself down, that was the 98% rule.
