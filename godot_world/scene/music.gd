@@ -14,7 +14,7 @@ const TRACK_TRIM_DB := {"The_Old_Tower_Inn.mp3": -3.0}  # per-track correction f
 const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
 const RATE := 22050
 const SFX_BASE_DB := -6.0
-const SFX_DB := {"swing": -10.0, "hit": -3.0, "pickup": -4.0, "chirp": -20.0, "hoot": -17.0, "step_grass": -15.0, "step_road": -13.0, "step_wood": -12.0, "step_water": -13.0}  # the sword whoosh stays quiet and consistent
+const SFX_DB := {"swing": -10.0, "hit": -3.0, "pickup": -4.0, "thunder": -8.0, "chirp": -20.0, "hoot": -17.0, "step_grass": -15.0, "step_road": -13.0, "step_wood": -12.0, "step_water": -13.0}  # the sword whoosh stays quiet and consistent
 
 var ctx: Dictionary
 var W
@@ -40,8 +40,8 @@ func build(c: Dictionary) -> void:
 	sfx = AudioStreamPlayer.new()
 	sfx.volume_db = SFX_BASE_DB
 	add_child(sfx)
-	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 6:
-		ctx["jingles_v"] = 6
+	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 7:
+		ctx["jingles_v"] = 7
 		ctx["jingles"] = {"levelup": jingle([[0, 523.3], [0.11, 659.3], [0.22, 784.0], [0.33, 1046.5]], 1.3),
 			"quest": jingle([[0, 392.0], [0.16, 523.3], [0.32, 659.3], [0.32, 392.0], [0.5, 784.0], [0.5, 523.3]], 1.6),
 			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6),
@@ -50,6 +50,7 @@ func build(c: Dictionary) -> void:
 			"hurt": thud(70.0, 0.25, 1.0),  # you take a hit: deeper, with a crunch
 			"pickup": jingle([[0, 880.0], [0.07, 1318.5]], 0.35),
 			"splash": noise_burst(0.3, 0.7, 0.01, 0.14),  # a plop in the water
+			"thunder": noise_burst(2.2, 0.0, 0.25, 0.9),  # a low, rolling rumble (heavily low-passed noise)
 			"chirp": chirp(),  # a small bird, now and then, by day
 			"hoot": hoot(),  # an owl, at night
 			"step_grass": noise_burst(0.12, 0.15, 0.01, 0.03),  # a soft rustle underfoot

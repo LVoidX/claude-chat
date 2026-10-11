@@ -10,6 +10,10 @@ var ctx: Dictionary
 var W
 var rain: GPUParticles3D
 var clock := 0.0
+var flash: ColorRect  # lightning: a white wash that fades
+var flash_t := 0.0
+var next_bolt := 30.0
+var thunder_in := -1.0
 var want := 0.0  # 1 = raining, 0 = dry (the wetness eases toward it)
 
 
@@ -21,6 +25,14 @@ func build(c: Dictionary) -> void:
 		ctx.state["dry_until"] = clock + randf_range(DRY.x, DRY.y)
 	want = 1.0 if clock < float(ctx.state.get("rain_until", -1.0)) else 0.0
 	make_rain()
+	var layer := CanvasLayer.new()
+	layer.layer = 3
+	add_child(layer)
+	flash = ColorRect.new()
+	flash.color = Color(0.85, 0.9, 1.0, 0.0)
+	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(flash)
 
 
 func make_rain() -> void:
@@ -61,6 +73,21 @@ func _process(delta: float) -> void:
 	ctx["rain"] = wet
 	rain.emitting = wet > 0.35
 	rain.global_position = W.player.global_position + Vector3(0, 16, 0)
+	# lightning in heavy rain: a double flash, and thunder a moment later
+	next_bolt -= delta
+	if wet > 0.9 and next_bolt <= 0.0:
+		next_bolt = randf_range(25.0, 70.0)
+		flash_t = 0.5
+		thunder_in = randf_range(0.7, 2.8)
+	if flash_t > 0.0:
+		flash_t = maxf(flash_t - delta, 0.0)
+		flash.color.a = 0.32 * maxf(sin(flash_t * 26.0), 0.0) * (flash_t / 0.5)  # (a flicker that dies away)
+	elif flash.color.a > 0.0:
+		flash.color.a = 0.0
+	if thunder_in > 0.0:
+		thunder_in -= delta
+		if thunder_in <= 0.0 and ctx.parts.has("music"):
+			ctx.parts["music"].play_sfx("thunder")
 	var terrain = ctx.parts.get("terrain")
 	if terrain and terrain.ground_material:
 		terrain.ground_material.set_shader_parameter("wetness", wet)

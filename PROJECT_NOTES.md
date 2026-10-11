@@ -293,3 +293,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Sheep fleece is now a Blender mesh (tools/blender/sheep.py -> sheep_body_0..2.glb) with the box head/legs still animated by animals.gd.
 - Chickens: body/tail/wings from Blender too (tools/blender/chicken.py -> chicken_body_0/1.glb).
 - Rabbits (wildlife.gd, tools/blender/rabbit.py): nine in the meadow by day; they sit, hop short distances, and bolt (bigger, faster hops) when you come within 6 m.
+- Storms: in heavy rain weather.gd flashes lightning (white flicker overlay) every 25-70 s and plays a low rumble (music.gd "thunder") 0.7-2.8 s later.
