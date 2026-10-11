@@ -26,7 +26,11 @@ Test rig (session scratchpad, NOT in the repo; recreate if missing): sync.sh cop
 puts the player at state["test_cam"]=[x,y,z,yaw,pitch], shots.sh renders views (--shot), runprof.sh profiles six spots, side.py compares.
 Blender: D:\Toolslenderlender-5.2.2-windows-x64lender.exe.
 
-Next (roadmap, in order): Blender props to replace boxes (barrel, crate, chest, bench, table, stool, bucket, lantern, fence,
-hay bale, cart, well), cottage roofs + chimneys, grass tufts/flowers/ferns/stumps/logs; water (a stream through the meadow);
-sky/clouds + volumetric light; wildlife (birds, butterflies); then features: better combat feel, more quests/chapters,
-journal polish, onboarding. Use `python tools/check.py` after each change; compare screenshots before/after.
+Also done: clouds (base.gd CLOUD_SHADER dome + noise texture; value-noise from sin hashes looked faceted, use noise textures),
+stream + pond water, wildlife (birds/butterflies/ducks), Blender reeds. Profile after all that: 3.3 ms worst spot (4070 Super), fine.
+
+Next (roadmap, in order): more Blender props to replace remaining boxes (fence, lantern post, signpost, well, cart, furniture: bed,
+table, bench, chest, shelf, anvil; castle banners), chimneys/windows/doors for cottages, stone bridge over the stream, sheep/chicken
+models; sun shafts / god-rays through haze; then features: combat feel (hit-stop, enemy reactions), journal polish, onboarding
+tutorial, new chapters' content, fishing in the pond (new!), ambient sounds (generated, quiet: user disliked wind/rain hiss).
+Keep committing after each step; check usage every few commits (>=98% on 5-hour OR weekly -> final push, then `shutdown /s /t 30`).
