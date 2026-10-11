@@ -265,3 +265,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Grip follow-up: the palm now sits around the hilt itself, with curled fingers returning behind the handle and a
   leather forearm bracer connecting the wrist to the lower-right screen edge. Rain streaks are shorter and subtler;
   the ground shader darkens and smooths gradually when rain arrives, then dries back out with the weather.
+- quality.gd: graphics presets Ultra/High/Medium/Low (MSAA/FXAA, SSAO, glow, sun shadow splits+range, grass density, render scale), auto-picked per PC, lowered by itself when under 38 fps for 5 s, F8 cycles; state["quality"].
