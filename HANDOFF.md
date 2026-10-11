@@ -29,8 +29,9 @@ Blender: D:\Toolslenderlender-5.2.2-windows-x64lender.exe.
 Also done: clouds (base.gd CLOUD_SHADER dome + noise texture; value-noise from sin hashes looked faceted, use noise textures),
 stream + pond water, wildlife (birds/butterflies/ducks), Blender reeds. Profile after all that: 3.3 ms worst spot (4070 Super), fine.
 
-Next (roadmap, in order): more Blender props to replace remaining boxes (fence, lantern post, signpost, well, cart, furniture: bed,
+Also done since: lampposts + fences (Blender), volumetric light shafts (quality presets). STYLE PHASE IS DONE ENOUGH: switch to FEATURES.
+Next (roadmap, in order): more Blender props to replace remaining boxes (signpost, well, cart, furniture: bed,
 table, bench, chest, shelf, anvil; castle banners), chimneys/windows/doors for cottages, stone bridge over the stream, sheep/chicken
-models; sun shafts / god-rays through haze; then features: combat feel (hit-stop, enemy reactions), journal polish, onboarding
+models; then features (START HERE): combat feel (hit-stop, enemy reactions), journal polish, onboarding
 tutorial, new chapters' content, fishing in the pond (new!), ambient sounds (generated, quiet: user disliked wind/rain hiss).
 Keep committing after each step; check usage every few commits (>=98% on 5-hour OR weekly -> final push, then `shutdown /s /t 30`).
