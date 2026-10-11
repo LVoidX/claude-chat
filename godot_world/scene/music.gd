@@ -13,7 +13,8 @@ const VOLUME_DB := -33.0  # was -15, then -22, then -28: too loud. A constant in
 const TRACK_TRIM_DB := {"The_Old_Tower_Inn.mp3": -3.0}  # per-track correction for songs mastered louder than the rest
 const PAUSE := Vector2(15.0, 40.0)  # seconds of quiet between tracks (random in this range)
 const RATE := 22050
-const SFX_DB := {"swing": -10.0, "hit": -3.0, "pickup": -4.0}  # the sword whoosh stays quiet and consistent
+const SFX_BASE_DB := -6.0
+const SFX_DB := {"swing": -10.0, "hit": -3.0, "pickup": -4.0, "step_grass": -15.0, "step_road": -13.0, "step_wood": -12.0, "step_water": -13.0}  # the sword whoosh stays quiet and consistent
 
 var ctx: Dictionary
 var W
@@ -37,10 +38,10 @@ func build(c: Dictionary) -> void:
 		W.add_child(player)
 		ctx["music_player"] = player
 	sfx = AudioStreamPlayer.new()
-	sfx.volume_db = -6.0
+	sfx.volume_db = SFX_BASE_DB
 	add_child(sfx)
-	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 4:
-		ctx["jingles_v"] = 4
+	if not ctx.has("jingles") or ctx.get("jingles_v", 0) != 5:
+		ctx["jingles_v"] = 5
 		ctx["jingles"] = {"levelup": jingle([[0, 523.3], [0.11, 659.3], [0.22, 784.0], [0.33, 1046.5]], 1.3),
 			"quest": jingle([[0, 392.0], [0.16, 523.3], [0.32, 659.3], [0.32, 392.0], [0.5, 784.0], [0.5, 523.3]], 1.6),
 			"chapter": jingle([[0, 293.7], [0.0, 440.0], [0.45, 349.2], [0.45, 523.3], [0.9, 392.0], [0.9, 587.3], [0.9, 293.7]], 2.6),
@@ -49,6 +50,10 @@ func build(c: Dictionary) -> void:
 			"hurt": thud(70.0, 0.25, 1.0),  # you take a hit: deeper, with a crunch
 			"pickup": jingle([[0, 880.0], [0.07, 1318.5]], 0.35),
 			"splash": noise_burst(0.3, 0.7, 0.01, 0.14),  # a plop in the water
+			"step_grass": noise_burst(0.12, 0.15, 0.01, 0.03),  # a soft rustle underfoot
+			"step_road": thud(190.0, 0.07, 0.9),  # a dull tap on packed earth
+			"step_wood": thud(140.0, 0.1, 0.35),  # a hollow knock on planks
+			"step_water": noise_burst(0.22, 0.6, 0.01, 0.1),  # a shallow splash
 			"coin": jingle([[0, 1760.0], [0.05, 2349.3]], 0.4)}
 
 
@@ -73,12 +78,12 @@ func play_sfx(name: String) -> void:
 				player = p
 		if player == null:
 			player = AudioStreamPlayer.new()
-			player.volume_db = sfx.volume_db
+			player.volume_db = SFX_BASE_DB
 			add_child(player)
 			extra.append(player)
 	player.stream = ctx.jingles[name]
-	player.volume_db = sfx.volume_db + float(SFX_DB.get(name, 0.0))
-	player.pitch_scale = randf_range(0.92, 1.08) if name in ["hit", "hurt"] else 1.0
+	player.volume_db = SFX_BASE_DB + float(SFX_DB.get(name, 0.0))  # (a fixed base: adding to sfx.volume_db itself made every sound quieter than the last)
+	player.pitch_scale = randf_range(0.92, 1.08) if name in ["hit", "hurt"] else (randf_range(0.85, 1.15) if name.begins_with("step_") else 1.0)
 	player.play()
 
 
