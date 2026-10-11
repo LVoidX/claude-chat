@@ -635,7 +635,7 @@ func build_hud() -> void:
 	box.add_child(hp_bar)
 	xp_bar = bar(Color("#5b8cff"), 8)
 	box.add_child(xp_bar)
-	box.add_child(label("WASD move  ·  Shift run  ·  click strike  ·  RMB guard\nE talk/use  ·  I pack  ·  J journal  ·  Q potion", 11, Color("#d8c8aa")))
+	box.add_child(label("WASD move  ·  Shift run  ·  click strike  ·  RMB guard\nE talk/use  ·  I pack  ·  J journal  ·  P map  ·  Q potion", 11, Color("#d8c8aa")))
 	prompt_label = label("", 20, Color.WHITE)  # "[E] Read the quest board"
 	prompt_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	prompt_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
