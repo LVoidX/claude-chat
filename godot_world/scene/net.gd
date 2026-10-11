@@ -190,6 +190,7 @@ func toggle() -> void:
 		join(address.text)))
 	box.add_child(rpg.button("Leave the game", leave))
 	box.add_child(rpg.button("Close (F3 or Esc)", close))
+	ctx["ui_open"] = true  # (so a click does not grab the mouse back, world.gd)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
@@ -199,6 +200,7 @@ func close() -> void:
 		panel.queue_free()
 		panel = null
 	W.save_state.call_deferred()
+	ctx["ui_open"] = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 

@@ -81,6 +81,7 @@ func toggle() -> void:
 		box.add_child(gfx)
 	box.add_child(rpg.button("Toggle fullscreen (F11)", func(): W.set_fullscreen(DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN)))
 	box.add_child(rpg.button("Close (F1 or Esc)", close))
+	ctx["ui_open"] = true  # (so a click does not grab the mouse back, world.gd)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
@@ -90,6 +91,7 @@ func close() -> void:
 		panel.queue_free()
 		panel = null
 	W.save_state.call_deferred()
+	ctx["ui_open"] = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
