@@ -43,13 +43,16 @@ func add_animal(kind: String, at: Vector3, rng: RandomNumberGenerator) -> void:
 	if kind == "sheep":
 		var wool := Color("#e8e2d4").darkened(rng.randf_range(0.0, 0.15))
 		var face := Color("#2e2a27")
-		W.box(node, Vector3(0, 0.62, 0.05), Vector3(0.62, 0.5, 0.9), wool)  # woolly body
-		W.box(node, Vector3(0, 0.82, 0.05), Vector3(0.5, 0.18, 0.75), wool.lightened(0.05))  # fluffy back
-		for side in [-1, 1]:
+		if W.prop("sheep_body_%d" % rng.randi_range(0, 2), node, Vector3.ZERO) == null:  # the fleece is a lumpy Blender mesh (tools/blender/sheep.py); boxes if it is missing
+			W.box(node, Vector3(0, 0.62, 0.05), Vector3(0.62, 0.5, 0.9), wool)  # woolly body
+			W.box(node, Vector3(0, 0.82, 0.05), Vector3(0.5, 0.18, 0.75), wool.lightened(0.05))  # fluffy back
+			for side in [-1, 1]:
+				for z in [-0.2, 0.12, 0.4]:
+					W.box(node, Vector3(side * 0.28, 0.63, z), Vector3(0.22, 0.24, 0.25), wool.lightened(0.06), "sphere")  # fleece curls
 			for z in [-0.2, 0.12, 0.4]:
-				W.box(node, Vector3(side * 0.28, 0.63, z), Vector3(0.22, 0.24, 0.25), wool.lightened(0.06), "sphere")  # fleece curls
-		for z in [-0.2, 0.12, 0.4]:
-			W.box(node, Vector3(0, 0.9, z), Vector3(0.23, 0.18, 0.24), wool.lightened(0.1), "sphere")  # back fleece
+				W.box(node, Vector3(0, 0.9, z), Vector3(0.23, 0.18, 0.24), wool.lightened(0.1), "sphere")  # back fleece
+		else:
+			W.box(node, Vector3(0, 0.6, 0.55), Vector3(0.1, 0.12, 0.1), face.lightened(0.08), "sphere")  # a stub of tail
 		head.position = Vector3(0, 0.78, -0.48)
 		node.add_child(head)
 		W.box(head, Vector3(0, 0, -0.08), Vector3(0.26, 0.26, 0.3), face)
