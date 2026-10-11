@@ -12,6 +12,7 @@ const BUTTERFLIES := 30
 const DUCKS := 4
 const FIREFLIES := 45
 const RABBITS := 9
+const DEER_HOMES := [Vector2(-78, 30), Vector2(82, -30), Vector2(45, 86)]
 const TINTS := [Color("#ffb347"), Color("#ffe566"), Color("#9ec9ff"), Color("#ffffff"), Color("#ff8fb1"), Color("#c9a0ff")]
 
 const WING_SHADER := """
@@ -33,6 +34,7 @@ void fragment() {
 var ctx: Dictionary
 var W
 var birds := []  # {node, flock centre/radius/speed/height, angle, offset}
+var deer := []  # {node, home, goal, speed}: browse near the woods' edge, trot off when you approach
 var rabbits := []  # {node, goal, wait, hop}: they sit in the meadow, hop about, and bolt when you come near
 var fireflies := []  # {node, home, seed}: tiny glowing lights drifting over the meadow and the pond on dry nights
 var butterflies := []  # {node, goal, speed, hover, phase}
@@ -112,6 +114,11 @@ func build(c: Dictionary) -> void:
 		add_child(fl)
 		var spot := Vector2(rng.randf_range(-40, 50), rng.randf_range(-25, 55))
 		fireflies.append({"node": fl, "home": spot, "seed": rng.randf() * 100.0})
+	for home in DEER_HOMES:
+		var node = W.prop("deer", self, Vector3(home.x, W.ground_y(home.x, home.y), home.y), rng.randf() * TAU, 1.0)
+		if node == null:
+			break
+		deer.append({"node": node, "home": home, "goal": home, "speed": 0.0, "wait": rng.randf_range(2.0, 8.0)})
 	for i in RABBITS:
 		var spot := Vector2(rng.randf_range(-45, 55), rng.randf_range(-30, 42))
 		var node = W.prop("rabbit", self, Vector3(spot.x, W.ground_y(spot.x, spot.y), spot.y), rng.randf() * TAU, 1.0)
@@ -167,6 +174,35 @@ func _process(delta: float) -> void:
 		pos.y = maxf(ground, 0.0) + float(bf.hover) + sin(t * 2.6 + bf.seed) * 0.28 + sin(t * 1.1 + bf.seed * 2.0) * 0.15  # bobbing as they go
 		node.position = pos
 	var player: Vector3 = W.player.global_position
+	for d in deer:
+		var node: MeshInstance3D = d.node
+		node.visible = day > 0.2
+		if not node.visible:
+			continue
+		var p2 := Vector2(node.position.x, node.position.z)
+		var from_me := p2 - Vector2(player.x, player.z)
+		var spooked := from_me.length() < 14.0
+		if spooked:
+			d.goal = p2 + from_me.normalized() * 6.0
+			if (d.goal as Vector2).distance_to(d.home) > 30.0:
+				d.goal = d.home
+			d.wait = 0.0
+		var to: Vector2 = (d.goal as Vector2) - p2
+		var moving: bool = to.length() > 0.4 and d.wait <= 0.0
+		d.speed = move_toward(d.speed, (6.0 if spooked else 0.9) if moving else 0.0, delta * 5.0)
+		if moving:
+			node.position.x += to.normalized().x * d.speed * delta
+			node.position.z += to.normalized().y * d.speed * delta
+			node.rotation.y = lerp_angle(node.rotation.y, atan2(-to.x, -to.y), minf(delta * 4.0, 1.0))
+		elif d.wait > 0.0:
+			d.wait -= delta
+		else:  # arrived: stand a while, then wander on
+			d.wait = randf_range(4.0, 12.0)
+			var home: Vector2 = d.home
+			d.goal = home + Vector2(randf_range(-9, 9), randf_range(-9, 9))
+		var gait := sin(t * (14.0 if spooked else 5.0)) * 0.025 * clampf(d.speed, 0.0, 1.0)
+		node.position.y = W.ground_y(node.position.x, node.position.z) + absf(gait)
+		node.rotation.z = gait * 0.8
 	for r in rabbits:
 		var node: MeshInstance3D = r.node
 		node.visible = day > 0.25
@@ -232,4 +268,4 @@ func _process(delta: float) -> void:
 
 
 func seen_from(_from: Vector3, _viewer: Node) -> Array:
-	return ["birds circling high over the valley by day, butterflies over the meadow, and ducks on the pond at the south of the meadow, fireflies there on dry nights, and rabbits in the meadow by day"]
+	return ["birds circling high over the valley by day, butterflies over the meadow, and ducks on the pond at the south of the meadow, fireflies there on dry nights, rabbits in the meadow by day, and a few deer at the edge of the woods"]

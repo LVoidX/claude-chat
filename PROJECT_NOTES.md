@@ -294,3 +294,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Chickens: body/tail/wings from Blender too (tools/blender/chicken.py -> chicken_body_0/1.glb).
 - Rabbits (wildlife.gd, tools/blender/rabbit.py): nine in the meadow by day; they sit, hop short distances, and bolt (bigger, faster hops) when you come within 6 m.
 - Storms: in heavy rain weather.gd flashes lightning (white flicker overlay) every 25-70 s and plays a low rumble (music.gd "thunder") 0.7-2.8 s later.
+- Deer (wildlife.gd, tools/blender/deer.py): three at the woods' edge (DEER_HOMES), browse slowly, trot away at 14 m.
