@@ -316,6 +316,34 @@ func reload_part(f: String) -> void:
 	send({"t": "need_quests"})
 
 
+## A mesh made in Blender (tools/blender/*.py -> models3d/<name>.glb): the first mesh in the file, with its vertex
+## colours (the look is painted into the vertices). null if the file is missing. Cached in ctx, so reloads are free.
+## Give it a material yourself: vertex_color_use_as_albedo = true, or a shader that reads COLOR.
+func load_mesh(name: String) -> ArrayMesh:
+	var key := "mesh3d|" + name
+	if ctx.has(key):
+		return ctx[key]
+	var path := ProjectSettings.globalize_path("res://models3d/%s.glb" % name)
+	if not FileAccess.file_exists(path):
+		return null
+	var doc := GLTFDocument.new()
+	var state := GLTFState.new()
+	if doc.append_from_file(path, state) != OK:
+		printerr("models3d/", name, ".glb could not be read")
+		return null
+	var scene: Node = doc.generate_scene(state)
+	var found: ArrayMesh = null
+	var stack: Array = [scene]
+	while not stack.is_empty() and found == null:
+		var n: Node = stack.pop_back()
+		if n is MeshInstance3D and n.mesh is ArrayMesh:
+			found = n.mesh
+		stack.append_array(n.get_children())
+	scene.free()
+	ctx[key] = found
+	return found
+
+
 ## Take an old part out of the world now (its _exit_tree runs, so it tidies up first), but delete it only at the end
 ## of the frame: freeing it on the spot crashed the engine when a story flag swapped the creatures mid-fight.
 func retire_part(old: Node) -> void:

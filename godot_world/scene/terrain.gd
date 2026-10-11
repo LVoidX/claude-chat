@@ -7,7 +7,7 @@ extends Node3D
 ## height_at(x, z) is the ground height anywhere (0 in the meadow); W.ground_y() asks it. The heavy parts
 ## (the ground mesh, its collision and the trees) are kept in ctx between reloads, so saving a part is quick.
 
-const VERSION := 16  # rebuild cached terrain and grass after changing their scatter
+const VERSION := 18  # rebuild cached terrain and grass after changing their scatter
 const FLAT := 58.0  # radius of the flat meadow
 const SIZE := 400.0  # the land is SIZE x SIZE metres, centred on the middle
 const CELL := 2.0  # ground mesh resolution (m)
@@ -303,6 +303,10 @@ func plan_trees() -> void:
 
 
 func pine_mesh() -> ArrayMesh:
+	var painted: ArrayMesh = W.load_mesh("pine")  # made in Blender (tools/blender/pine.py)
+	if painted:
+		painted.surface_set_material(0, painted_tree_material())
+		return painted
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	var trunk := CylinderMesh.new()
@@ -333,6 +337,10 @@ func pine_mesh() -> ArrayMesh:
 
 
 func oak_mesh() -> ArrayMesh:
+	var painted: ArrayMesh = W.load_mesh("oak")  # made in Blender (tools/blender/oak.py), colours painted into the vertices
+	if painted:
+		painted.surface_set_material(0, painted_tree_material())
+		return painted
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	var trunk := CylinderMesh.new()
@@ -399,6 +407,36 @@ void fragment() {
 """
 
 
+const PAINTED_TREE_SHADER := """
+shader_type spatial;
+render_mode cull_back;
+varying vec3 wp;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	float up = clamp(VERTEX.y / 5.0, 0.0, 1.0);  // the top of the tree moves in the wind, the foot stays put
+	float sway = sin(TIME * 1.1 + wp.x * 0.13 + wp.z * 0.11) + 0.4 * sin(TIME * 2.3 + wp.z * 0.3);
+	VERTEX.x += sway * 0.07 * up * up;
+	VERTEX.z += sway * 0.04 * up * up;
+}
+void fragment() {
+	vec3 c = COLOR.rgb;  // painted in Blender, times this tree's own shade (the MultiMesh instance colour)
+	float tint = fract(sin(dot(wp.xz, vec2(12.9898, 78.233))) * 43758.5453);
+	c *= mix(vec3(1.0), vec3(1.1, 1.02, 0.8), tint * 0.5);  // some trees a little yellower
+	ALBEDO = c;
+	ROUGHNESS = 0.85;
+	BACKLIGHT = vec3(0.1, 0.15, 0.05);
+}
+"""
+
+
+func painted_tree_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = PAINTED_TREE_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = shader
+	return m
+
+
 ## Leaves: darker low in the crown, sunlit on top, each tree its own shade, swaying a little in the wind.
 func foliage_material(color: Color, low: float, high: float) -> ShaderMaterial:
 	var shader := Shader.new()
@@ -437,23 +475,36 @@ func tree_meshes() -> Array:
 			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, t[3]).scaled(Vector3(s, s * rng.randf_range(0.9, 1.15), s)), t[0] - Vector3(0, 0.15, 0)))
 			mm.set_instance_color(i, Color.WHITE.darkened(rng.randf_range(0.0, 0.3)))
 		out.append(mm)
-	out.append(boulders())
+	out.append_array(boulders())
+	var bush_mm := bushes()
+	if bush_mm:
+		out.append(bush_mm)
 	return out
 
 
-func boulders() -> MultiMesh:
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	var rock := SphereMesh.new()
-	rock.radial_segments = 7
-	rock.rings = 4
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color("#7a7670")
-	m.vertex_color_use_as_albedo = true
-	m.roughness = 1.0
-	rock.material = m
-	mm.mesh = rock
+## Boulders: three rock shapes made in Blender (rock1..3.glb, moss on top), scattered over the land; the old
+## squashed spheres if the files are missing. Returns one MultiMesh per shape.
+func boulders() -> Array:
+	var shapes := []
+	for name in ["rock1", "rock2", "rock3"]:
+		var rock: ArrayMesh = W.load_mesh(name)
+		if rock:
+			var m := StandardMaterial3D.new()
+			m.vertex_color_use_as_albedo = true
+			m.roughness = 1.0
+			rock.surface_set_material(0, m)
+			shapes.append(rock)
+	var fallback := shapes.is_empty()
+	if fallback:
+		var sphere := SphereMesh.new()
+		sphere.radial_segments = 7
+		sphere.rings = 4
+		var m2 := StandardMaterial3D.new()
+		m2.albedo_color = Color("#7a7670")
+		m2.vertex_color_use_as_albedo = true
+		m2.roughness = 1.0
+		sphere.material = m2
+		shapes.append(sphere)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 17
 	var spots := []
@@ -465,12 +516,60 @@ func boulders() -> MultiMesh:
 		if keep_clear(x, z) or (r < FLAT and rng.randf() < 0.7):
 			continue
 		spots.append(Vector3(x, height_at(x, z), z))
+	var out := []
+	for k in shapes.size():
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.mesh = shapes[k]
+		var mine := []
+		for i in spots.size():
+			if i % shapes.size() == k:
+				mine.append(spots[i])
+		mm.instance_count = mine.size()
+		for i in mine.size():
+			var s := rng.randf_range(0.5, 2.6)
+			var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s * rng.randf_range(0.9, 1.4), s * (0.75 if fallback else rng.randf_range(0.8, 1.2)), s))
+			mm.set_instance_transform(i, Transform3D(basis, mine[i] - Vector3(0, s * (0.18 if fallback else 0.12), 0)))
+			mm.set_instance_color(i, Color.WHITE.darkened(rng.randf_range(0.0, 0.3)))
+		out.append(mm)
+	return out
+
+
+## Bushes (Blender: bush.glb, some with red berries) tucked along the edges of the woods and over the hills.
+func bushes() -> MultiMesh:
+	var bush: ArrayMesh = W.load_mesh("bush")
+	if bush == null:
+		return null
+	bush.surface_set_material(0, painted_tree_material())
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 41
+	var spots := []
+	var tries := 0
+	while spots.size() < 320 and tries < 6000:
+		tries += 1
+		var a := rng.randf() * TAU
+		var r := sqrt(rng.randf_range(0.05, 1.0)) * 185.0
+		var x := cos(a) * r
+		var z := sin(a) * r
+		if r < 30.0 or keep_clear(x, z):
+			continue
+		var forest := noise.get_noise_2d(x * 0.6 + 50.0, z * 0.6)  # more of them where the woods are
+		if forest < -0.15 and rng.randf() < 0.9:
+			continue
+		var h := height_at(x, z)
+		if h > 30.0:
+			continue
+		spots.append(Vector3(x, h, z))
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = bush
 	mm.instance_count = spots.size()
 	for i in spots.size():
-		var s := rng.randf_range(0.5, 2.6)
-		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s * rng.randf_range(1.0, 1.6), s * 0.75, s))
-		mm.set_instance_transform(i, Transform3D(basis, spots[i] - Vector3(0, s * 0.18, 0)))
-		mm.set_instance_color(i, Color.WHITE.darkened(rng.randf_range(0.0, 0.35)))
+		var s := rng.randf_range(0.7, 1.5)
+		mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.2), s)), spots[i] - Vector3(0, 0.05, 0)))
+		mm.set_instance_color(i, Color.WHITE.darkened(rng.randf_range(0.0, 0.25)))
 	return mm
 
 

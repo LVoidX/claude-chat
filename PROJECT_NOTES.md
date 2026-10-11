@@ -268,3 +268,7 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - quality.gd: graphics presets Ultra/High/Medium/Low (MSAA/FXAA, SSAO, glow, sun shadow splits+range, grass density, render scale), auto-picked per PC, lowered by itself when under 38 fps for 5 s, F8 cycles; state["quality"].
 - world.gd W.box: boxes under 0.3 m cast no shadow and vanish beyond 22/42/80 m depending on size (visibility_range_end): -28% draw calls, -37% triangles, -21% GPU time in the meadow, no visible change. (Merging boxes per material was tried and made the GPU slower: merged meshes are drawn whole in every shadow cascade.)
 - villagers.gd pathfinding map: built in time slices (2.5 ms per physics frame, no 160 ms stall), cached in ctx["path_grid"] across reloads of villagers.gd, rebuilt in the background when village/castle/terrain/gathering/travel/rpg/creatures are swapped (part_reloaded). Measured: no frame over 5 ms in a 60 s walk (vsync off); part reloads take 10-56 ms.
+- Blender pipeline (tools/blender/, README there): scripts build low-poly models with painted vertex colours and export
+  godot_world/models3d/*.glb; world.gd load_mesh(name) loads them at run time. Used for the oak, pine, three rocks and the
+  berry bushes (terrain.gd). Blender 5.2.2 is at D:\Toolslenderlender-5.2.2-windows-x64lender.exe. The trees/rocks
+  cut triangles per frame from 9.6M to 3.6M and look better. Next models: village props, roofs, furniture.
