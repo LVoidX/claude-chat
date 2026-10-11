@@ -320,11 +320,17 @@ func fence(a: Vector3, b: Vector3) -> void:
 
 
 func hay(at: Vector3) -> void:
+	if W.prop("hay_bale", self, at_ground(at), randf() * PI):  # (Blender: tools/blender/props.py)
+		W.add_collider(self, Transform3D(Basis(), at_ground(at) + Vector3(0, 0.45, 0)), Vector3(1.3, 0.9, 0.9))
+		return
 	var bale: MeshInstance3D = kit.block(W, self, at_ground(at) + Vector3(0, 0.45, 0), Vector3(1.3, 0.9, 0.9), "thatch")
 	bale.rotation.y = randf() * PI
 
 
 func barrel(at: Vector3) -> void:
+	if W.prop("barrel", self, at_ground(at), randf() * TAU):
+		W.add_collider(self, Transform3D(Basis(), at_ground(at) + Vector3(0, 0.45, 0)), Vector3(0.64, 0.9, 0.64), "sphere")
+		return
 	var barrel_node := Node3D.new()
 	barrel_node.position = at_ground(at)
 	barrel_node.rotation.y = randf() * TAU

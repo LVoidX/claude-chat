@@ -355,6 +355,22 @@ func painted_mat() -> StandardMaterial3D:
 	return ctx["painted_mat"]
 
 
+## A Blender prop (models3d/<name>.glb, painted colours) placed under `parent`. Returns the MeshInstance3D, or null when
+## the model is missing (so the caller can build its plain-boxes version instead).
+func prop(name: String, parent: Node, pos: Vector3, yaw := 0.0, scale := 1.0) -> MeshInstance3D:
+	var mesh: ArrayMesh = load_mesh(name)
+	if mesh == null:
+		return null
+	var m := MeshInstance3D.new()
+	m.mesh = mesh
+	m.material_override = painted_mat()
+	m.position = pos
+	m.rotation.y = yaw
+	m.scale = Vector3.ONE * scale
+	parent.add_child(m)
+	return m
+
+
 ## Take an old part out of the world now (its _exit_tree runs, so it tidies up first), but delete it only at the end
 ## of the frame: freeing it on the spot crashed the engine when a story flag swapped the creatures mid-fight.
 func retire_part(old: Node) -> void:

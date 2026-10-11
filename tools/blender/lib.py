@@ -119,3 +119,29 @@ def preview(name, objects=None, size=(640, 640), distance=1.0, height=0.5):
     scene.render.filepath = os.path.join(OUT, "..", "..", "tools", "blender", name + "_preview.png")
     bpy.ops.render.render(write_still=True)
     print("PREVIEW", scene.render.filepath)
+
+
+def lathe(bm, profile, segs=10, wobble=0.0, seed=0, cap_bottom=True, cap_top=True):
+    """A surface of revolution round the z axis. profile = [(radius, z), ...] from bottom to top. Returns the rings."""
+    rings = []
+    for (r, z) in profile:
+        ring = []
+        for s in range(segs):
+            a = s / segs * math.tau
+            w = 1.0 + wobble * noise.noise(Vector((math.cos(a) * 2.0 + seed, math.sin(a) * 2.0, z * 3.0)))
+            ring.append(bm.verts.new((math.cos(a) * r * w, math.sin(a) * r * w, z)))
+        rings.append(ring)
+    for i in range(len(rings) - 1):
+        for s in range(segs):
+            bm.faces.new((rings[i][s], rings[i][(s + 1) % segs], rings[i + 1][(s + 1) % segs], rings[i + 1][s]))
+    if cap_top and profile[-1][0] > 0.0:
+        bm.faces.new(rings[-1])
+    if cap_bottom and profile[0][0] > 0.0:
+        bm.faces.new(list(reversed(rings[0])))
+    return rings
+
+
+def finish(bm, smooth=False):
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    if not smooth:
+        flat(bm)

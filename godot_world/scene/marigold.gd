@@ -209,13 +209,21 @@ func build_stall() -> void:
 	oven_glow = glow(stall, Vector3(-3.2, 0.5, -0.32), Vector3(0.5, 0.3, 0.02), "#ff7a1a", 2.4)
 	oven_light = light(stall, Vector3(-3.2, 0.6, -1.0), "#ff8a3a", 1.6, 7.0)
 	# barrel, crates, a flour sack, a planter with herbs on the other side
-	solid(stall, Vector3(2.9, 0.45, 0.6), Vector3(0.7, 0.9, 0.7), "#7a5530")
-	for y in [0.18, 0.72]:
-		bx(stall, Vector3(2.9, y, 0.6), Vector3(0.74, 0.05, 0.74), "#3a3a3e")
-	solid(stall, Vector3(3.0, 0.2, -0.4), Vector3(0.6, 0.4, 0.6), plank)
-	solid(stall, Vector3(3.05, 0.58, -0.38), Vector3(0.5, 0.36, 0.5), "#9a6e3e")
-	bx(stall, Vector3(2.4, 0.2, 1.0), Vector3(0.5, 0.4, 0.34), "#e8dcc4", "sphere")  # flour sack
-	bx(stall, Vector3(2.4, 0.42, 1.0), Vector3(0.18, 0.1, 0.16), "#d6c9ad", "sphere")
+	if W.prop("barrel", stall, Vector3(2.9, 0.0, 0.6), 0.5, 1.1):  # (Blender models: tools/blender/props.py)
+		W.add_collider(stall, Transform3D(Basis(), Vector3(2.9, 0.5, 0.6)), Vector3(0.78, 1.0, 0.78), "sphere")
+	else:
+		solid(stall, Vector3(2.9, 0.45, 0.6), Vector3(0.7, 0.9, 0.7), "#7a5530")
+		for y in [0.18, 0.72]:
+			bx(stall, Vector3(2.9, y, 0.6), Vector3(0.74, 0.05, 0.74), "#3a3a3e")
+	if W.prop("crate", stall, Vector3(3.0, 0.0, -0.4), 0.2, 0.72):
+		W.add_collider(stall, Transform3D(Basis(), Vector3(3.0, 0.3, -0.4)), Vector3(0.6, 0.6, 0.6))
+		W.prop("crate", stall, Vector3(3.05, 0.6, -0.38), -0.4, 0.55)
+	else:
+		solid(stall, Vector3(3.0, 0.2, -0.4), Vector3(0.6, 0.4, 0.6), plank)
+		solid(stall, Vector3(3.05, 0.58, -0.38), Vector3(0.5, 0.36, 0.5), "#9a6e3e")
+	if not W.prop("sack", stall, Vector3(2.4, 0.0, 1.0), 0.6, 1.0):  # flour sack
+		bx(stall, Vector3(2.4, 0.2, 1.0), Vector3(0.5, 0.4, 0.34), "#e8dcc4", "sphere")
+		bx(stall, Vector3(2.4, 0.42, 1.0), Vector3(0.18, 0.1, 0.16), "#d6c9ad", "sphere")
 	solid(stall, Vector3(2.2, 0.17, -2.2), Vector3(1.8, 0.34, 0.6), wood)
 	bx(stall, Vector3(2.2, 0.33, -2.2), Vector3(1.7, 0.04, 0.5), "#3a2616")  # soil
 	for i in 7:
