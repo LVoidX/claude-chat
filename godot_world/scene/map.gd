@@ -104,6 +104,21 @@ func paint(frame: Control) -> void:
 	if tr:
 		frame.draw_circle(to_map(tr.VILLAGE.x, tr.VILLAGE.z), 7.0, Color("#8a5a3a"))  # the village, with its stone beside it
 		label_at(frame, font, to_map(tr.POND.x, tr.POND.z) + Vector2(-16, -14), "Pond")
+	var rpg = ctx.parts.get("rpg")
+	if rpg:  # who has work for you (gold !) or is waiting for you to hand something in (gold ?)
+		var seen := {}
+		for q in rpg.QUESTS:
+			var state: String = rpg.qstate(q.id)
+			if state == "done" or seen.has(q.giver) or (state == "" and int(rpg.st().level) < int(q.level)):
+				continue
+			var who = rpg.giver_node(q.giver)
+			if who == null:
+				continue
+			seen[q.giver] = true
+			var mark := "?" if state == "active" and rpg.ready_to_hand_in(q) else "!"
+			var gp := to_map(who.global_position.x, who.global_position.z)
+			frame.draw_string_outline(font, gp + Vector2(-3, 5), mark, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color.BLACK)
+			frame.draw_string(font, gp + Vector2(-3, 5), mark, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#ffd24d"))
 	var me: Vector3 = W.player.global_position
 	var at := to_map(me.x, me.z)
 	var yaw: float = W.player.rotation.y
@@ -112,7 +127,7 @@ func paint(frame: Control) -> void:
 	frame.draw_colored_polygon(PackedVector2Array([at + fwd * 11.0, at - fwd * 7.0 + side * 6.0, at - fwd * 3.0, at - fwd * 7.0 - side * 6.0]), Color("#ff4a3a"))
 	frame.draw_polyline(PackedVector2Array([at + fwd * 11.0, at - fwd * 7.0 + side * 6.0, at - fwd * 3.0, at - fwd * 7.0 - side * 6.0, at + fwd * 11.0]), Color("#ffffff"), 1.5)
 	label_at(frame, font, Vector2(SHOWN / 2.0 - 4.0, 14.0), "N")
-	label_at(frame, font, Vector2(8, SHOWN - 10.0), "P or Esc to close   -   red arrow: you")
+	label_at(frame, font, Vector2(8, SHOWN - 10.0), "P or Esc to close   -   red arrow: you   -   gold ! or ?: someone has work for you")
 
 
 func label_at(frame: Control, font: Font, pos: Vector2, text: String) -> void:
