@@ -10,6 +10,7 @@ const BIRD_FLOCKS := 3
 const BIRDS_PER_FLOCK := 5
 const BUTTERFLIES := 30
 const DUCKS := 4
+const FIREFLIES := 45
 const TINTS := [Color("#ffb347"), Color("#ffe566"), Color("#9ec9ff"), Color("#ffffff"), Color("#ff8fb1"), Color("#c9a0ff")]
 
 const WING_SHADER := """
@@ -31,6 +32,7 @@ void fragment() {
 var ctx: Dictionary
 var W
 var birds := []  # {node, flock centre/radius/speed/height, angle, offset}
+var fireflies := []  # {node, home, seed}: tiny glowing lights drifting over the meadow and the pond on dry nights
 var butterflies := []  # {node, goal, speed, hover, phase}
 var ducks := []  # {node, angle, radius, speed}
 var t := 0.0
@@ -86,6 +88,27 @@ func build(c: Dictionary) -> void:
 		var home := Vector2(rng.randf_range(-48, 52), rng.randf_range(-30, 40))
 		node.position = Vector3(home.x, 1.0, home.y)
 		butterflies.append({"node": node, "home": home, "goal": node.position, "speed": rng.randf_range(0.8, 1.6), "hover": rng.randf_range(0.5, 1.6), "seed": rng.randf() * 100.0})
+	var glow_mesh := SphereMesh.new()
+	glow_mesh.radius = 0.03
+	glow_mesh.height = 0.06
+	glow_mesh.radial_segments = 6
+	glow_mesh.rings = 3
+	var glow_mat := StandardMaterial3D.new()
+	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow_mat.albedo_color = Color("#d8ff6a")
+	glow_mat.emission_enabled = true
+	glow_mat.emission = Color("#c8ff50")
+	glow_mat.emission_energy_multiplier = 4.0
+	glow_mesh.material = glow_mat
+	for i in FIREFLIES:
+		var fl := MeshInstance3D.new()
+		fl.mesh = glow_mesh
+		fl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		fl.visibility_range_end = 40.0
+		fl.visible = false
+		add_child(fl)
+		var spot := Vector2(rng.randf_range(-40, 50), rng.randf_range(-25, 55))
+		fireflies.append({"node": fl, "home": spot, "seed": rng.randf() * 100.0})
 	var duck_mat := make_material(0.0, 0.0)
 	var terrain = ctx.parts.get("terrain")
 	for i in DUCKS:
@@ -134,6 +157,18 @@ func _process(delta: float) -> void:
 		var ground: float = W.ground_y(pos.x, pos.z)
 		pos.y = maxf(ground, 0.0) + float(bf.hover) + sin(t * 2.6 + bf.seed) * 0.28 + sin(t * 1.1 + bf.seed * 2.0) * 0.15  # bobbing as they go
 		node.position = pos
+	var dark := float(ctx.get("night", 0.0)) > 0.6 and dry > 0.5
+	for ff in fireflies:
+		var fl: MeshInstance3D = ff.node
+		fl.visible = dark
+		if not dark:
+			continue
+		var sd: float = ff.seed
+		var home: Vector2 = ff.home
+		var x := home.x + sin(t * 0.21 + sd) * 4.0 + sin(t * 0.53 + sd * 2.0) * 1.5
+		var z := home.y + cos(t * 0.17 + sd * 1.3) * 4.0 + cos(t * 0.47 + sd) * 1.5
+		fl.position = Vector3(x, maxf(W.ground_y(x, z), -0.1) + 0.9 + sin(t * 0.9 + sd) * 0.5, z)
+		fl.scale = Vector3.ONE * (0.2 + 1.0 * maxf(0.0, sin(t * 1.6 + sd * 3.0)))  # they pulse on and off
 	var pond: Vector3 = ctx.parts["terrain"].POND if ctx.parts.has("terrain") else Vector3.ZERO
 	for d in ducks:
 		var node: MeshInstance3D = d.node
@@ -146,4 +181,4 @@ func _process(delta: float) -> void:
 
 
 func seen_from(_from: Vector3, _viewer: Node) -> Array:
-	return ["birds circling high over the valley by day, butterflies over the meadow, and ducks on the pond at the south of the meadow"]
+	return ["birds circling high over the valley by day, butterflies over the meadow, and ducks on the pond at the south of the meadow, and fireflies there on dry nights"]

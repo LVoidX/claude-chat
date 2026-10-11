@@ -285,3 +285,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - hints.gd: one-time tips (welcome, talk by voice, gold !, sword, fishing, healing, night) shown the first time they matter, max one per 25 s, state["hints"]; none for saves at level 3+. Add a tip: TIPS entry + a condition in _process.
 
 - Footbridge: terrain.gd add_footbridge() puts tools/blender/bridge.py's footbridge.glb over the stream near x=-10 (bridge_spot(), solid deck collider); reeds keep clear of its ends.
+- wildlife.gd also has 45 fireflies (pulsing emissive dots over the meadow/pond on dry nights); fishing.gd shows six dark fish shapes under the pond surface; two more fish quests (Hugh: carp, Piers: golden carp).
