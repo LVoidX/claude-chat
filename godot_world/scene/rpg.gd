@@ -878,10 +878,10 @@ func fill_board(body: VBoxContainer) -> void:
 ## --- quest givers ---------------------------------------------------------------------------------------
 
 const GIVER_TITLES := {"tam": "Tam the Shepherd", "elsie": "Elsie the Water Carrier", "wat": "Wat the Farmer",
-	"osric": "Osric the Woodcutter", "smith": "Hob the Smith", "bram": "Sergeant Bram"}
+	"osric": "Osric the Woodcutter", "smith": "Hob the Smith", "bram": "Sergeant Bram", "hugh": "Hugh the Guard", "piers": "Piers of the Wall"}
 const GREETINGS := {"tam": "\"Ah, a strong arm. Just what I need.\"", "elsie": "\"Mind the bucket! Oh, it's you.\"",
 	"wat": "\"Hard work, this. Got a moment, friend?\"", "smith": "\"Need steel? Or here to help for once?\"",
-	"bram": "\"Halt. ...Oh, you're the one they talk about.\"", "osric": "\"Hm. You.\""}
+	"bram": "\"Halt. ...Oh, you're the one they talk about.\"", "osric": "\"Hm. You.\"", "hugh": "\"Finally, a face that isn't a wall. Got a minute?\"", "piers": "\"Quiet. Do you hear that? ...No. Just the wind. Hello.\""}
 var marks := {}  # giver -> Label3D: the ! or ? over their head
 
 
