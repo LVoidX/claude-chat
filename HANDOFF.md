@@ -42,3 +42,4 @@ Keep committing after each step; check usage every few commits (>=98% on 5-hour 
 Ideas not done yet: horse/mount, dog companion, more story chapter content, stone bridge on a road, cave/dungeon, seasons, cooking menu, NPC schedules (sleep at night), quest-giver dialogue variety.
 User rule: at >=98% of the 5-hour OR weekly usage -> commit/push then `shutdown /s /t 30`.
 Also (latest): villagers gather at the campfire at night, quest tip about map/options. Usage was 97% (5-hour) / 95% (weekly) when this was written: if the PC shut itself down, that was the 98% rule.
+2026-10-11: usage hit 98% (5-hour; weekly 95%), so the PC was shut down on the user's rule. Last additions: dog.gd (campfire dog companion). Everything is committed and pushed.
