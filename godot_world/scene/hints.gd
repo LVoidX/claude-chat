@@ -11,6 +11,7 @@ const TIPS := {
 	"sword": "Left click strikes, right click guards. Fight wolves from the front, with room to step back.",
 	"fish": "Fishing: press E at the water's edge to cast, and E again the moment the float dips.",
 	"hurt": "Hurt? Press Q to drink a potion, or rest by the campfire at the crossroads.",
+	"map": "P opens the map: places, quest givers (gold !) and where you are. F1 has the options (volume and more).",
 	"night": "Night falls. The campfire at the crossroads is a safe place to sit (E) until morning (T).",
 }
 const GAP := 25.0  # seconds between tips
@@ -63,3 +64,5 @@ func _process(delta: float) -> void:
 		give_tip("hurt")
 	elif not "night" in seen and float(ctx.get("night", 0.0)) > 0.8:
 		give_tip("night")
+	elif not "map" in seen and "quest" in seen and "sword" in seen:
+		give_tip("map")
