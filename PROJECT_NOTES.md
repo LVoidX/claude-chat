@@ -312,3 +312,4 @@ when you finish a notable feature or learn a preference, and fix lines that beco
 - Co-op sky: the host sends its hour and rain every 3 s (net.gd recv_sky); friends' copies follow it, so everyone shares the same time of day and weather.
 - net.gd F3 panel has a name box (state["net_name"]); friends near a character appear in its seen_from list. world.gd ignores game keys while a LineEdit/TextEdit has focus (typing "Pat" no longer opens the map).
 - Co-op figures carry a sword when the player has theirs out (recv_pos held flag) and chop with it when they attack (hotbar.swing sent along). Friends show as blue dots on the map.
+- Co-op chat: Enter opens a line. A friend beside a character talks to the character; otherwise (and always for the host) it goes to the other players (net.gd recv_chat): a notice plus 6 s over the sender's head.

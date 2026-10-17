@@ -164,7 +164,8 @@ func recv_pos(pos: Vector3, yaw: float, who: String, held := false, swinging := 
 	var p: Dictionary = peers[id]
 	p.target = pos
 	p.yaw = yaw
-	p.label.text = who
+	if Time.get_ticks_msec() > int(p.get("chat_until", 0)):
+		p.label.text = who
 	p.blade.visible = held
 	p.swing = maxf(float(p.get("swing", 0.0)), swinging)
 
@@ -298,7 +299,7 @@ func open_say() -> void:
 
 
 func show_typed() -> void:
-	say_box.text = "Say to them:  " + typed + "_      (Enter sends, Esc cancels)"
+	say_box.text = ("Say to them:  " if say_to != "" else "Say to your friends:  ") + typed + "_      (Enter sends, Esc cancels)"
 
 
 func close_say() -> void:
@@ -335,6 +336,16 @@ func recv_sky(hour: float, raining: bool) -> void:
 		ctx.state["dry_until"] = INF if not raining else -1.0
 
 
+@rpc("any_peer", "reliable")
+func recv_chat(from_name: String, text: String) -> void:
+	W.show_notice("%s: %s" % [from_name, text], 6.0)
+	var id := get_tree().get_multiplayer().get_remote_sender_id()
+	if peers.has(id):  # and over their head for a few seconds
+		var p: Dictionary = peers[id]
+		p.label.text = "%s: \"%s\"" % [from_name, text.substr(0, 60)]
+		p.chat_until = Time.get_ticks_msec() + 6000  # (recv_pos puts the plain name back after this)
+
+
 @rpc("authority", "reliable")
 func recv_cmd(c: Dictionary) -> void:
 	W.handle(c)  # the friend's own copy of that character shows the bubble
@@ -346,8 +357,11 @@ func key(event: InputEventKey) -> void:
 			KEY_ESCAPE:
 				close_say()
 			KEY_ENTER, KEY_KP_ENTER:
-				if typed.strip_edges() != "":
+				if typed.strip_edges() != "" and say_to != "":
 					rpc_id(1, "friend_say", say_to, typed.strip_edges(), my_name)
+				elif typed.strip_edges() != "":  # player chat: everyone sees it, over your head and as a notice
+					rpc("recv_chat", my_name, typed.strip_edges())
+					W.show_notice("You: " + typed.strip_edges(), 5.0)
 				close_say()
 			KEY_BACKSPACE:
 				typed = typed.substr(0, maxi(typed.length() - 1, 0))
@@ -357,8 +371,11 @@ func key(event: InputEventKey) -> void:
 					typed += char(event.unicode)
 					show_typed()
 		return
-	if event.keycode in [KEY_ENTER, KEY_KP_ENTER] and online() and not get_tree().get_multiplayer().is_server() and str(W.near_who) != "":
+	if event.keycode in [KEY_ENTER, KEY_KP_ENTER] and online() and not open:
 		open_say()
+		if get_tree().get_multiplayer().is_server():
+			say_to = ""  # (the host talks to characters by voice; Enter is for the friends)
+			show_typed()
 		return
 	if event.keycode == KEY_F3 or (event.keycode == KEY_ESCAPE and open):
 		toggle() if event.keycode == KEY_F3 else close()
