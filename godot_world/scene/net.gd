@@ -137,6 +137,12 @@ func add_peer(id: int) -> void:
 		W.box(node, Vector3(side * 0.06, 1.69, -0.131), Vector3(0.04, 0.035, 0.01), Color("#1d1814"))  # eyes
 	W.box(node, Vector3(0, 1.83, 0.01), Vector3(0.3, 0.09, 0.3), tunic.darkened(0.35))  # cap
 	W.box(node, Vector3(0, 1.79, -0.16), Vector3(0.3, 0.03, 0.07), tunic.darkened(0.35))  # its brim
+	var blade = W.prop("sword_iron", limbs[3], Vector3(0, -0.56, -0.04))  # their sword, in the right hand, pointing forward
+	if blade == null:
+		blade = W.box(limbs[3], Vector3(0, -0.56, -0.45), Vector3(0.05, 0.02, 0.8), Color("#b9c0c6"))
+	else:
+		blade.rotation.x = -PI / 2.0
+	blade.visible = false
 	var label := Label3D.new()
 	label.text = "Friend"
 	label.pixel_size = 0.005
@@ -145,12 +151,13 @@ func add_peer(id: int) -> void:
 	label.outline_size = 8
 	label.no_depth_test = true
 	node.add_child(label)
-	peers[id] = {"node": node, "target": W.player.global_position, "yaw": 0.0, "label": label, "limbs": limbs, "phase": 0.0}
+	peers[id] = {"node": node, "target": W.player.global_position, "yaw": 0.0, "label": label, "limbs": limbs, "phase": 0.0,
+		"blade": blade, "swing": 0.0}
 
 
 ## Everyone tells everyone where they are (unreliable: a lost packet is simply replaced by the next).
 @rpc("any_peer", "unreliable")
-func recv_pos(pos: Vector3, yaw: float, who: String) -> void:
+func recv_pos(pos: Vector3, yaw: float, who: String, held := false, swinging := 0.0) -> void:
 	var id := get_tree().get_multiplayer().get_remote_sender_id()
 	if not peers.has(id):
 		add_peer(id)
@@ -158,6 +165,8 @@ func recv_pos(pos: Vector3, yaw: float, who: String) -> void:
 	p.target = pos
 	p.yaw = yaw
 	p.label.text = who
+	p.blade.visible = held
+	p.swing = maxf(float(p.get("swing", 0.0)), swinging)
 
 
 func _process(delta: float) -> void:
@@ -171,7 +180,9 @@ func _process(delta: float) -> void:
 	send_in -= delta
 	if send_in <= 0.0:
 		send_in = 1.0 / SEND_HZ
-		rpc("recv_pos", W.player.global_position, W.player.rotation.y, my_name)
+		var hotbar = ctx.parts.get("hotbar")
+		var held: bool = hotbar != null and hotbar.held()
+		rpc("recv_pos", W.player.global_position, W.player.rotation.y, my_name, held, float(hotbar.swing) if hotbar else 0.0)
 	for id in peers:
 		var p: Dictionary = peers[id]
 		var node: Node3D = p.node
@@ -185,6 +196,10 @@ func _process(delta: float) -> void:
 		limbs[1].rotation.x = -swing
 		limbs[2].rotation.x = -swing * 0.7  # arms swing against the legs
 		limbs[3].rotation.x = swing * 0.7
+		if p.blade.visible:  # sword out: the arm is raised forward, and a swing chops it down
+			p.swing = maxf(float(p.swing) - delta * 3.0, 0.0)
+			var chop: float = sin(clampf(1.0 - p.swing, 0.0, 1.0) * PI) if p.swing > 0.0 else 0.0
+			limbs[3].rotation.x = 0.9 + chop * 1.4 - (1.0 - chop) * 0.0
 		node.rotation.y = lerp_angle(node.rotation.y, p.yaw, minf(delta * 10.0, 1.0))
 	if status and open:
 		status.text = status_text()
