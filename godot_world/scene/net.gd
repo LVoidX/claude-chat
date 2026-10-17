@@ -19,6 +19,7 @@ var address: LineEdit
 var open := false
 var peers := {}  # peer id -> {node, target, yaw, name}
 var send_in := 0.0
+var sky_in := 0.0  # the host sends its time of day and weather every few seconds, so everyone shares one sky
 var my_name := "Wanderer"
 var typed := ""  # what a joined friend is typing to the character beside them
 var say_box: Label
@@ -162,6 +163,11 @@ func recv_pos(pos: Vector3, yaw: float, who: String) -> void:
 func _process(delta: float) -> void:
 	if not online():
 		return
+	sky_in -= delta
+	if sky_in <= 0.0 and get_tree().get_multiplayer().is_server():
+		sky_in = 3.0
+		var weather = ctx.parts.get("weather")
+		rpc("recv_sky", float(ctx.state.get("time", 12.0)), weather != null and float(weather.want) > 0.5)
 	send_in -= delta
 	if send_in <= 0.0:
 		send_in = 1.0 / SEND_HZ
@@ -280,6 +286,19 @@ func friend_say(who: String, text: String, from_name: String) -> void:
 func observe(c: Dictionary) -> void:
 	if online() and get_tree().get_multiplayer().is_server() and str(c.get("cmd", "")) in ["say_start", "say_end", "say", "npc_state"]:
 		rpc("recv_cmd", c)
+
+
+@rpc("authority", "unreliable")
+func recv_sky(hour: float, raining: bool) -> void:
+	var now := float(ctx.state.get("time", hour))
+	var gap := fposmod(hour - now + 12.0, 24.0) - 12.0  # (the short way round midnight)
+	if absf(gap) > 0.05:
+		ctx.state["time"] = hour  # (base.gd moves the sun from state["time"])
+	var weather = ctx.parts.get("weather")
+	if weather and (float(weather.want) > 0.5) != raining:
+		weather.set_rain(raining)
+		ctx.state["rain_until"] = INF if raining else -1.0  # the host decides when it stops, not this copy's own clock
+		ctx.state["dry_until"] = INF if not raining else -1.0
 
 
 @rpc("authority", "reliable")
