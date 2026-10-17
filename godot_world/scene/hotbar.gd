@@ -276,33 +276,41 @@ func make_sword_arm() -> void:
 	forearm_bracer = arm_tube(0.052, 0.061, leather_material(Color("#765638")))
 	sword_hand_root = Node3D.new()
 	sword_hand_root.name = "SwordHand"
-	sword_hand = MeshInstance3D.new()
-	var palm := SphereMesh.new()
-	palm.radius = 0.5
-	palm.height = 1.0
-	palm.radial_segments = 10
-	palm.rings = 6
-	sword_hand.mesh = palm
-	var glove := StandardMaterial3D.new()
-	glove.albedo_color = Color("#916b49")
-	glove.roughness = 0.9
-	# Keep the leather readable in the shaded foreground without making it glow.
-	glove.emission_enabled = true
-	glove.emission = Color("#382719")
-	glove.emission_energy_multiplier = 0.28
-	sword_hand.material_override = glove
-	sword_hand.position = Vector3(-0.006, -0.014, -0.012)
-	sword_hand.scale = Vector3(0.063, 0.1, 0.036)
-	sword_hand_root.add_child(sword_hand)
-	# Four curled fingers cross the grip, stacked along it like a real fist.
-	# Each has a front segment and a short return around the far side of the handle.
-	for i in 4:
-		var y := 0.035 - i * 0.029
-		hand_segment(sword_hand_root, Vector3(-0.035, y, 0.008), Vector3(0.025, y - 0.004, 0.004), 0.013, glove)
-		hand_segment(sword_hand_root, Vector3(0.025, y - 0.004, 0.004), Vector3(0.021, y - 0.012, -0.03), 0.011, glove)
-	# The thumb closes across the index finger on the visible side of the grip.
-	hand_segment(sword_hand_root, Vector3(-0.058, 0.043, -0.025), Vector3(-0.024, 0.020, 0.01), 0.014, glove)
-	hand_segment(sword_hand_root, Vector3(-0.024, 0.020, 0.01), Vector3(0.018, 0.013, 0.008), 0.013, glove)
+	var fist = W.prop("fist", sword_hand_root, Vector3(0, 0, -0.022))  # a gloved fist modelled round the grip (tools/blender/fist.py)
+	if fist != null:
+		var glove_leather := StandardMaterial3D.new()
+		glove_leather.vertex_color_use_as_albedo = true
+		glove_leather.roughness = 0.85
+		fist.material_override = glove_leather
+		sword_hand = fist
+	else:  # the older hand built from a sphere and capsules
+		sword_hand = MeshInstance3D.new()
+		var palm := SphereMesh.new()
+		palm.radius = 0.5
+		palm.height = 1.0
+		palm.radial_segments = 10
+		palm.rings = 6
+		sword_hand.mesh = palm
+		var glove := StandardMaterial3D.new()
+		glove.albedo_color = Color("#916b49")
+		glove.roughness = 0.9
+		# Keep the leather readable in the shaded foreground without making it glow.
+		glove.emission_enabled = true
+		glove.emission = Color("#382719")
+		glove.emission_energy_multiplier = 0.28
+		sword_hand.material_override = glove
+		sword_hand.position = Vector3(-0.006, -0.014, -0.012)
+		sword_hand.scale = Vector3(0.063, 0.1, 0.036)
+		sword_hand_root.add_child(sword_hand)
+		# Four curled fingers cross the grip, stacked along it like a real fist.
+		# Each has a front segment and a short return around the far side of the handle.
+		for i in 4:
+			var y := 0.035 - i * 0.029
+			hand_segment(sword_hand_root, Vector3(-0.035, y, 0.008), Vector3(0.025, y - 0.004, 0.004), 0.013, glove)
+			hand_segment(sword_hand_root, Vector3(0.025, y - 0.004, 0.004), Vector3(0.021, y - 0.012, -0.03), 0.011, glove)
+		# The thumb closes across the index finger on the visible side of the grip.
+		hand_segment(sword_hand_root, Vector3(-0.058, 0.043, -0.025), Vector3(-0.024, 0.020, 0.01), 0.014, glove)
+		hand_segment(sword_hand_root, Vector3(-0.024, 0.020, 0.01), Vector3(0.018, 0.013, 0.008), 0.013, glove)
 	W.camera.move_child(sword_arm, sword.get_index())  # the sleeve sits behind the sword.
 	sword.add_child(sword_hand_root)  # Parent the hand to the sword so its fingers cannot slip off the grip.
 	update_sword_arm()
