@@ -190,6 +190,17 @@ func _process(delta: float) -> void:
 		status.text = status_text()
 
 
+## What the characters can see: friends standing near them (so Barnaby knows who else is at the fire).
+func seen_from(from: Vector3, _viewer: Node) -> Array:
+	var out := []
+	for id in peers:
+		var p: Dictionary = peers[id]
+		var node: Node3D = p.node
+		if node.global_position.distance_to(from) < 25.0:
+			out.append("%s, a friend travelling with the wanderer, is %s" % [p.label.text, W.where(from, node.global_position)])
+	return out
+
+
 func status_text() -> String:
 	var mp := get_tree().get_multiplayer()
 	if not mp.has_multiplayer_peer():
@@ -219,6 +230,14 @@ func toggle() -> void:
 	box.add_child(rpg.label("PLAY WITH A FRIEND", 20, Color("#ffd24d")))
 	status = rpg.label(status_text(), 14, Color("#d8c8aa"))
 	box.add_child(status)
+	var name_box := LineEdit.new()  # what the others see over your head (and what the characters hear you called)
+	name_box.placeholder_text = "Your name"
+	name_box.text = my_name
+	name_box.max_length = 20
+	name_box.text_changed.connect(func(v: String):
+		my_name = v.strip_edges() if v.strip_edges() != "" else "Wanderer"
+		ctx.state["net_name"] = my_name)
+	box.add_child(name_box)
 	box.add_child(rpg.button("Host a game (port %d)" % PORT, host))
 	address = LineEdit.new()
 	address.placeholder_text = "Friend's address, e.g. 100.64.1.2"

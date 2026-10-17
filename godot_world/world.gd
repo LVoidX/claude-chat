@@ -868,6 +868,9 @@ func _input(event: InputEvent) -> void:
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not ctx.get("ui_open", false):
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED  # click to grab the mouse again
 	elif event is InputEventKey and event.pressed and not event.echo:
+		var focus := get_viewport().gui_get_focus_owner()
+		if (focus is LineEdit or focus is TextEdit) and event.keycode != KEY_ESCAPE:
+			return  # typing into a text box (a name, an address): the letters must not also work as game keys
 		var typing = ctx.get("typing")  # a part with a text box open (the to-do book): only it gets the keys
 		if typing and is_instance_valid(typing):
 			typing.key(event)
