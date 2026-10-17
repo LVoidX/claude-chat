@@ -43,3 +43,5 @@ Ideas not done yet: horse/mount, dog companion, more story chapter content, ston
 User rule: at >=98% of the 5-hour OR weekly usage -> commit/push then `shutdown /s /t 30`.
 Also (latest): villagers gather at the campfire at night, quest tip about map/options. Usage was 97% (5-hour) / 95% (weekly) when this was written: if the PC shut itself down, that was the 98% rule.
 2026-10-11: usage hit 98% (5-hour; weekly 95%), so the PC was shut down on the user's rule. Last additions: dog.gd (campfire dog companion). Everything is committed and pushed.
+
+2026-10-17: new sword (tools/blender/sword.py, ~11:1 blade, separate leather grip mesh) and gloved fist (tools/blender/fist.py); co-op (net.gd) now has villager-style walking figures with swords, typed talk to characters answered by the host's chat window (world.gd observe() hook + chat.pyw friend_say), shared time/weather, player chat on Enter, name box, friends on the map. Thornvale-coop.zip (gitignored) is the friend's copy: rebuild it after co-op changes. Ideas left: shared enemies/loot in co-op, friend voice (would need Whisper on their PC).

@@ -359,6 +359,7 @@ func key(event: InputEventKey) -> void:
 			KEY_ENTER, KEY_KP_ENTER:
 				if typed.strip_edges() != "" and say_to != "":
 					rpc_id(1, "friend_say", say_to, typed.strip_edges(), my_name)
+					W.show_notice("You: \"%s\"   (they will answer in a moment)" % typed.strip_edges(), 5.0)
 				elif typed.strip_edges() != "":  # player chat: everyone sees it, over your head and as a notice
 					rpc("recv_chat", my_name, typed.strip_edges())
 					W.show_notice("You: " + typed.strip_edges(), 5.0)
