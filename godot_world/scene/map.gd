@@ -119,6 +119,14 @@ func paint(frame: Control) -> void:
 			var gp := to_map(who.global_position.x, who.global_position.z)
 			frame.draw_string_outline(font, gp + Vector2(-3, 5), mark, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color.BLACK)
 			frame.draw_string(font, gp + Vector2(-3, 5), mark, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("#ffd24d"))
+	var net = ctx.parts.get("net")
+	if net:  # friends in a co-op game: a blue dot with their name
+		for id in net.peers:
+			var fp: Vector3 = net.peers[id].node.global_position
+			var dot := to_map(fp.x, fp.z)
+			frame.draw_circle(dot, 6.0, Color.BLACK)
+			frame.draw_circle(dot, 4.5, Color("#5ab0ff"))
+			label_at(frame, font, dot + Vector2(8, 5), str(net.peers[id].label.text))
 	var me: Vector3 = W.player.global_position
 	var at := to_map(me.x, me.z)
 	var yaw: float = W.player.rotation.y

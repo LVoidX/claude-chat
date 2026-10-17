@@ -37,7 +37,7 @@ func build(c: Dictionary) -> void:
 	if not mp.peer_connected.is_connected(on_peer_connected):
 		mp.peer_connected.connect(on_peer_connected)
 		mp.peer_disconnected.connect(on_peer_gone)
-		mp.connected_to_server.connect(func(): W.show_notice("Connected. You can see each other now.", 4.0))
+		mp.connected_to_server.connect(func(): W.show_notice("Connected! Press Enter beside a character to talk to them.", 6.0))
 		mp.connection_failed.connect(func(): W.show_notice("Could not connect to that address.", 4.0))
 		mp.server_disconnected.connect(func():
 			W.show_notice("The host left the game.", 4.0)
