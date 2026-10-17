@@ -608,6 +608,12 @@ class ChatApp:
             self.npc_event(message.get("text", ""), message.get("label"), message.get("who", "barnaby"))
         elif kind == "switch":  # Tab was pressed in the world
             self.show_chat()
+        elif kind == "friend_say":  # a friend in a co-op game (net.gd) typed something to a character
+            name = str(message.get("name") or "a friend")[:24]
+            said = str(message.get("text", ""))[:300]
+            if said.strip():
+                self.npc_event(f'(Another traveller, {name}, a friend of the wanderer, stands beside you and says:) "{said}"',
+                               None, message.get("who") or "barnaby")
         elif kind == "story_next":  # a chapter of the main story ended: have the next one written
             self.start_storyteller(int(message.get("chapter", 0)))
 

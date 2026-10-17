@@ -236,6 +236,9 @@ func handle(c: Dictionary) -> void:
 			return
 	if not kind in QUIET_COMMANDS:
 		print("[world] command received: ", c)  # shows up in the world log
+	for part in parts:  # parts that only watch the commands go by (net.gd passes characters' speech on to friends)
+		if part.has_method("observe"):
+			part.observe(c)
 	for part in parts:  # the first part that knows the command handles it
 		if part.has_method("handle") and part.handle(c):
 			return

@@ -1,6 +1,8 @@
 extends Node3D
 ## Small co-op: F3 opens a panel to HOST a game (UDP port 7777) or JOIN a friend by address. Everyone walks the same
-## meadow and sees each other (a simple figure with a name above it). Only positions are shared: quests, fights, items
+## meadow and sees each other (a simple figure with a name above it). Friends can TALK to the characters too: Enter beside
+## one opens a line to type; it goes to the host, whose chat window (Claude, on the host's plan) has the character answer,
+## and the answer's speech bubbles come back to the friends (observe/recv_cmd). Otherwise only positions are shared: quests, fights, items
 ## and the story stay each player's own. Command line for testing: -- --host   or   -- --join=127.0.0.1
 ## Needs the same project version on both PCs. The host must be reachable: forward UDP 7777 on the router, or both
 ## install Tailscale / ZeroTier and use the host's address from there.
@@ -18,6 +20,9 @@ var open := false
 var peers := {}  # peer id -> {node, target, yaw, name}
 var send_in := 0.0
 var my_name := "Wanderer"
+var typed := ""  # what a joined friend is typing to the character beside them
+var say_box: Label
+var say_to := ""
 
 
 func build(c: Dictionary) -> void:
@@ -232,6 +237,75 @@ func close() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
+## Typing to a character (a friend who joined; the host just talks as usual). While the box is open every key comes here.
+func open_say() -> void:
+	say_to = str(W.near_who)
+	typed = ""
+	if say_box == null:
+		say_box = Label.new()
+		say_box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		say_box.position = Vector2(-300, -170)
+		say_box.custom_minimum_size = Vector2(600, 0)
+		say_box.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		say_box.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		say_box.add_theme_font_size_override("font_size", 18)
+		say_box.add_theme_color_override("font_outline_color", Color.BLACK)
+		say_box.add_theme_constant_override("outline_size", 6)
+		layer.add_child(say_box)
+	say_box.visible = true
+	ctx["typing"] = self
+	show_typed()
+
+
+func show_typed() -> void:
+	say_box.text = "Say to them:  " + typed + "_      (Enter sends, Esc cancels)"
+
+
+func close_say() -> void:
+	if ctx.get("typing") == self:
+		ctx.erase("typing")
+	if say_box:
+		say_box.visible = false
+
+
+@rpc("any_peer", "reliable")
+func friend_say(who: String, text: String, from_name: String) -> void:
+	if not get_tree().get_multiplayer().is_server():
+		return
+	W.show_notice("%s: \"%s\"" % [from_name, text], 5.0)
+	W.send({"t": "friend_say", "who": who, "text": text, "name": from_name})  # the chat window has the character answer
+
+
+## On the host: characters' speech from the chat window goes on to the friends, so they see it too.
+func observe(c: Dictionary) -> void:
+	if online() and get_tree().get_multiplayer().is_server() and str(c.get("cmd", "")) in ["say_start", "say_end", "say", "npc_state"]:
+		rpc("recv_cmd", c)
+
+
+@rpc("authority", "reliable")
+func recv_cmd(c: Dictionary) -> void:
+	W.handle(c)  # the friend's own copy of that character shows the bubble
+
+
 func key(event: InputEventKey) -> void:
+	if ctx.get("typing") == self:
+		match event.keycode:
+			KEY_ESCAPE:
+				close_say()
+			KEY_ENTER, KEY_KP_ENTER:
+				if typed.strip_edges() != "":
+					rpc_id(1, "friend_say", say_to, typed.strip_edges(), my_name)
+				close_say()
+			KEY_BACKSPACE:
+				typed = typed.substr(0, maxi(typed.length() - 1, 0))
+				show_typed()
+			_:
+				if event.unicode >= 32 and typed.length() < 200:
+					typed += char(event.unicode)
+					show_typed()
+		return
+	if event.keycode in [KEY_ENTER, KEY_KP_ENTER] and online() and not get_tree().get_multiplayer().is_server() and str(W.near_who) != "":
+		open_say()
+		return
 	if event.keycode == KEY_F3 or (event.keycode == KEY_ESCAPE and open):
 		toggle() if event.keycode == KEY_F3 else close()
