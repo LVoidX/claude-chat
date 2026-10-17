@@ -6,6 +6,7 @@ extends Node3D
 
 const SLOTS := ["Sword", "Rocket", "", "", "", "", "", "", "Todo"]  # slot 9 is the to-do book (todo.gd)
 const SLOT_SIZE := 58
+const GRIP_SHIFT := Vector3(0, 0.048, 0)  # lifts the Blender sword so the fist closes on its grip, not on the guard
 const REACH := 3.0  # how far the sword reaches
 const ARC := 0.35  # dot product with your forward direction: anything in front of you within about 70 degrees
 
@@ -64,7 +65,7 @@ func make_sword() -> void:
 	var steel: Color = {"rusty_sword": Color("#a47a55"), "steel_sword": Color("#91b7e3")}.get(weapon, Color("#bac5ce"))
 	var brass := Color("#c99c51") if weapon != "rusty_sword" else Color("#776044")
 	var model_name: String = {"rusty_sword": "sword_rusty", "steel_sword": "sword_steel"}.get(weapon, "sword_iron")
-	var model = W.prop(model_name, sword, Vector3.ZERO)  # the Blender sword (tools/blender/sword.py); the code-built one below is the fallback
+	var model = W.prop(model_name, sword, GRIP_SHIFT)  # the Blender sword (tools/blender/sword.py); the code-built one below is the fallback
 	if model != null:
 		var metal := StandardMaterial3D.new()  # steel and brass: shiny (the leather grip below is a separate, dull mesh)
 		metal.vertex_color_use_as_albedo = true
@@ -73,7 +74,7 @@ func make_sword() -> void:
 		metal.metallic_specular = 0.35
 		metal.albedo_color = Color(0.7, 0.7, 0.73)  # (the hand-held view is bright: full-strength steel washes out to white)
 		model.material_override = metal
-		var grip = W.prop("sword_grip", sword, Vector3.ZERO)
+		var grip = W.prop("sword_grip", sword, GRIP_SHIFT)
 		if grip != null:
 			var leather := StandardMaterial3D.new()
 			leather.vertex_color_use_as_albedo = true
