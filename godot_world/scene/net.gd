@@ -106,12 +106,31 @@ func add_peer(id: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = id
 	var tunic := Color.from_hsv(rng.randf(), 0.45, 0.55)
-	W.box(node, Vector3(0, 1.2, 0), Vector3(0.5, 0.62, 0.28), tunic)  # torso
-	W.box(node, Vector3(0, 1.62, 0), Vector3(0.26, 0.28, 0.26), Color("#e0b894"))  # head
-	W.box(node, Vector3(0, 1.8, 0), Vector3(0.3, 0.1, 0.3), tunic.darkened(0.3))  # cap
+	var skin := Color("#e8b896").darkened(rng.randf_range(0.0, 0.3))
+	var limbs := []  # [left leg, right leg, left arm, right arm] pivots: they swing as the friend walks
+	for side in [-1, 1]:  # legs hang from the hips
+		var leg := Node3D.new()
+		leg.position = Vector3(side * 0.1, 0.82, 0)
+		node.add_child(leg)
+		W.box(leg, Vector3(0, -0.37, 0), Vector3(0.13, 0.74, 0.14), Color("#4a3d30"))  # hose
+		W.box(leg, Vector3(0, -0.78, -0.03), Vector3(0.15, 0.1, 0.22), Color("#2b2119"))  # shoes
+		limbs.append(leg)
+	W.box(node, Vector3(0, 1.14, 0), Vector3(0.42, 0.62, 0.26), tunic)  # tunic
+	W.box(node, Vector3(0, 0.86, 0), Vector3(0.44, 0.08, 0.28), Color("#3b2a1e"))  # belt
+	W.box(node, Vector3(0, 0.86, -0.151), Vector3(0.07, 0.05, 0.018), Color("#c9a24a"))  # buckle
+	W.box(node, Vector3(0, 1.43, 0), Vector3(0.44, 0.05, 0.28), tunic.darkened(0.25))  # collar
+	for side in [-1, 1]:  # arms hang from the shoulders
+		var arm := Node3D.new()
+		arm.position = Vector3(side * 0.27, 1.4, 0)
+		node.add_child(arm)
+		W.box(arm, Vector3(0, -0.26, 0), Vector3(0.12, 0.52, 0.13), tunic.darkened(0.08))  # sleeve
+		W.box(arm, Vector3(0, -0.56, 0), Vector3(0.1, 0.1, 0.1), skin)  # hand
+		limbs.append(arm)
+	W.box(node, Vector3(0, 1.66, 0), Vector3(0.26, 0.28, 0.26), skin)  # head
 	for side in [-1, 1]:
-		W.box(node, Vector3(side * 0.12, 0.45, 0), Vector3(0.18, 0.9, 0.2), Color("#4a3a2a"))  # legs
-		W.box(node, Vector3(side * 0.32, 1.2, 0), Vector3(0.14, 0.58, 0.16), tunic.lightened(0.05))  # arms
+		W.box(node, Vector3(side * 0.06, 1.69, -0.131), Vector3(0.04, 0.035, 0.01), Color("#1d1814"))  # eyes
+	W.box(node, Vector3(0, 1.83, 0.01), Vector3(0.3, 0.09, 0.3), tunic.darkened(0.35))  # cap
+	W.box(node, Vector3(0, 1.79, -0.16), Vector3(0.3, 0.03, 0.07), tunic.darkened(0.35))  # its brim
 	var label := Label3D.new()
 	label.text = "Friend"
 	label.pixel_size = 0.005
@@ -120,7 +139,7 @@ func add_peer(id: int) -> void:
 	label.outline_size = 8
 	label.no_depth_test = true
 	node.add_child(label)
-	peers[id] = {"node": node, "target": W.player.global_position, "yaw": 0.0, "label": label}
+	peers[id] = {"node": node, "target": W.player.global_position, "yaw": 0.0, "label": label, "limbs": limbs, "phase": 0.0}
 
 
 ## Everyone tells everyone where they are (unreliable: a lost packet is simply replaced by the next).
@@ -145,7 +164,16 @@ func _process(delta: float) -> void:
 	for id in peers:
 		var p: Dictionary = peers[id]
 		var node: Node3D = p.node
+		var before := node.global_position
 		node.global_position = node.global_position.lerp(p.target, minf(delta * 12.0, 1.0))
+		var speed := Vector2(node.global_position.x - before.x, node.global_position.z - before.z).length() / maxf(delta, 0.001)
+		p.phase += delta * clampf(speed, 0.0, 7.0) * 2.2  # a stride per ~2.8 m
+		var swing := sin(p.phase) * 0.6 * clampf(speed / 2.0, 0.0, 1.0)
+		var limbs: Array = p.limbs
+		limbs[0].rotation.x = swing
+		limbs[1].rotation.x = -swing
+		limbs[2].rotation.x = -swing * 0.7  # arms swing against the legs
+		limbs[3].rotation.x = swing * 0.7
 		node.rotation.y = lerp_angle(node.rotation.y, p.yaw, minf(delta * 10.0, 1.0))
 	if status and open:
 		status.text = status_text()
